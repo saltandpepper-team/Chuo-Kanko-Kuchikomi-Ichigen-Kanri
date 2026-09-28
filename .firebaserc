@@ -1,0 +1,14 @@
+{
+  "projects": {
+    "default": "chuo-kanko"
+  },
+  "targets": {
+    "chuo-kanko": {
+      "hosting": {
+        "kuchikomi": [
+          "chuo-kanko-kuchikomi-ichigen-kanri"
+        ]
+      }
+    }
+  }
+}

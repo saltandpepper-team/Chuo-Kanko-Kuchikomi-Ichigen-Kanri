@@ -1,0 +1,667 @@
+<!doctype html><html lang="ja"><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><title>口コミ一元管理_返信文自動生成</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#faf9f5;color:#141413}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style>
+<style>
+:root{
+  color-scheme:light;
+  /* 中央観光様のブランドカラー（ダークブラウン）を基調に、温かみのあるニュートラル */
+  --brand:#372822;
+  --bg:#F6F4F1; --surface:#FFFFFF; --surface2:#FAF8F6; --ink:#2B211C; --muted:#6F635C; --line:#E5DFD9;
+  --accent:#372822; --accent-ink:#FFFFFF; --accent-soft:#F1ECE7;
+  /* 各媒体のブランドカラー */
+  --g:#1A73E8; --g-bg:#1A73E8; --g-ink:#FFFFFF;
+  --ig:#D62976; --ig-bg:linear-gradient(45deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%); --ig-ink:#FFFFFF;
+  --tb:#D97F00; --tb-bg:#F39800; --tb-ink:#2B1A00;
+  --ta:#00A876; --ta-bg:#34E0A1; --ta-ink:#000000;
+  --warn:#C5221F; --warn-soft:#FCE8E6; --ok:#137333; --ok-soft:#E6F4EA; --wait:#8C5A00; --wait-soft:#FEF3D6;
+  --draft:#5A4A42; --draft-soft:#F1ECE7;
+  --shadow:0 1px 3px rgba(55,40,34,.12),0 8px 24px rgba(55,40,34,.14);
+  font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
+}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-size:14px;line-height:1.6;padding-inline:16px;padding-block:16px 40px}
+h1,h2,h3{font-family:'Noto Sans JP',sans-serif;margin:0;text-wrap:balance}
+button{font:inherit;cursor:pointer}
+button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.login{min-height:calc(100vh - 56px);display:flex;align-items:center;justify-content:center}
+.login-card{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:32px 28px;width:min(400px,100%);display:flex;flex-direction:column;gap:8px;box-shadow:var(--shadow)}
+.login-card h1{font-size:21px;white-space:nowrap;color:var(--brand);margin-bottom:4px}
+.login-card .client{font-size:12px;font-weight:700;color:var(--brand);letter-spacing:.06em}
+.login-card label{font-size:13px;font-weight:700;margin-top:8px}
+.login-card input{font:inherit;padding:10px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.login-card input:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
+.login-card .btn.primary{justify-content:center;padding:11px;margin-top:12px}
+.login-err{margin:4px 0 0;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
+.who{font-size:13px;color:var(--muted)} .who b{color:var(--brand)}
+.bell-wrap{position:relative}
+.bell{position:relative;padding:8px 10px}
+.badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:999px;background:var(--warn);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
+.bell-panel{position:absolute;right:0;top:calc(100% + 8px);width:min(360px,calc(100vw - 32px));background:var(--surface);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);z-index:15;display:flex;flex-direction:column;max-height:70vh}
+.bell-head{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid var(--line)}
+#bellList{overflow:auto}
+.bell-item{display:flex;flex-direction:column;gap:3px;padding:10px 14px;border-bottom:1px solid var(--line);background:none;border-left:none;border-right:none;border-top:none;text-align:left;width:100%;color:inherit;font:inherit}
+.bell-item:hover{background:var(--surface2)}
+.bell-item.unread{background:var(--accent-soft)}
+.bell-item .ex{font-size:12px;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.bell-foot{padding:12px 14px;display:flex;flex-direction:column;gap:6px}
+.bell-foot .btn{justify-content:center}
+.bell-empty{padding:24px 14px;text-align:center;color:var(--muted);font-size:13px}
+.notify-stack{position:fixed;top:calc(16px + env(safe-area-inset-top,0px));right:16px;display:flex;flex-direction:column;gap:10px;z-index:30;width:min(360px,calc(100vw - 32px))}
+.notify{display:grid;grid-template-columns:36px 1fr auto;gap:10px;align-items:start;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px;box-shadow:var(--shadow);text-align:left;width:100%;font:inherit;color:inherit;animation:slidein .25s ease-out}
+.notify.low{border-left:4px solid var(--warn)}
+.notify .icon{width:36px;height:36px;border-radius:8px;background:var(--brand);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:15px}
+.notify .t{font-weight:700;font-size:13px;display:flex;gap:6px;align-items:center;flex-wrap:wrap}
+.notify .b{font-size:12px;color:var(--muted);overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical}
+.notify .x{background:none;border:none;color:var(--muted);font-size:16px;line-height:1;padding:2px 4px}
+.need{background:var(--warn);color:#fff;font-size:11px;padding:1px 7px;border-radius:999px}
+@keyframes slidein{from{transform:translateX(24px);opacity:0}to{transform:none;opacity:1}}
+.wordmark{font-weight:700;letter-spacing:.02em;word-break:keep-all;overflow-wrap:anywhere}
+.tagline{margin:0;font-size:13px;color:var(--muted)}
+.quicklinks{display:flex;flex-wrap:wrap;align-items:center;gap:8px;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:10px 14px}
+.ql-label{font-size:12px;font-weight:700;color:var(--muted);margin-right:4px}
+.ql{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:700;padding:6px 12px;border-radius:8px;text-decoration:none}
+.ql:hover{filter:brightness(1.06)}
+.ql:focus-visible{outline:2px solid var(--brand);outline-offset:2px}
+.lang-badge{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;border:1px solid var(--line);color:var(--ink);background:var(--surface)}
+.lang-pill{background:var(--accent-soft);color:var(--brand)}
+.ja-trans{border-top:1px dashed var(--line);padding-top:8px;font-size:13px;color:var(--muted);white-space:pre-wrap;display:flex;flex-direction:column;gap:2px}
+.ja-label{font-size:11px;font-weight:700;color:var(--brand)}
+.wrap{max-width:1280px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px}
+.brand{display:flex;flex-direction:column;gap:2px}
+.brand h1{font-size:22px;color:var(--brand)}
+.brand .client{font-size:12px;font-weight:700;color:var(--brand);letter-spacing:.06em}
+.brand p{margin:0;color:var(--muted);font-size:13px}
+.demo-flag{font-size:12px;background:var(--wait-soft);color:var(--wait);padding:4px 10px;border-radius:999px;font-weight:700}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);padding:8px 14px;border-radius:8px;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:700}
+.btn.primary:hover{filter:brightness(1.08)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.summary{display:grid;grid-template-columns:220px 1fr;gap:12px}
+.total{font:inherit;text-align:left;width:100%;background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:6px}
+.total .lab{font-size:12px;color:var(--muted)}
+.total .big{color:var(--brand);font-size:40px;line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums}
+.total .big small{font-size:15px;margin-left:2px}
+.total .todo{font-size:13px;font-weight:700;background:var(--warn-soft);color:var(--warn);border-radius:999px;padding:2px 10px;align-self:start}
+.total:hover{border-color:var(--brand)}
+.total[aria-pressed="true"]{outline:2px solid var(--brand);outline-offset:-1px}
+.total .hint2{font-size:12px;color:var(--muted)}
+.clear{background:none;border:none;color:var(--brand);font-weight:700;font-size:12px;padding:0;text-decoration:underline}
+.mcards{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+.mcard{position:relative;overflow:hidden;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 14px 12px;display:flex;flex-direction:column;gap:6px;text-align:left;color:inherit;width:100%}
+.mcard::before{content:'';position:absolute;left:0;right:0;top:0;height:4px;background:var(--cbg)}
+.mcard:hover{border-color:var(--c)}
+.mcard[aria-pressed="true"]{outline:2px solid var(--c);outline-offset:-1px}
+.mcard .name{font-weight:700;font-size:13px;color:var(--c)}
+.mcard .count{font-size:30px;line-height:1.1;font-weight:700;font-variant-numeric:tabular-nums}
+.mcard .count small{font-size:13px;margin-left:2px;color:var(--muted)}
+.mcard .avg{font-size:12px;color:var(--muted)}
+.mcard .bd{display:flex;flex-wrap:wrap;gap:4px}
+.mcard .bd .pill{font-weight:400}
+.mcard .bd .pill b{font-weight:700;margin-left:3px;font-variant-numeric:tabular-nums}
+.mcard .bd .zero{opacity:.45}
+.main{display:grid;grid-template-columns:380px 1fr;gap:16px;align-items:start}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:12px}
+.filters{display:flex;flex-wrap:wrap;gap:6px;padding:12px;border-bottom:1px solid var(--line)}
+.chip{border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:999px;padding:4px 10px;font-size:12px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.list{display:flex;flex-direction:column;max-height:680px;overflow:auto}
+.item{display:grid;grid-template-columns:4px 1fr;gap:12px;padding:12px 14px 12px 0;border-bottom:1px solid var(--line);background:none;border-left:none;border-right:none;border-top:none;text-align:left;color:inherit;width:100%}
+.item:hover{background:var(--surface2)}
+.item[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--ink)}
+.item .stripe{border-radius:0 3px 3px 0}
+.item .body{display:flex;flex-direction:column;gap:4px;min-width:0}
+.row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.media{font-size:11px;font-weight:700;padding:1px 8px;border-radius:4px;color:#fff}
+.m-google{background:var(--g-bg);color:var(--g-ink)} .m-instagram{background:var(--ig-bg);color:var(--ig-ink)} .m-tabelog{background:var(--tb-bg);color:var(--tb-ink)} .m-tripadvisor{background:var(--ta-bg);color:var(--ta-ink)}
+.stars{color:#F4B400;letter-spacing:1px;font-size:13px}
+.stars .off{color:var(--line)}
+.meta{color:var(--muted);font-size:12px}
+.excerpt{overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;font-size:13px}
+.pill{font-size:11px;font-weight:700;padding:1px 8px;border-radius:999px;white-space:nowrap}
+.s-new{background:var(--warn-soft);color:var(--warn)}
+.s-draft{background:var(--draft-soft);color:var(--draft)}
+.s-filled{background:var(--wait-soft);color:var(--wait)}
+.s-sent{background:var(--ok-soft);color:var(--ok)}
+.detail{padding:20px;display:flex;flex-direction:column;gap:16px}
+.review-card{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
+.review-card p{margin:0;max-width:68ch;white-space:pre-wrap}
+.guard{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700}
+.editor-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.editor-head h3{font-size:15px}
+textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;line-height:1.7;background:var(--surface);color:var(--ink);resize:vertical}
+.actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.route{font-size:12px;color:var(--muted)}
+.ai-state{color:var(--brand)}
+.log{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
+.log div{font-variant-numeric:tabular-nums}
+.empty{padding:40px;text-align:center;color:var(--muted)}
+.settings{padding:16px 20px;display:flex;flex-direction:column;gap:8px}
+.settings summary{cursor:pointer;font-weight:700}
+.settings textarea{min-height:140px;font-size:13px}
+.hint{font-size:12px;color:var(--muted);margin:0}
+/* simulated browser */
+.overlay{position:fixed;inset:0;background:rgba(10,16,18,.55);display:flex;align-items:center;justify-content:center;padding:16px;z-index:10}
+.browser{background:var(--surface);border-radius:12px;width:min(760px,100%);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;max-height:calc(100% - 32px)}
+.bar{display:flex;align-items:center;gap:8px;padding:10px 14px;background:var(--surface2);border-bottom:1px solid var(--line)}
+.dots{display:flex;gap:5px}.dots i{width:10px;height:10px;border-radius:50%;background:var(--line);display:block}
+.url{flex:1;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:3px 10px;font-size:12px;color:var(--muted);overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.bbody{display:grid;grid-template-columns:220px 1fr;overflow:auto}
+.steps{border-right:1px solid var(--line);padding:16px;display:flex;flex-direction:column;gap:10px;font-size:13px}
+.step{display:flex;gap:8px;color:var(--muted)}
+.step.done{color:var(--ok)} .step.now{color:var(--ink);font-weight:700}
+.step i{font-style:normal;width:18px;flex:none}
+.page{padding:16px;display:flex;flex-direction:column;gap:12px}
+.page .mock-label{font-size:11px;color:var(--muted);letter-spacing:.08em}
+.fake-field{min-height:150px;border:2px solid var(--line);border-radius:8px;padding:10px;white-space:pre-wrap;font-size:13px;background:var(--surface)}
+.fake-field.typing{border-color:var(--accent)}
+.send-zone{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.send-zone .btn.primary{animation:none}
+.send-zone.ready .btn.primary{outline:4px solid #F39800;outline-offset:4px}
+.toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:13px;z-index:20;max-width:calc(100% - 32px)}
+@media (max-width:1100px){.summary{grid-template-columns:1fr}.total{flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px}}
+@media (max-width:900px){.main{grid-template-columns:1fr}.total:hover{border-color:var(--brand)}
+.total[aria-pressed="true"]{outline:2px solid var(--brand);outline-offset:-1px}
+.total .hint2{font-size:12px;color:var(--muted)}
+.clear{background:none;border:none;color:var(--brand);font-weight:700;font-size:12px;padding:0;text-decoration:underline}
+.mcards{grid-template-columns:repeat(2,1fr)}.list{max-height:360px}.bbody{grid-template-columns:1fr}.steps{border-right:none;border-bottom:1px solid var(--line)}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head><body>
+
+<main class="login" id="loginView">
+  <form class="login-card" id="loginForm" novalidate>
+    <span class="client">中央観光株式会社</span>
+    <h1 class="wordmark">口コミ一元管理_返信文自動生成</h1>
+    <p class="tagline">Google・Instagram・食べログ・トリップアドバイザー対応</p>
+    <p class="hint" style="margin-top:8px">店舗のアカウントでログインしてください</p>
+    <label for="loginId">ID（メールアドレス）</label>
+    <input id="loginId" type="email" autocomplete="username" required>
+    <label for="loginPw">パスワード</label>
+    <input id="loginPw" type="password" autocomplete="current-password" required>
+    <p class="login-err" id="loginErr" role="alert" hidden></p>
+    <button class="btn primary" type="submit" id="loginBtn">ログイン</button>
+    <p class="hint">対象店舗：山麓園／浅間茶屋</p>
+  </form>
+</main>
+
+<div class="wrap" id="appView" hidden>
+  <header class="top">
+    <div class="brand">
+      <span class="client">中央観光株式会社</span>
+      <h1 class="wordmark">口コミ一元管理_返信文自動生成</h1>
+      <p>Google・Instagram・食べログ・トリップアドバイザーの口コミを1か所で管理</p>
+      <span class="demo-flag" style="align-self:start;margin-top:4px">デモ：表示中の口コミはすべて架空のサンプルです</span>
+    </div>
+    <div class="row">
+      <span class="who">ログイン中：<b id="whoStore"></b></span>
+      <div class="bell-wrap">
+        <button class="btn bell" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="通知">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
+          <span class="badge" id="bellBadge" hidden>0</span>
+        </button>
+        <div class="bell-panel" id="bellPanel" hidden>
+          <div class="bell-head"><b>通知</b><button type="button" class="clear" id="readAllBtn">すべて既読にする</button></div>
+          <div id="bellList"></div>
+          <div class="bell-foot">
+            <button type="button" class="btn" id="pcNotifyBtn">PCの通知もオンにする</button>
+            <p class="hint" id="pcNotifyNote">オンにすると、このアプリを見ていない時もPCの画面右上に通知が出ます。</p>
+          </div>
+        </div>
+      </div>
+      <button class="btn" id="logoutBtn" type="button">ログアウト</button>
+      <button class="btn" id="fetchBtn" type="button">新着を取得</button>
+    </div>
+  </header>
+
+  <nav class="quicklinks" aria-label="各媒体の管理画面">
+    <span class="ql-label">管理画面を開く</span>
+    <a class="ql m-google" href="https://business.google.com/" target="_blank" rel="noopener noreferrer">Google<span aria-hidden="true">↗</span></a>
+    <a class="ql m-instagram" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram<span aria-hidden="true">↗</span></a>
+    <a class="ql m-tabelog" href="https://owner.tabelog.com/" target="_blank" rel="noopener noreferrer">食べログ<span aria-hidden="true">↗</span></a>
+    <a class="ql m-tripadvisor" href="https://www.tripadvisor.jp/Owners" target="_blank" rel="noopener noreferrer">トリップアドバイザー<span aria-hidden="true">↗</span></a>
+  </nav>
+
+  <section class="summary" aria-label="媒体ごとの件数">
+    <button type="button" class="total" id="totalCard"></button>
+    <div class="mcards" id="mediaCards"></div>
+  </section>
+
+  <div class="main">
+    <aside class="panel">
+      <div class="filters" id="filters" role="group" aria-label="絞り込み"></div>
+      <div class="filters" style="justify-content:space-between;align-items:center">
+        <span class="meta" id="countLabel"></span>
+        <button class="btn" id="bulkBtn" type="button" style="padding:4px 10px;font-size:12px">高評価の下書きをまとめて作成</button>
+      </div>
+      <div class="list" id="list"></div>
+    </aside>
+
+    <section class="panel" id="detailPanel">
+      <div class="detail" id="detail"></div>
+      <details class="settings">
+        <summary>文体のお手本（過去の返信）</summary>
+        <p class="hint">AIはここにある過去の返信の言葉づかい・長さ・署名に合わせて下書きします。本番では直近3ヶ月分の返信を自動で読み込みます。</p>
+        <textarea id="styleBox"></textarea>
+      </details>
+    </section>
+  </div>
+</div>
+
+<div class="overlay" id="overlay" hidden>
+  <div class="browser" role="dialog" aria-modal="true" aria-labelledby="bTitle">
+    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url" id="bUrl"></div><button class="btn" id="bClose" type="button" style="padding:2px 10px;font-size:12px">閉じる</button></div>
+    <div class="bbody">
+      <div class="steps" id="bSteps"></div>
+      <div class="page">
+        <span class="mock-label">AIによる入力補助 ― 媒体の店舗管理画面（イメージ）</span>
+        <h3 id="bTitle" style="font-size:15px"></h3>
+        <div class="review-card" style="padding:10px"><p id="bReview" style="font-size:13px"></p></div>
+        <label for="bField" class="meta">返信欄</label>
+        <div class="fake-field" id="bField"></div>
+        <div class="send-zone" id="bSendZone">
+          <button class="btn primary" id="bSend" type="button" disabled>返信を送信する</button>
+          <span class="route" id="bNote">自動入力中…</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+<div class="notify-stack" id="notifyStack" aria-live="polite"></div>
+
+<script type="module" src="/firebase-init.js"></script>
+<script>
+const MEDIA = {
+  google:{label:'Google', auto:true, api:'Google Business Profile API'},
+  instagram:{label:'Instagram', auto:true, api:'Instagram Graph API'},
+  tabelog:{label:'食べログ', auto:false, host:'食べログ 店舗管理画面'},
+  tripadvisor:{label:'トリップアドバイザー', auto:false, host:'トリップアドバイザー 管理センター'}
+};
+const STATUS = {new:['未対応','s-new'], draft:['承認待ち','s-draft'], filled:['送信待ち','s-filled'], sent:['返信済み','s-sent']};
+
+const ALL = [
+  {id:1, media:'google', store:'山麓園', author:'山田 T.', rating:5, date:'9/26 10:12', lang:'ja', text:'家族4人で伺いました。ランチの海鮮丼がボリュームたっぷりで、子どもたちも大満足。スタッフの方が子ども用の取り皿をすぐに出してくださって助かりました。また来ます！'},
+  {id:2, media:'tabelog', store:'山麓園', author:'グルメ好き会社員', rating:3, date:'9/25 21:40', lang:'ja', text:'料理の味は良かったのですが、19時頃に入店して料理が出てくるまで40分近くかかりました。混雑していたとはいえ、一言あれば印象が違ったと思います。'},
+  {id:3, media:'tripadvisor', store:'浅間茶屋', author:'Emma R. (UK)', rating:5, date:'9/25 18:05', lang:'en', ja:'偶然見つけたお店でしたが、旅の一番の思い出になりました。日本語が少ししか話せない私たちにも、スタッフの方が一品ずつ丁寧に説明してくれました。焼き魚が絶品でした！', text:'We found this place by chance and it was the highlight of our trip. The staff explained every dish patiently even with our limited Japanese. The grilled fish was incredible!'},
+  {id:4, media:'instagram', store:'浅間茶屋', author:'@hana_trip', rating:null, date:'9/25 12:30', lang:'ja', text:'この前行ったけど夜景と料理どっちも最高だった✨ 予約ってDMでもできますか？'},
+  {id:5, media:'google', store:'浅間茶屋', author:'K. Sato', rating:2, date:'9/24 20:15', lang:'ja', text:'店員さんの対応がそっけなく、注文を2回聞き返されました。料理は普通です。'},
+  {id:6, media:'tabelog', store:'浅間茶屋', author:'旅する胃袋', rating:4, date:'9/24 13:02', lang:'ja', text:'観光の合間にランチで利用。地元の食材を使った定食がどれも丁寧な味付けでした。駐車場がもう少し広いと嬉しいです。'},
+  {id:7, media:'tripadvisor', store:'山麓園', author:'王 小姐 (台湾)', rating:4, date:'9/23 19:48', lang:'zh-TW', ja:'料理がとても美味しく、店員さんも親切でした。英語のメニューはありましたが、中国語もあるともっと便利です。', text:'餐點很好吃，店員也很親切。菜單有英文，但如果有中文就更方便了。'},
+  {id:11, media:'google', store:'山麓園', author:'Michael B. (USA)', rating:4, date:'9/25 09:40', lang:'en', ja:'食事処からの山の景色がきれいでした。天ぷら定食は軽くてサクサク。ランチ時は提供が少し遅めでしたが、スタッフはとても親切でした。', text:'Beautiful mountain views from the dining room. The tempura set was light and crispy. Service was a little slow at lunchtime, but the staff were very kind.'},
+  {id:12, media:'instagram', store:'山麓園', author:'@taipei_foodie', rating:null, date:'9/24 21:10', lang:'zh-TW', ja:'景色がとてもきれい！ベジタリアン向けのメニューはありますか？', text:'風景好美！請問有素食的選擇嗎？'},
+  {id:13, media:'google', store:'浅間茶屋', author:'李先生（上海）', rating:5, date:'9/24 16:30', lang:'zh-CN', ja:'抹茶もお団子もとても美味しく、店内は静かで雰囲気も良かったです。とてもおすすめです。', text:'抹茶和团子都很好吃，店里很安静，氛围很好，非常推荐。'},
+  {id:14, media:'instagram', store:'浅間茶屋', author:'@wanderlust.kyoto', rating:null, date:'9/23 11:05', lang:'en', ja:'とても居心地のいい茶屋！英語のメニューはありますか？', text:'Such a cozy tea house! Do you have an English menu?'},
+  {id:9, media:'instagram', store:'山麓園', author:'@mountain_lunch', rating:null, date:'9/24 18:22', lang:'ja', text:'紅葉の時期に行きたいです！駐車場は何台くらい停められますか？'},
+  {id:10, media:'google', store:'浅間茶屋', author:'N. Kobayashi', rating:5, date:'9/21 15:40', lang:'ja', text:'参拝の帰りに立ち寄りました。お茶とお団子で一息つけて、雰囲気もとても良かったです。', status:'sent', reply:'N. Kobayashi様\n参拝の帰りにお立ち寄りいただき、誠にありがとうございます。ゆっくりお過ごしいただけたとのこと、大変嬉しく思います。季節ごとの甘味もご用意しておりますので、またお越しくださいませ。\n浅間茶屋 スタッフ一同'},
+  {id:8, media:'google', store:'山麓園', author:'M. Ito', rating:5, date:'9/22 11:20', lang:'ja', text:'記念日で利用しました。デザートプレートにメッセージを入れていただき、妻がとても喜んでいました。', status:'sent', reply:'M. Ito様\n記念日という大切な日にご利用いただき、誠にありがとうございます。奥様に喜んでいただけたとのこと、スタッフ一同大変嬉しく思っております。またの節目にもぜひお越しくださいませ。\n山麓園 スタッフ一同'}
+];
+ALL.forEach(r=>{ r.status ??= 'new'; r.reply ??= ''; r.log ??= r.status==='sent'?['9/22 15:03　Google Business Profile API で返信を投稿']:[] });
+
+const INCOMING = [
+  {media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, lang:'en', ja:'料理が出るまで30分近く待ち、理由の説明もありませんでした。おそばは美味しかったのですが、待ち時間で台無しになってしまいました。', text:'We waited almost 30 minutes for our food and nobody told us why. The soba was good, but the wait spoiled the experience.'},
+  {media:'tripadvisor', store:'浅間茶屋', author:'林先生 (香港)', rating:4, lang:'zh-TW', ja:'和菓子がとても繊細で、店員さんも丁寧でした。中国語のメニューがないのが残念です。', text:'日式甜點很精緻，店員很有禮貌。可惜沒有中文菜單。'},
+  {media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, lang:'zh-CN', ja:'環境が美しく、サービスも行き届いていました。天ぷらが特に美味しかったです。また来ます！', text:'环境优美，服务很周到。天妇罗特别好吃，下次还会再来！'},
+  {media:'google', store:'山麓園', author:'T. Nakamura', rating:2, lang:'ja', text:'予約して行ったのに席の準備ができておらず、20分ほど入口で待たされました。料理は美味しかっただけに残念です。'},
+  {media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, lang:'ja', text:'お団子は美味しかったのですが、休日は注文してから出てくるまでかなり時間がかかりました。'},
+  {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ランチ美味しかったです！次は夜のコースも行ってみたい🍶'},
+  {media:'google', store:'浅間茶屋', author:'David L.', rating:5, lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
+];
+
+const DEFAULT_STYLE = `【お手本1】
+山本様
+この度はご来店いただき、誠にありがとうございます。旬の魚を使ったお造りをお楽しみいただけたとのこと、板場一同とても励みになります。季節ごとに内容を変えておりますので、またのお越しを心よりお待ちしております。
+スタッフ一同
+
+【お手本2】
+ご意見をお寄せいただき、ありがとうございます。お料理の提供にお時間をいただいてしまい、大変申し訳ございませんでした。混雑時のご案内の仕方を見直し、スタッフ全員で共有いたしました。またの機会にお越しいただけましたら幸いです。
+スタッフ一同`;
+
+let reviews = [], incoming = [], currentStore = null;
+let selectedId = null, mf = 'all', sf = 'all', sample = null, busy = false;
+const $ = id => document.getElementById(id);
+$('styleBox').value = DEFAULT_STYLE;
+
+function starsHtml(n){ if(n==null) return '<span class="meta">コメント</span>'; let s='<span class="stars" aria-label="評価'+n+'">'; for(let i=1;i<=5;i++) s+= i<=n?'★':'<span class="off">★</span>'; return s+'</span>'; }
+function mediaHtml(m){ return `<span class="media m-${m}">${MEDIA[m].label}</span>`; }
+function statusHtml(s){ const [t,c]=STATUS[s]; return `<span class="pill ${c}">${t}</span>`; }
+function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
+function now(){ const d=new Date(); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）'};
+const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文'};
+function langBadge(r){ return r.lang&&r.lang!=='ja' ? `<span class="lang-badge" title="${LANG[r.lang]}の口コミ">${LANG_SHORT[r.lang]||r.lang}</span>` : ''; }
+function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [t.trim(),''] : [p[0].trim(), p.slice(1).join('\n').trim()]; }
+function isLow(r){ return r.rating!=null && r.rating<=3; }
+function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3200); }
+
+function renderFilters(){
+  const base=reviews.filter(r=>mf==='all'||r.media===mf);
+  const opts=[['all','すべて',base.length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja').length]];
+  $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
+}
+function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'||(sf==='foreign'?(r.lang&&r.lang!=='ja'):r.status===sf))); }
+const MCOLOR={google:'var(--g)',instagram:'var(--ig)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
+const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
+function renderStats(){
+  const todo=reviews.filter(r=>r.status!=='sent').length;
+  const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
+  tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${reviews.length}<small>件</small></span><span class="todo">対応が必要 ${todo}件</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
+  $('mediaCards').innerHTML=Object.keys(MEDIA).map(m=>{
+    const list=reviews.filter(r=>r.media===m);
+    const rated=list.filter(r=>r.rating!=null);
+    const avg=rated.length?(rated.reduce((a,r)=>a+r.rating,0)/rated.length).toFixed(1):null;
+    const bd=['new','draft','filled','sent'].map(s=>{const n=list.filter(r=>r.status===s).length;const [t,c]=STATUS[s];return `<span class="pill ${c}${n?'':' zero'}">${t}<b>${n}</b></span>`;}).join('');
+    return `<button type="button" class="mcard" data-f="${m}" aria-pressed="${mf===m}" style="--c:${MCOLOR[m]};--cbg:${MBG[m]}">
+      <span class="name">${MEDIA[m].label}</span>
+      <span class="count">${list.length}<small>件</small></span>
+      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント（評価なし）':'評価なし')}</span>
+      <span class="bd">${bd}</span></button>`;
+  }).join('');
+}
+function renderList(){
+  const v=visible();
+  $('countLabel').innerHTML = mf==='all' ? `全媒体：${v.length}件` : `${MEDIA[mf].label}：${v.length}件　<button type="button" class="clear" id="clearMf">全媒体を表示</button>`;
+  $('clearMf')?.addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
+  $('list').innerHTML = v.length? v.map(r=>`
+    <button class="item" type="button" data-id="${r.id}" aria-current="${r.id===selectedId}">
+      <span class="stripe" style="background:${isLow(r)&&r.status!=='sent'?'var(--warn)':'transparent'}"></span>
+      <span class="body">
+        <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${langBadge(r)}<span style="flex:1"></span>${statusHtml(r.status)}</span>
+        <span class="excerpt">${esc(r.text)}</span>
+        <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
+      </span>
+    </button>`).join('') : '<div class="empty">該当する口コミはありません</div>';
+}
+function renderDetail(){
+  const r=reviews.find(x=>x.id===selectedId);
+  if(!r){ $('detail').innerHTML='<div class="empty">左の一覧から口コミを選んでください</div>'; return; }
+  const m=MEDIA[r.media];
+  const langNote = r.lang&&r.lang!=='ja' ? `<span class="pill lang-pill">${LANG[r.lang]}の口コミ → ${LANG[r.lang]}で返信</span>` : '';
+  const route = m.auto ? `承認すると ${m.api} で自動送信します` : `承認するとAIが${m.label}の管理画面を操作し、返信欄に入力します。送信ボタンは担当者が押します`;
+  let actions='';
+  if(r.status==='sent'){ actions='<span class="pill s-sent">返信済み</span>'; }
+  else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button>`; }
+  else {
+    actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'AIで書き直す':'AIで下書き'}</button>
+      <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>`;
+  }
+  $('detail').innerHTML = `
+    <div class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${statusHtml(r.status)}${langNote}</div>
+    <div class="review-card">
+      <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
+      <p>${esc(r.text)}</p>
+      ${r.ja?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${esc(r.ja)}</div>`:''}
+    </div>
+    ${isLow(r)&&r.status!=='sent'?'<div class="guard">低評価の口コミです。まとめて承認はできません。内容を1件ずつ確認してください</div>':''}
+    <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
+    <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
+    ${r.replyJa&&!r.drafting?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
+    <div class="actions">${actions}</div>
+    <p class="route" style="margin:0">${r.status==='sent'?'':route}</p>
+    <div class="log">${r.log.length? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
+  const box=$('replyBox');
+  box.addEventListener('input',()=>{ r.reply=box.value; const a=$('approveBtn'); if(a) a.disabled=!box.value.trim(); if(r.status==='new'&&box.value.trim()){ r.status='draft'; renderList(); renderStats(); } });
+  $('draftBtn')?.addEventListener('click',()=>draft(r));
+  $('approveBtn')?.addEventListener('click',()=>approve(r));
+  $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
+}
+function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
+
+function buildPrompt(r){
+  const lang = LANG[r.lang]||'口コミと同じ言語';
+  return `あなたは観光地の飲食店「${r.store}」の口コミ返信担当です。下の「お手本」の言葉づかい・長さ・署名のスタイルに合わせて、口コミへの返信文を1つだけ書いてください。
+
+ルール:
+- ${lang}で書く${r.lang!=='ja'?'。返信の後に「---」だけの行を入れ、その下に日本語訳を付ける':''}
+- 口コミの具体的な内容に1つ以上触れる
+- 低評価の場合は、言い訳をせずにお詫びし、改善の姿勢を示す。できない約束はしない
+- 質問があれば丁寧に答えるか、確認方法を案内する（予約はお電話または公式サイトからと案内）
+- 誇張・絵文字・ハッシュタグは使わない。Instagramのコメントは3〜4文と短めにする
+- 前置きや説明は書かず、返信文だけを出力する
+
+媒体: ${MEDIA[r.media].label}
+投稿者: ${r.author}
+評価: ${r.rating==null?'なし（コメント）':r.rating+' / 5'}
+口コミ:
+${r.text}
+
+お手本:
+${$('styleBox').value.slice(0,4000)}`;
+}
+function fallbackDraft(r){
+  const sign=`${r.store} スタッフ一同`;
+  const nm=r.author.split(/ \(|（/)[0];
+  if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for the long wait and for not letting you know the reason. We have shared your comments with our whole team and will improve how we communicate with guests during busy times. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。長くお待たせしたうえ、理由もお伝えできず、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、混雑時のお客様へのご案内を改善してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
+  if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon.\n---\nコメントありがとうございます！英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
+  if(r.lang==='en') return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed your time with us, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。楽しい時間をお過ごしいただけたこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
+  if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！我們有提供素食餐點，詳情歡迎來電或於官方網站確認。期待您的光臨。\n---\nコメントありがとうございます！ベジタリアン向けのお料理もご用意しております。詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
+  if(r.lang==='zh-TW') return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡我們的餐點。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。お料理を気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`;
+  if(r.lang==='zh-CN') return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢我们的料理和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。お料理とお店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`;
+  if(isLow(r)) return `${r.author}様\nこの度はご来店いただき、またご意見をお寄せいただきありがとうございます。ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`;
+  if(r.media==='instagram') return `コメントありがとうございます！楽しんでいただけて嬉しいです。ご予約はお電話または公式サイトから承っております。またのお越しをお待ちしています。`;
+  return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`;
+}
+
+async function draft(r, silent){
+  if(r.drafting) return;
+  r.drafting=true; r.partial='';
+  if(r.id===selectedId) renderDetail();
+  let text='';
+  try{
+    if(!sample) throw {code:'unavailable'};
+    const res = await sample(buildPrompt(r), {modelTier:'quick', cache:false, onText:({text:t})=>{
+      r.partial=t;
+      if(r.id===selectedId){ const b=$('replyBox'); if(b) b.value=t; }
+    }});
+    text=res.text.trim();
+    r.log.push(`${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
+  }catch(e){
+    text=fallbackDraft(r);
+    r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため）`);
+    if(e.code && e.code!=='unavailable' && !silent) toast('AIに接続できなかったため、定型文で下書きしました');
+  }
+  r.drafting=false; r.partial='';
+  const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
+  if(!silent) renderAll(); else if(r.id===selectedId) renderDetail();
+  return text;
+}
+/** 口コミを開いたとき、返信文がまだ無ければ自動で下書きする */
+function autoDraft(){
+  const r=reviews.find(x=>x.id===selectedId);
+  if(r && r.status==='new' && !r.reply.trim() && !r.drafting) draft(r);
+}
+
+async function approve(r){
+  r.reply=$('replyBox').value.trim();
+  if(!r.reply) return;
+  if(MEDIA[r.media].auto){
+    const btn=$('approveBtn'); btn.disabled=true; btn.textContent='送信中…';
+    r.log.push(`${now()}　承認（${currentStore}）`);
+    await new Promise(res=>setTimeout(res,900));
+    r.status='sent'; r.log.push(`${now()}　${MEDIA[r.media].api} で返信を投稿`);
+    toast(`${MEDIA[r.media].label}に返信を送信しました`);
+    renderAll();
+  } else {
+    r.log.push(`${now()}　承認（${currentStore}）`);
+    openBrowser(r,false);
+  }
+}
+
+// simulated browser autofill
+let typingTimer=null;
+function openBrowser(r, already){
+  const m=MEDIA[r.media];
+  $('overlay').hidden=false;
+  $('bUrl').textContent = m.host+'／口コミ返信（ログイン済みセッション）';
+  $('bTitle').textContent = `${r.author} さんの口コミ（${r.store}）`;
+  $('bReview').textContent = r.text;
+  const field=$('bField'), send=$('bSend'), note=$('bNote'), zone=$('bSendZone');
+  const steps=['AIが管理画面を開いて読み取る','AIが口コミを照合（投稿者・本文）','AIが返信欄を見つけて入力','送信ボタンの手前で停止'];
+  const say=t=>{ note.textContent=t; };
+  const paint=i=>{ $('bSteps').innerHTML = steps.map((s,k)=>`<div class="step ${k<i?'done':k===i?'now':''}"><i>${k<i?'✓':k+1}</i><span>${s}</span></div>`).join('') + '<p class="hint" style="margin-top:8px">AIにできるのは「移動のためのクリック」と「返信欄への入力」だけです。送信・投稿ボタンはAIが押せない仕組みになっていて、最後の送信は担当者が押します</p>'; };
+  send.disabled=true; zone.classList.remove('ready'); field.textContent=''; field.classList.remove('typing');
+  send.onclick = ()=>{
+    r.status='sent'; r.log.push(`${now()}　担当者が${m.label}で送信ボタンを押して返信を投稿`);
+    closeBrowser(); toast(`${m.label}に返信を送信しました`); renderAll();
+  };
+  if(already){ paint(4); field.textContent=r.reply; send.disabled=false; zone.classList.add('ready'); note.textContent='入力済みです。内容を確認して送信してください'; send.focus(); return; }
+  paint(0); say('AIが画面を確認中…（口コミ一覧）');
+  setTimeout(()=>{ paint(1); say(`AIが「${r.author}」さんの口コミを見つけ、「この口コミに返信する」を押しました`);
+    setTimeout(()=>{ paint(2); say('AIが返信欄を見つけて入力しています…'); field.classList.add('typing');
+      const txt=r.reply; let i=0; const step=Math.max(1,Math.ceil(txt.length/90));
+      const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+      if(reduce){ field.textContent=txt; finish(); return; }
+      typingTimer=setInterval(()=>{ i+=step; field.textContent=txt.slice(0,i); if(i>=txt.length){ clearInterval(typingTimer); finish(); } },30);
+    },1400);
+  },1400);
+  function finish(){
+    field.classList.remove('typing'); paint(3);
+    setTimeout(()=>{ paint(4); send.disabled=false; zone.classList.add('ready'); note.textContent='AIが入力を終えました。内容を確認して送信ボタンを押してください';
+      if(r.status!=='filled'){ r.status='filled'; r.log.push(`${now()}　${m.label}の返信欄に自動入力（送信待ち）`); renderStats(); renderList(); renderDetail(); }
+      send.focus();
+    },500);
+  }
+}
+function closeBrowser(){ clearInterval(typingTimer); $('overlay').hidden=true; renderAll(); }
+$('bClose').onclick=closeBrowser;
+$('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeBrowser(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('overlay').hidden) closeBrowser(); });
+
+// events
+$('filters').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; sf=b.dataset.f; renderFilters(); renderList(); });
+$('totalCard').addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
+$('mediaCards').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; mf = mf===b.dataset.f ? 'all' : b.dataset.f; sf='all'; renderFilters(); renderStats(); renderList(); });
+$('list').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(!b) return; selectedId=+b.dataset.id; renderList(); renderDetail(); autoDraft(); });
+const API_NAME={google:'Google Business Profile API',instagram:'Instagram Graph API',tabelog:'エージェント（食べログ）',tripadvisor:'エージェント（トリップアドバイザー）'};
+function arrive(x){
+  const id=Math.max(0,...ALL.map(r=>r.id))+1;
+  const r={...x,id,date:now(),status:'new',reply:'',log:[`${now()}　${API_NAME[x.media]} から取得`]};
+  ALL.unshift(r); reviews.unshift(r);
+  notify(r);
+  return r;
+}
+$('fetchBtn').addEventListener('click',()=>{
+  if(!incoming.length){ toast('新しい口コミはありません'); return; }
+  const n=incoming.splice(0,incoming.length);
+  n.forEach(arrive);
+  toast(`新着の口コミを${n.length}件取得しました`); renderAll();
+});
+
+// ---- 通知 ----
+let notices=[], arrivalTimer=null, audioCtx=null;
+function unread(){ return notices.filter(n=>!n.read).length; }
+function renderBell(){
+  const n=unread(), b=$('bellBadge');
+  b.hidden=!n; b.textContent=n>99?'99+':n;
+  document.title=(n?`(${n}) `:'')+'口コミ一元管理_返信文自動生成';
+  $('bellList').innerHTML = notices.length ? notices.map(x=>{ const r=ALL.find(a=>a.id===x.id); if(!r) return '';
+    return `<button type="button" class="bell-item ${x.read?'':'unread'}" data-nid="${r.id}">
+      <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${isLow(r)?'<span class="need">要確認</span>':''}<span style="flex:1"></span><span class="meta">${r.date}</span></span>
+      <span class="ex">${esc(r.author)}：${esc(r.text)}</span></button>`; }).join('') : '<div class="bell-empty">新しい通知はありません</div>';
+}
+function beep(low){
+  try{
+    audioCtx ??= new (window.AudioContext||window.webkitAudioContext)();
+    const o=audioCtx.createOscillator(), g=audioCtx.createGain();
+    o.frequency.value = low ? 520 : 880; o.type='sine';
+    g.gain.setValueAtTime(0.0001,audioCtx.currentTime); g.gain.exponentialRampToValueAtTime(0.15,audioCtx.currentTime+0.02); g.gain.exponentialRampToValueAtTime(0.0001,audioCtx.currentTime+0.35);
+    o.connect(g).connect(audioCtx.destination); o.start(); o.stop(audioCtx.currentTime+0.4);
+  }catch(e){}
+}
+function notify(r){
+  notices.unshift({id:r.id, read:false});
+  renderBell();
+  const low=isLow(r);
+  const title=`新しい口コミ｜${MEDIA[r.media].label}${r.rating!=null?' ★'+r.rating:''}${r.lang&&r.lang!=='ja'?'（'+LANG[r.lang]+'）':''}`;
+  // 画面内の通知
+  const el=document.createElement('button');
+  el.type='button'; el.className='notify'+(low?' low':'');
+  el.innerHTML=`<span class="icon" aria-hidden="true">口</span>
+    <span style="display:flex;flex-direction:column;gap:2px;min-width:0"><span class="t">${esc(title)}${low?'<span class="need">要確認</span>':''}</span>
+    <span class="b">${esc(r.store)}・${esc(r.author)}：${esc(r.text)}</span></span>
+    <span class="x" aria-label="閉じる">×</span>`;
+  el.addEventListener('click',e=>{ el.remove(); if(e.target.classList.contains('x')) return; openFromNotice(r.id); });
+  $('notifyStack').prepend(el);
+  setTimeout(()=>el.remove(), low?15000:8000);
+  beep(low);
+  // PCの通知（許可されている場合）
+  try{
+    if('Notification' in window && Notification.permission==='granted'){
+      const n=new Notification((low?'【要確認】':'')+title,{body:`${r.store}・${r.author}：${r.text.slice(0,80)}`,tag:'review-'+r.id});
+      n.onclick=()=>{ window.focus(); openFromNotice(r.id); n.close(); };
+    }
+  }catch(e){}
+}
+function openFromNotice(id){
+  const x=notices.find(n=>n.id===id); if(x) x.read=true;
+  mf='all'; sf='all'; selectedId=id; $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false');
+  renderAll(); renderBell(); autoDraft();
+}
+$('bellBtn').addEventListener('click',()=>{ const p=$('bellPanel'); p.hidden=!p.hidden; $('bellBtn').setAttribute('aria-expanded',String(!p.hidden)); });
+document.addEventListener('click',e=>{ if(!e.target.closest('.bell-wrap')){ $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false'); } });
+$('bellList').addEventListener('click',e=>{ const b=e.target.closest('[data-nid]'); if(b) openFromNotice(+b.dataset.nid); });
+$('readAllBtn').addEventListener('click',()=>{ notices.forEach(n=>n.read=true); renderBell(); });
+function renderPcBtn(){
+  const btn=$('pcNotifyBtn'), note=$('pcNotifyNote');
+  const demoNote='このデモ画面ではPCの通知を出せないため、画面内の通知と音でお見せしています。本番のアプリでは、ブラウザを閉じていてもPCに通知が届きます。';
+  if(!('Notification' in window) || Notification.permission==='denied'){ btn.disabled=true; note.textContent=demoNote; return; }
+  if(Notification.permission==='granted'){ btn.disabled=true; btn.textContent='PCの通知はオンです'; }
+}
+$('pcNotifyBtn').addEventListener('click',async()=>{
+  try{ await Notification.requestPermission(); }catch(e){}
+  if(!('Notification' in window) || Notification.permission!=='granted'){
+    $('pcNotifyBtn').disabled=true;
+    $('pcNotifyNote').textContent='このデモ画面ではPCの通知を出せないため、画面内の通知でお見せしています。本番のアプリでは、ブラウザを閉じていてもPCに通知が届きます。';
+  }
+  renderPcBtn();
+});
+$('bulkBtn').addEventListener('click',async()=>{
+  const targets=reviews.filter(r=>r.status==='new' && !isLow(r) && r.rating!=null);
+  if(!targets.length){ toast('下書きが必要な高評価の口コミはありません'); return; }
+  const b=$('bulkBtn'); b.disabled=true;
+  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i],true); renderFilters(); renderStats(); renderList(); }
+  b.disabled=false; b.textContent='高評価の下書きをまとめて作成';
+  toast(`${targets.length}件の下書きを作成しました。内容を確認して承認してください`); renderAll();
+});
+
+// ---- ログイン（デモ用：IDとパスワードのハッシュで照合。本番はサーバー側で認証） ----
+const ACCOUNTS = {
+  '28fb1fd0f055527eec8df4dbbf2f10afb53b37f896641b2895837f2fbee476f0':'山麓園',
+  '7b538f6ecf5e384876f82f1490104a0d700d8241e3f9c1598463394fe2fd61ac':'浅間茶屋'
+};
+async function sha256(t){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+function enter(store){
+  currentStore=store;
+  reviews=ALL.filter(r=>r.store===store);
+  incoming=INCOMING.filter(r=>r.store===store && !ALL.some(a=>a.text===r.text));
+  selectedId=reviews[0]?.id ?? null; mf='all'; sf='all';
+  $('whoStore').textContent=store;
+  $('loginView').hidden=true; $('appView').hidden=false;
+  try{ sessionStorage.setItem('rd-store',store); }catch(e){}
+  notices=[]; renderBell(); renderPcBtn();
+  renderAll(); autoDraft();
+  // デモ：ログインから少しして新着が1件届く
+  clearTimeout(arrivalTimer);
+  arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll();
+    arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); } }, 30000); } }, 12000);
+}
+$('loginForm').addEventListener('submit',async e=>{
+  e.preventDefault();
+  const id=$('loginId').value.trim().toLowerCase(), pw=$('loginPw').value, err=$('loginErr');
+  if(!id||!pw){ err.textContent='IDとパスワードを入力してください'; err.hidden=false; return; }
+  $('loginBtn').disabled=true;
+  let store=null; try{ store=ACCOUNTS[await sha256(id+'\n'+pw)]; }catch(x){}
+  $('loginBtn').disabled=false;
+  if(!store){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
+  err.hidden=true; $('loginPw').value=''; enter(store);
+});
+$('logoutBtn').addEventListener('click',()=>{
+  try{ sessionStorage.removeItem('rd-store'); }catch(e){}
+  clearTimeout(arrivalTimer); notices=[]; document.title='口コミ一元管理_返信文自動生成'; $('notifyStack').innerHTML='';
+  currentStore=null; reviews=[]; $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
+});
+try{ const s=sessionStorage.getItem('rd-store'); if(s && Object.values(ACCOUNTS).includes(s)) enter(s); }catch(e){}
+(async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
+</script>
+
+</body></html>
