@@ -440,21 +440,47 @@ ${r.text}
 お手本:
 ${$('styleBox').value.slice(0,4000)}`;
 }
+// 口コミ本文を日本語で読み取るための文字列（外国語の場合はAI翻訳済みのr.jaを使う）
+function jaText(r){ return r.lang==='ja' ? r.text : (r.ja||r.text); }
+// 高評価コメントで具体的に触れられている料理・景観などを拾うための辞書（先に書いたものが優先）
+const POS_HIGHLIGHTS=[
+  {test:/海鮮丼/, ja:'海鮮丼', zh:'海鮮丼', en:'the seafood rice bowl'},
+  {test:/天ぷら/, ja:'天ぷら', zh:'天婦羅', en:'the tempura'},
+  {test:/焼き魚/, ja:'焼き魚', zh:'烤魚', en:'the grilled fish'},
+  {test:/抹茶/, ja:'抹茶とお団子', zh:'抹茶和糰子', en:'the matcha and dango'},
+  {test:/お団子/, ja:'お団子', zh:'糰子', en:'the dango'},
+  {test:/和菓子/, ja:'和菓子', zh:'和菓子', en:'the Japanese sweets'},
+  {test:/地元の食材/, ja:'地元の食材を使った定食', zh:'使用當地食材的套餐', en:'the set meal made with local ingredients'},
+  {test:/山の景色/, ja:'山の景色', zh:'山景', en:'the mountain view'},
+  {test:/夜景/, ja:'夜景', zh:'夜景', en:'the night view'},
+];
+function posHighlight(r){ const t=jaText(r); return POS_HIGHLIGHTS.find(h=>h.test.test(t))||null; }
+// 低評価コメントで指摘されている内容を拾うための辞書
+const NEG_HIGHLIGHTS=[
+  {test:/アレルギー/, ja:'ご予約時にお伝えいただいたアレルギー情報の共有'},
+  {test:/会計/, ja:'お会計時のご説明'},
+  {test:/そっけな|聞き返/, ja:'スタッフの接客対応'},
+  {test:/待ち|待たされ|時間がかか|近くかかり|分.{0,3}かかり/, ja:'お待たせした時間のご案内'},
+];
+function negHighlight(r){ const t=jaText(r); const h=NEG_HIGHLIGHTS.find(h=>h.test.test(t)); return h?h.ja:null; }
 function fallbackDraft(r){
   const sign=`${r.store} スタッフ一同`;
   const nm=r.author.split(/ \(|（/)[0];
   if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for serving the wrong dish and for the confusion it caused. We have shared your comments with our whole team and will double-check orders more carefully before they reach the table. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。ご注文と異なる料理をお出ししてしまい、ご迷惑をおかけし大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、提供前の確認を徹底してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
   if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon.\n---\nコメントありがとうございます！英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
-  if(r.lang==='en') return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed your time with us, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。楽しい時間をお過ごしいただけたこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
+  if(r.lang==='en'){ const hi=posHighlight(r); const enjoy=hi?hi.en:'your time with us'; return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed ${enjoy}, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。${hi?hi.ja+'を':''}楽しんでいただけたとのこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`; }
   if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！我們有提供素食餐點，詳情歡迎來電或於官方網站確認。期待您的光臨。\n---\nコメントありがとうございます！ベジタリアン向けのお料理もご用意しております。詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
-  if(r.lang==='zh-TW') return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡我們的餐點。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。お料理を気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`;
-  if(r.lang==='zh-CN') return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢我们的料理和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。お料理とお店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`;
-  if(isLow(r)) return `${r.author}様\nこの度はご来店いただき、またご意見をお寄せいただきありがとうございます。ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`;
+  if(r.lang==='zh-TW'){ const hi=posHighlight(r); return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡${hi?hi.zh:'我們的餐點'}。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。${hi?hi.ja+'を':'お料理を'}気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`; }
+  if(r.lang==='zh-CN'){ const hi=posHighlight(r); return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢${hi?hi.zh:'我们的料理'}和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。${hi?hi.ja+'と':'お料理と'}お店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`; }
+  if(isLow(r)){ const neg=negHighlight(r); return `${r.author}様\nこの度はご来店、また貴重なご意見をお寄せいただき誠にありがとうございます。${neg?neg+'につきまして、':''}ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`; }
   if(r.media==='instagram' && /駐車場/.test(r.text)) return `コメントありがとうございます！紅葉の時期は山麓園からの景色も一段ときれいで、私たちもおすすめのシーズンです。駐車場は普通車20台分ご用意しておりますが、紅葉シーズンの土日祝は満車になることがございますので、少し早めのご来店がおすすめです。またのお越しを心よりお待ちしております。`;
   if(r.media==='instagram' && /予約/.test(r.text) && /DM|ＤＭ/i.test(r.text)) return `コメントありがとうございます！恐れ入りますが、確実にご案内できるよう、ご予約はお電話または公式サイトから承っております。DMですと確認のお時間をいただいたり、行き違いが生じる場合がございますので、ご了承くださいませ。またのお越しをお待ちしております。`;
+  if(r.media==='instagram' && /夜のコース/.test(r.text)) return `コメントありがとうございます！ランチをお楽しみいただけて何よりです。夜のコースもぜひご賞味いただければと思いますので、ご予約の際はお電話または公式サイトからお気軽にお問い合わせください。またのお越しをお待ちしております。`;
   if(r.media==='instagram' && /[？?]/.test(r.text)) return `コメントありがとうございます！ご質問の件は、恐れ入りますがお電話または公式サイトからご確認いただけますと幸いです。またのお越しをお待ちしております。`;
   if(r.media==='instagram') return `コメントありがとうございます！楽しんでいただけて嬉しいです。ご予約はお電話または公式サイトから承っております。またのお越しをお待ちしています。`;
-  return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`;
+  if(/海鮮丼/.test(r.text) && /子ども/.test(r.text)) return `${r.author}様\nご家族でのご来店、誠にありがとうございます。海鮮丼を皆様で楽しんでいただけたご様子で、また、お子様用の取り皿もお役に立てましたようで何よりです。またのご家族でのお越しを心よりお待ちしております。\n${sign}`;
+  if(/地元の食材/.test(r.text) && /駐車場/.test(r.text)) return `${r.author}様\nご来店・ご感想をいただき誠にありがとうございます。地元の食材を使った定食をお楽しみいただけて何よりです。駐車場につきましては貴重なご意見として承り、今後の参考にさせていただきます。またのお越しを心よりお待ちしております。\n${sign}`;
+  { const hi=posHighlight(r); return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。${hi?hi.ja+'を':''}お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`; }
 }
 
 async function draft(r, silent){
