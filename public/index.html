@@ -386,7 +386,7 @@ function renderDetail(){
       <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>`;
   }
   $('detail').innerHTML = `
-    <div class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${statusHtml(r.status)}${langNote}</div>
+    <div class="row" id="detailStatusRow">${mediaHtml(r.media)}${starsHtml(r.rating)}${statusHtml(r.status)}${langNote}</div>
     <div class="review-card">
       <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
       <p>${esc(r.text)}</p>
@@ -400,7 +400,19 @@ function renderDetail(){
     <p class="route" style="margin:0">${r.status==='sent'?'':route}</p>
     <div class="log">${r.log.length? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
   const box=$('replyBox');
-  box.addEventListener('input',()=>{ r.reply=box.value; const a=$('approveBtn'); if(a) a.disabled=!box.value.trim(); if(r.status==='new'&&box.value.trim()){ r.status='draft'; renderList(); renderStats(); } });
+  box.addEventListener('input',()=>{
+    r.reply=box.value;
+    const a=$('approveBtn'); if(a) a.disabled=!box.value.trim();
+    const hasText=!!box.value.trim();
+    let changed=false;
+    if(r.status==='new'&&hasText){ r.status='draft'; changed=true; }
+    else if(r.status==='draft'&&!hasText){ r.status='new'; changed=true; }
+    if(changed){
+      renderList(); renderStats();
+      const row=$('detailStatusRow'); if(row) row.innerHTML=`${mediaHtml(r.media)}${starsHtml(r.rating)}${statusHtml(r.status)}${langNote}`;
+      const ai=$('aiState'); if(ai) ai.textContent = r.reply&&r.status==='draft' ? 'AIの下書きです。必要なら直してから承認してください' : '';
+    }
+  });
   $('draftBtn')?.addEventListener('click',()=>draft(r));
   $('approveBtn')?.addEventListener('click',()=>approve(r));
   $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
