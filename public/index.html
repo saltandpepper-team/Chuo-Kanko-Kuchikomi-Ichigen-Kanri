@@ -299,11 +299,11 @@ const ALL = [
 ALL.forEach(r=>{ r.status ??= 'new'; r.reply ??= ''; r.log ??= r.status==='sent'?['9/22 15:03　Google Business Profile API で返信を投稿']:[] });
 
 const INCOMING = [
-  {media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, lang:'en', ja:'料理が出るまで30分近く待ち、理由の説明もありませんでした。おそばは美味しかったのですが、待ち時間で台無しになってしまいました。', text:'We waited almost 30 minutes for our food and nobody told us why. The soba was good, but the wait spoiled the experience.'},
+  {media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, lang:'en', ja:'注文した内容と違う料理が運ばれてきて、指摘してからようやく正しいものに交換してもらえました。少し時間はかかりましたが、料理自体は美味しかったです。', text:"The dish that arrived didn't match what we ordered, and it took some explaining before staff brought the right one. The food itself was tasty once we got it sorted out."},
   {media:'tripadvisor', store:'浅間茶屋', author:'林先生 (香港)', rating:4, lang:'zh-TW', ja:'和菓子がとても繊細で、店員さんも丁寧でした。中国語のメニューがないのが残念です。', text:'日式甜點很精緻，店員很有禮貌。可惜沒有中文菜單。'},
   {media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, lang:'zh-CN', ja:'環境が美しく、サービスも行き届いていました。天ぷらが特に美味しかったです。また来ます！', text:'环境优美，服务很周到。天妇罗特别好吃，下次还会再来！'},
-  {media:'google', store:'山麓園', author:'T. Nakamura', rating:2, lang:'ja', text:'予約して行ったのに席の準備ができておらず、20分ほど入口で待たされました。料理は美味しかっただけに残念です。'},
-  {media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, lang:'ja', text:'お団子は美味しかったのですが、休日は注文してから出てくるまでかなり時間がかかりました。'},
+  {media:'google', store:'山麓園', author:'T. Nakamura', rating:2, lang:'ja', text:'予約時にエビアレルギーがあることを伝えていたのですが、当日の担当スタッフに共有されておらず、料理が運ばれてから確認することになりました。味は美味しかっただけに、情報共有はきちんとしていただきたいです。'},
+  {media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, lang:'ja', text:'会計の際にメニューに載っていない「季節限定サービス料」のようなものが加算されていて、説明もなく少し戸惑いました。お団子自体はとても美味しかったです。'},
   {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ランチ美味しかったです！次は夜のコースも行ってみたい🍶'},
   {media:'google', store:'浅間茶屋', author:'David L.', rating:5, lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
 ];
@@ -431,7 +431,7 @@ ${$('styleBox').value.slice(0,4000)}`;
 function fallbackDraft(r){
   const sign=`${r.store} スタッフ一同`;
   const nm=r.author.split(/ \(|（/)[0];
-  if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for the long wait and for not letting you know the reason. We have shared your comments with our whole team and will improve how we communicate with guests during busy times. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。長くお待たせしたうえ、理由もお伝えできず、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、混雑時のお客様へのご案内を改善してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
+  if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for serving the wrong dish and for the confusion it caused. We have shared your comments with our whole team and will double-check orders more carefully before they reach the table. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。ご注文と異なる料理をお出ししてしまい、ご迷惑をおかけし大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、提供前の確認を徹底してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
   if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon.\n---\nコメントありがとうございます！英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
   if(r.lang==='en') return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed your time with us, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。楽しい時間をお過ごしいただけたこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
   if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！我們有提供素食餐點，詳情歡迎來電或於官方網站確認。期待您的光臨。\n---\nコメントありがとうございます！ベジタリアン向けのお料理もご用意しております。詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
