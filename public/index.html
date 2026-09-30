@@ -445,52 +445,116 @@ ${$('styleBox').value.slice(0,4000)}`;
 function jaText(r){ return r.lang==='ja' ? r.text : (r.ja||r.text); }
 // 高評価コメントで具体的に触れられている料理・景観などを拾うための辞書（先に書いたものが優先）
 const POS_HIGHLIGHTS=[
-  {test:/ほうとう/, ja:'ほうとう鍋', zh:'餺飥鍋', en:'the hōtō hot pot'},
-  {test:/囲炉裏.?焼き|囲炉裏焼/, ja:'囲炉裏焼き', zh:'爐端燒', en:'the hearth-grilled skewers'},
-  {test:/岩魚/, ja:'炭火で焼いた岩魚', zh:'炭火烤岩魚', en:'the charcoal-grilled iwana fish'},
-  {test:/マシュマロ/, ja:'焼きマシュマロ', zh:'烤棉花糖', en:'the roasted marshmallows'},
-  {test:/古民家/, ja:'古民家の趣ある空間', zh:'古民宅的氛圍', en:'the historic 150-year-old farmhouse'},
-  {test:/富士山/, ja:'富士山の眺め', zh:'富士山的景色', en:'the view of Mt. Fuji'},
-  {test:/海鮮丼/, ja:'海鮮丼', zh:'海鮮丼', en:'the seafood rice bowl'},
-  {test:/天ぷら/, ja:'天ぷら', zh:'天婦羅', en:'the tempura'},
-  {test:/焼き魚/, ja:'焼き魚', zh:'烤魚', en:'the grilled fish'},
-  {test:/抹茶/, ja:'抹茶とお団子', zh:'抹茶和糰子', en:'the matcha and dango'},
-  {test:/お団子/, ja:'お団子', zh:'糰子', en:'the dango'},
-  {test:/和菓子/, ja:'和菓子', zh:'和菓子', en:'the Japanese sweets'},
-  {test:/地元の食材/, ja:'地元の食材を使った定食', zh:'使用當地食材的套餐', en:'the set meal made with local ingredients'},
-  {test:/山の景色/, ja:'山の景色', zh:'山景', en:'the mountain view'},
-  {test:/夜景/, ja:'夜景', zh:'夜景', en:'the night view'},
+  {test:/ほうとう/, ja:'ほうとう鍋', zh:'餺飥鍋', en:'the hōtō hot pot', detail:'当店のほうとう鍋は、お椀に3〜4杯分ほどのたっぷりとしたボリュームでご用意しております。'},
+  {test:/囲炉裏.?焼き|囲炉裏焼/, ja:'囲炉裏焼き', zh:'爐端燒', en:'the hearth-grilled skewers', detail:'囲炉裏の炭火は遠赤外線効果で、外はパリッと中はふっくらと仕上がるのが特徴です。'},
+  {test:/岩魚/, ja:'炭火で焼いた岩魚', zh:'炭火烤岩魚', en:'the charcoal-grilled iwana fish', detail:'当店では養殖のニジマスではなく、旨味の詰まった岩魚を一尾ずつ炭火でじっくりと焼き上げております。'},
+  {test:/マシュマロ/, ja:'焼きマシュマロ', zh:'烤棉花糖', en:'the roasted marshmallows', detail:'食後の焼きマシュマロも、囲炉裏ならではのお楽しみとしてご用意しております。'},
+  {test:/古民家/, ja:'古民家の趣ある空間', zh:'古民宅的氛圍', en:'the historic 150-year-old farmhouse', detail:'築150年以上の古民家を移築した店内は、太い梁や趣ある造りで当時の面影を残しております。'},
+  {test:/富士山/, ja:'富士山の眺め', zh:'富士山的景色', en:'the view of Mt. Fuji', detail:'2階からは富士山を望むこともでき、河口湖エリアでもなかなか味わえない特別な景色をお楽しみいただけます。'},
+  {test:/海鮮丼/, ja:'海鮮丼', zh:'海鮮丼', en:'the seafood rice bowl', detail:'旬の魚介をたっぷり使い、二人前ほどのボリュームでご用意しております。'},
+  {test:/天ぷら/, ja:'天ぷら', zh:'天婦羅', en:'the tempura', detail:'揚げたてを香ばしく召し上がっていただけるよう、ご注文ごとに丁寧に揚げております。'},
+  {test:/焼き魚/, ja:'焼き魚', zh:'烤魚', en:'the grilled fish', detail:'旬の魚を一尾ずつ丁寧に焼き上げております。'},
+  {test:/抹茶/, ja:'抹茶とお団子', zh:'抹茶和糰子', en:'the matcha and dango', detail:'抹茶とお団子は、季節ごとに厳選した素材でご用意しております。'},
+  {test:/お団子/, ja:'お団子', zh:'糰子', en:'the dango', detail:'お団子は店内で一つひとつ手作りしております。'},
+  {test:/和菓子/, ja:'和菓子', zh:'和菓子', en:'the Japanese sweets', detail:'和菓子は季節に合わせて内容を変えており、目でも楽しんでいただけるよう心がけております。'},
+  {test:/地元の食材/, ja:'地元の食材を使った定食', zh:'使用當地食材的套餐', en:'the set meal made with local ingredients', detail:'地元の食材を活かした味付けは、季節ごとに変化をつけております。'},
+  {test:/山の景色/, ja:'山の景色', zh:'山景', en:'the mountain view', detail:'食事処からの山の景色は、季節ごとに違った表情を見せてくれます。'},
+  {test:/夜景/, ja:'夜景', zh:'夜景', en:'the night view', detail:'夜は灯りに照らされた景色もまた格別です。'},
 ];
 function posHighlight(r){ const t=jaText(r); return POS_HIGHLIGHTS.find(h=>h.test.test(t))||null; }
 // 低評価コメントで指摘されている内容を拾うための辞書
 const NEG_HIGHLIGHTS=[
-  {test:/アレルギー/, ja:'ご予約時にお伝えいただいたアレルギー情報の共有'},
-  {test:/会計/, ja:'お会計時のご説明'},
-  {test:/無言|挨拶がな/, ja:'スタッフからのお声がけ'},
-  {test:/そっけな|聞き返/, ja:'スタッフの接客対応'},
-  {test:/待ち|待たされ|時間がかか|近くかかり|分.{0,3}かかり/, ja:'お待たせした時間のご案内'},
-  {test:/料金に見合|料理内容/, ja:'お料理の内容'},
-  {test:/ギャップ/, ja:'ご期待に対する内容'},
+  {test:/アレルギー/, ja:'ご予約時にお伝えいただいたアレルギー情報の共有', detail:'ご予約情報の共有方法を見直し、当日担当するスタッフ全員が事前に確認できる体制を整えてまいります。'},
+  {test:/会計/, ja:'お会計時のご説明', detail:'料金体系について、お会計の際に分かりやすくご説明できるようスタッフの案内を徹底してまいります。'},
+  {test:/無言|挨拶がな/, ja:'スタッフからのお声がけ', detail:'お出迎えの際のご挨拶やお声がけを大切にできるよう、あらためてスタッフ教育を見直してまいります。'},
+  {test:/そっけな|聞き返/, ja:'スタッフの接客対応', detail:'スタッフの言葉遣いや対応について、あらためて指導を徹底してまいります。'},
+  {test:/待ち|待たされ|時間がかか|近くかかり|分.{0,3}かかり/, ja:'お待たせした時間のご案内', detail:'混雑時のご案内方法を見直し、状況に応じてお時間の目安をお伝えできるようにしてまいります。'},
+  {test:/料金に見合|料理内容/, ja:'お料理の内容', detail:'食材の仕入れや仕込みの内容について、あらためて品質管理を見直してまいります。'},
+  {test:/ギャップ/, ja:'ご期待に対する内容', detail:'ご期待に沿えるよう、料理内容や接客の質を今一度見直し、改善に努めてまいります。'},
 ];
-function negHighlight(r){ const t=jaText(r); const h=NEG_HIGHLIGHTS.find(h=>h.test.test(t)); return h?h.ja:null; }
+function negHighlight(r){ const t=jaText(r); return NEG_HIGHLIGHTS.find(h=>h.test.test(t))||null; }
+// Google宛ての返信は他媒体より長め・具体的にする（店舗ごとの結びの一文）
+const STORE_CLOSING={
+  '山麓園':'河口湖駅からもアクセスしやすい場所にございますので、また河口湖や富士山エリアへお越しの際は、ぜひお立ち寄りください。',
+};
+const STORE_CLOSING_DEFAULT='またお近くにお越しの際は、ぜひお立ち寄りください。';
+const STORE_BLURB_EN={
+  '山麓園':'Our restaurant is set in a farmhouse building more than 150 years old, and we grill each dish over charcoal at the irori hearth so every guest can enjoy an authentic taste of the Yamanashi region.',
+};
+const STORE_BLURB_EN_DEFAULT='We take great care in preparing each dish so that every guest can enjoy a relaxing, authentic experience.';
+const STORE_BLURB_ZH={
+  '山麓園':'本店坐落在有150多年歷史的古民宅中，我們在圍爐（囲炉裏）用炭火精心烤製每一道菜，希望讓每位客人都能品嚐到山梨地區道地的風味。',
+};
+const STORE_BLURB_ZH_DEFAULT='我們用心準備每一道菜，希望每位客人都能度過輕鬆愉快的時光。';
+function googleLongPositive(r, hi, extraNote){
+  const closing=STORE_CLOSING[r.store]||STORE_CLOSING_DEFAULT;
+  const p1=`${r.author}様\nご投稿いただき、誠にありがとうございます。`;
+  const p2=hi?`お店の雰囲気や${hi.ja}まで、存分にお楽しみいただけたご様子で、大変嬉しく拝読いたしました。`:`お店の雰囲気やお料理を存分にお楽しみいただけたご様子で、大変嬉しく拝読いたしました。`;
+  const p3=hi&&hi.detail?hi.detail:'';
+  const p4=extraNote||'';
+  const p5=`${closing}\nスタッフ一同、心よりお待ちしております。`;
+  return [p1,p2,p3,p4,p5].filter(Boolean).join('\n\n');
+}
+function googleLongApology(r, neg){
+  const p1=`${r.author}様\nこの度はご来店いただき、また貴重なご意見をお寄せいただき誠にありがとうございます。`;
+  const p2=neg?`${neg.ja}につきまして、ご不快な思いをおかけし大変申し訳ございませんでした。`:`ご不快な思いをおかけし、大変申し訳ございませんでした。`;
+  const p3=neg&&neg.detail?neg.detail:'いただいたご意見はスタッフ全員で共有し、改善に努めてまいります。';
+  const p4=`またお越しいただける機会がございましたら、より良いお時間をお過ごしいただけるよう努めてまいります。`;
+  return [p1,p2,p3,p4].filter(Boolean).join('\n\n');
+}
 function fallbackDraft(r){
   const sign=`${r.store} スタッフ一同`;
   const nm=r.author.split(/ \(|（/)[0];
   if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for serving the wrong dish and for the confusion it caused. We have shared your comments with our whole team and will double-check orders more carefully before they reach the table. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。ご注文と異なる料理をお出ししてしまい、ご迷惑をおかけし大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、提供前の確認を徹底してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
   if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon.\n---\nコメントありがとうございます！英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
-  if(r.lang==='en'){ const hi=posHighlight(r); const enjoy=hi?hi.en:'your time with us'; return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed ${enjoy}, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。${hi?hi.ja+'を':''}楽しんでいただけたとのこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`; }
+  if(r.lang==='en'){
+    const hi=posHighlight(r); const enjoy=hi?hi.en:'your time with us';
+    if(r.media==='google'){
+      const blurb=STORE_BLURB_EN[r.store]||STORE_BLURB_EN_DEFAULT;
+      const enBody=`Dear ${nm},\n\nThank you so much for taking the time to share your experience with us.\n\nWe are delighted that you enjoyed ${enjoy} during your visit. ${blurb}\n\nWe hope to welcome you back again on your next visit to Japan.\n\n${r.store} Staff`;
+      return `${enBody}\n---\n${googleLongPositive(r, hi)}`;
+    }
+    return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed ${enjoy}, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。${hi?hi.ja+'を':''}楽しんでいただけたとのこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
+  }
   if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！我們有提供素食餐點，詳情歡迎來電或於官方網站確認。期待您的光臨。\n---\nコメントありがとうございます！ベジタリアン向けのお料理もご用意しております。詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
-  if(r.lang==='zh-TW'){ const hi=posHighlight(r); return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡${hi?hi.zh:'我們的餐點'}。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。${hi?hi.ja+'を':'お料理を'}気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`; }
-  if(r.lang==='zh-CN'){ const hi=posHighlight(r); return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢${hi?hi.zh:'我们的料理'}和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。${hi?hi.ja+'と':'お料理と'}お店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`; }
-  if(isLow(r)){ const neg=negHighlight(r); return `${r.author}様\nこの度はご来店、また貴重なご意見をお寄せいただき誠にありがとうございます。${neg?neg+'につきまして、':''}ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`; }
+  if(r.lang==='zh-TW'){
+    const hi=posHighlight(r);
+    if(r.media==='google'){
+      const blurb=STORE_BLURB_ZH[r.store]||STORE_BLURB_ZH_DEFAULT;
+      const zhBody=`${nm}您好，\n\n非常感謝您撥冗分享這次的用餐體驗。\n\n很高興您喜歡${hi?hi.zh:'我們的餐點'}。${blurb}\n\n期待您再次光臨。\n\n${r.store} 全體員工`;
+      return `${zhBody}\n---\n${googleLongPositive(r, hi)}`;
+    }
+    return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡${hi?hi.zh:'我們的餐點'}。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。${hi?hi.ja+'を':'お料理を'}気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`;
+  }
+  if(r.lang==='zh-CN'){
+    const hi=posHighlight(r);
+    if(r.media==='google'){
+      const blurb=STORE_BLURB_ZH[r.store]||STORE_BLURB_ZH_DEFAULT;
+      const zhBody=`${nm}您好，\n\n非常感谢您抽空分享这次的用餐体验。\n\n很高兴您喜欢${hi?hi.zh:'我们的料理'}。${blurb}\n\n期待您下次再来，我们会用心为您服务。\n\n${r.store} 全体员工`;
+      return `${zhBody}\n---\n${googleLongPositive(r, hi)}`;
+    }
+    return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢${hi?hi.zh:'我们的料理'}和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。${hi?hi.ja+'と':'お料理と'}お店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`;
+  }
+  if(isLow(r)){
+    const neg=negHighlight(r);
+    if(r.media==='google') return googleLongApology(r, neg);
+    return `${r.author}様\nこの度はご来店、また貴重なご意見をお寄せいただき誠にありがとうございます。${neg?neg.ja+'につきまして、':''}ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`;
+  }
   if(r.media==='instagram' && /駐車場/.test(r.text)) return `コメントありがとうございます！紅葉の時期は山麓園からの景色も一段ときれいで、私たちもおすすめのシーズンです。駐車場は普通車20台分ご用意しておりますが、紅葉シーズンの土日祝は満車になることがございますので、少し早めのご来店がおすすめです。またのお越しを心よりお待ちしております。`;
   if(r.media==='instagram' && /予約/.test(r.text) && /DM|ＤＭ/i.test(r.text)) return `コメントありがとうございます！恐れ入りますが、確実にご案内できるよう、ご予約はお電話または公式サイトから承っております。DMですと確認のお時間をいただいたり、行き違いが生じる場合がございますので、ご了承くださいませ。またのお越しをお待ちしております。`;
   if(r.media==='instagram' && /囲炉裏.?焼き|囲炉裏焼/.test(r.text)) return `コメントありがとうございます！ほうとう鍋をお楽しみいただけて何よりです。単品の囲炉裏焼きもイカやカニなど種類がございますので、次回はぜひご賞味ください。ご予約はお電話または公式サイトからお気軽にどうぞ。またのお越しをお待ちしております。`;
   if(r.media==='instagram' && /[？?]/.test(r.text)) return `コメントありがとうございます！ご質問の件は、恐れ入りますがお電話または公式サイトからご確認いただけますと幸いです。またのお越しをお待ちしております。`;
   if(r.media==='instagram') return `コメントありがとうございます！楽しんでいただけて嬉しいです。ご予約はお電話または公式サイトから承っております。またのお越しをお待ちしています。`;
-  if(/ほうとう/.test(r.text) && /子ども/.test(r.text)) return `${r.author}様\nご家族でのご来店、誠にありがとうございます。ほうとう鍋や囲炉裏焼きを皆様で楽しんでいただけたご様子で、焼きマシュマロもお子様に喜んでいただけて何よりです。またのご家族でのお越しを心よりお待ちしております。\n${sign}`;
+  if(/ほうとう/.test(r.text) && /子ども/.test(r.text)){
+    if(r.media==='google') return googleLongPositive(r, posHighlight(r), 'また、囲炉裏焼きや焼きマシュマロもお子様に大変喜んでいただけたご様子で、私共も嬉しく拝見いたしました。');
+    return `${r.author}様\nご家族でのご来店、誠にありがとうございます。ほうとう鍋や囲炉裏焼きを皆様で楽しんでいただけたご様子で、焼きマシュマロもお子様に喜んでいただけて何よりです。またのご家族でのお越しを心よりお待ちしております。\n${sign}`;
+  }
   if(/地元の食材/.test(r.text) && /駐車場/.test(r.text)) return `${r.author}様\nご来店・ご感想をいただき誠にありがとうございます。地元の食材を使った定食をお楽しみいただけて何よりです。駐車場につきましては貴重なご意見として承り、今後の参考にさせていただきます。またのお越しを心よりお待ちしております。\n${sign}`;
-  { const hi=posHighlight(r); return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。${hi?hi.ja+'を':''}お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`; }
+  {
+    const hi=posHighlight(r);
+    if(r.media==='google') return googleLongPositive(r, hi);
+    return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。${hi?hi.ja+'を':''}お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`;
+  }
 }
 
 async function draft(r, silent){
