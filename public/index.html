@@ -281,14 +281,14 @@ const MEDIA = {
 const STATUS = {new:['未対応','s-new'], draft:['承認待ち','s-draft'], filled:['送信待ち','s-filled'], sent:['返信済み','s-sent']};
 
 const ALL = [
-  {id:1, media:'google', store:'山麓園', author:'山田 T.', rating:5, date:'9/26 10:12', lang:'ja', text:'家族4人で伺いました。ランチの海鮮丼がボリュームたっぷりで、子どもたちも大満足。スタッフの方が子ども用の取り皿をすぐに出してくださって助かりました。また来ます！'},
+  {id:1, media:'google', store:'山麓園', author:'山田 T.', rating:5, date:'9/26 10:12', lang:'ja', text:'家族4人で伺いました。ほうとう鍋はお椀に3〜4杯分もあってボリュームたっぷり、単品でお願いした囲炉裏焼きのイカも子どもたちが大喜びでした。焼き方をスタッフの方が丁寧に教えてくださって、食後の焼きマシュマロも最高でした！また来ます！'},
   {id:2, media:'tabelog', store:'山麓園', author:'グルメ好き会社員', rating:3, date:'9/25 21:40', lang:'ja', text:'料理の味は良かったのですが、19時頃に入店して料理が出てくるまで40分近くかかりました。混雑していたとはいえ、一言あれば印象が違ったと思います。'},
   {id:3, media:'tripadvisor', store:'浅間茶屋', author:'Emma R. (UK)', rating:5, date:'9/25 18:05', lang:'en', ja:'偶然見つけたお店でしたが、旅の一番の思い出になりました。日本語が少ししか話せない私たちにも、スタッフの方が一品ずつ丁寧に説明してくれました。焼き魚が絶品でした！', text:'We found this place by chance and it was the highlight of our trip. The staff explained every dish patiently even with our limited Japanese. The grilled fish was incredible!'},
   {id:4, media:'instagram', store:'浅間茶屋', author:'@hana_trip', rating:null, date:'9/25 12:30', lang:'ja', text:'この前行ったけど夜景と料理どっちも最高だった✨ 予約ってDMでもできますか？'},
   {id:5, media:'google', store:'浅間茶屋', author:'K. Sato', rating:2, date:'9/24 20:15', lang:'ja', text:'店員さんの対応がそっけなく、注文を2回聞き返されました。料理は普通です。'},
   {id:6, media:'tabelog', store:'浅間茶屋', author:'旅する胃袋', rating:4, date:'9/24 13:02', lang:'ja', text:'観光の合間にランチで利用。地元の食材を使った定食がどれも丁寧な味付けでした。駐車場がもう少し広いと嬉しいです。'},
   {id:7, media:'tripadvisor', store:'山麓園', author:'王 小姐 (台湾)', rating:4, date:'9/23 19:48', lang:'zh-TW', ja:'料理がとても美味しく、店員さんも親切でした。英語のメニューはありましたが、中国語もあるともっと便利です。', text:'餐點很好吃，店員也很親切。菜單有英文，但如果有中文就更方便了。'},
-  {id:11, media:'google', store:'山麓園', author:'Michael B. (USA)', rating:4, date:'9/25 09:40', lang:'en', ja:'食事処からの山の景色がきれいでした。天ぷら定食は軽くてサクサク。ランチ時は提供が少し遅めでしたが、スタッフはとても親切でした。', text:'Beautiful mountain views from the dining room. The tempura set was light and crispy. Service was a little slow at lunchtime, but the staff were very kind.'},
+  {id:11, media:'google', store:'山麓園', author:'Michael B. (USA)', rating:4, date:'9/25 09:40', lang:'en', ja:'窓から見える富士山がきれいでした。炭火で焼いた岩魚は皮がパリッと香ばしくて絶品。提供が少し遅めでしたが、スタッフはとても親切でした。', text:'Beautiful views of Mt. Fuji from the dining room. The charcoal-grilled iwana fish was crispy and full of flavor. Service was a little slow, but the staff were very kind.'},
   {id:12, media:'instagram', store:'山麓園', author:'@taipei_foodie', rating:null, date:'9/24 21:10', lang:'zh-TW', ja:'景色がとてもきれい！ベジタリアン向けのメニューはありますか？', text:'風景好美！請問有素食的選擇嗎？'},
   {id:13, media:'google', store:'浅間茶屋', author:'李先生（上海）', rating:5, date:'9/24 16:30', lang:'zh-CN', ja:'抹茶もお団子もとても美味しく、店内は静かで雰囲気も良かったです。とてもおすすめです。', text:'抹茶和团子都很好吃，店里很安静，氛围很好，非常推荐。'},
   {id:14, media:'instagram', store:'浅間茶屋', author:'@wanderlust.kyoto', rating:null, date:'9/23 11:05', lang:'en', ja:'とても居心地のいい茶屋！英語のメニューはありますか？', text:'Such a cozy tea house! Do you have an English menu?'},
@@ -301,20 +301,21 @@ ALL.forEach(r=>{ r.status ??= 'new'; r.reply ??= ''; r.log ??= r.status==='sent'
 const INCOMING = [
   {media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, lang:'en', ja:'注文した内容と違う料理が運ばれてきて、指摘してからようやく正しいものに交換してもらえました。少し時間はかかりましたが、料理自体は美味しかったです。', text:"The dish that arrived didn't match what we ordered, and it took some explaining before staff brought the right one. The food itself was tasty once we got it sorted out."},
   {media:'tripadvisor', store:'浅間茶屋', author:'林先生 (香港)', rating:4, lang:'zh-TW', ja:'和菓子がとても繊細で、店員さんも丁寧でした。中国語のメニューがないのが残念です。', text:'日式甜點很精緻，店員很有禮貌。可惜沒有中文菜單。'},
-  {media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, lang:'zh-CN', ja:'環境が美しく、サービスも行き届いていました。天ぷらが特に美味しかったです。また来ます！', text:'环境优美，服务很周到。天妇罗特别好吃，下次还会再来！'},
+  {media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, lang:'zh-CN', ja:'古民家の雰囲気がとても美しく、サービスも行き届いていました。炭火で焼いた岩魚が特に美味しかったです。また来ます！', text:'古民居的氛围非常美，服务也很周到。炭火烤的岩魚特别好吃，下次还会再来！'},
   {media:'google', store:'山麓園', author:'T. Nakamura', rating:2, lang:'ja', text:'予約時にエビアレルギーがあることを伝えていたのですが、当日の担当スタッフに共有されておらず、料理が運ばれてから確認することになりました。味は美味しかっただけに、情報共有はきちんとしていただきたいです。'},
   {media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, lang:'ja', text:'会計の際にメニューに載っていない「季節限定サービス料」のようなものが加算されていて、説明もなく少し戸惑いました。お団子自体はとても美味しかったです。'},
-  {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ランチ美味しかったです！次は夜のコースも行ってみたい🍶'},
+  {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ほうとう鍋美味しかったです！今度は単品の囲炉裏焼きも頼んでみたい🍶'},
+  {media:'google', store:'山麓園', author:'旅人（東京都）', rating:1, lang:'ja', text:'食材や人件費の高騰は理解していますが、料金に見合った料理内容とは感じられませんでした。炭を運ぶスタッフの方が無言で置いていくだけで、店長らしき方もすれ違っても挨拶がなく、接客面で残念な印象を受けました。期待していただけに、正直なところギャップを感じてしまいました。'},
   {media:'google', store:'浅間茶屋', author:'David L.', rating:5, lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
 ];
 
 const DEFAULT_STYLE = `【お手本1】
 山本様
-この度はご来店いただき、誠にありがとうございます。旬の魚を使ったお造りをお楽しみいただけたとのこと、板場一同とても励みになります。季節ごとに内容を変えておりますので、またのお越しを心よりお待ちしております。
+この度はご来店いただき、誠にありがとうございます。ほうとう鍋や単品の囲炉裏焼きを存分にお楽しみいただけたご様子で、私共も大変嬉しく思います。築150年の古民家を活かした店内で、炭火の遠赤外線でじっくりと焼き上げるのが当店のこだわりです。河口湖駅からもアクセスしやすい場所にございますので、またのお越しを心よりお待ちしております。
 スタッフ一同
 
 【お手本2】
-ご意見をお寄せいただき、ありがとうございます。お料理の提供にお時間をいただいてしまい、大変申し訳ございませんでした。混雑時のご案内の仕方を見直し、スタッフ全員で共有いたしました。またの機会にお越しいただけましたら幸いです。
+ご意見をお寄せいただき、誠にありがとうございます。囲炉裏の炭火は高温になりやすく、ご案内が行き届かず申し訳ございませんでした。お客様に快適にお過ごしいただけるよう、配慮やご案内方法をスタッフ間で見直してまいります。またの機会にお越しいただけましたら幸いです。
 スタッフ一同`;
 
 let reviews = [], incoming = [], currentStore = null;
@@ -444,6 +445,12 @@ ${$('styleBox').value.slice(0,4000)}`;
 function jaText(r){ return r.lang==='ja' ? r.text : (r.ja||r.text); }
 // 高評価コメントで具体的に触れられている料理・景観などを拾うための辞書（先に書いたものが優先）
 const POS_HIGHLIGHTS=[
+  {test:/ほうとう/, ja:'ほうとう鍋', zh:'餺飥鍋', en:'the hōtō hot pot'},
+  {test:/囲炉裏.?焼き|囲炉裏焼/, ja:'囲炉裏焼き', zh:'爐端燒', en:'the hearth-grilled skewers'},
+  {test:/岩魚/, ja:'炭火で焼いた岩魚', zh:'炭火烤岩魚', en:'the charcoal-grilled iwana fish'},
+  {test:/マシュマロ/, ja:'焼きマシュマロ', zh:'烤棉花糖', en:'the roasted marshmallows'},
+  {test:/古民家/, ja:'古民家の趣ある空間', zh:'古民宅的氛圍', en:'the historic 150-year-old farmhouse'},
+  {test:/富士山/, ja:'富士山の眺め', zh:'富士山的景色', en:'the view of Mt. Fuji'},
   {test:/海鮮丼/, ja:'海鮮丼', zh:'海鮮丼', en:'the seafood rice bowl'},
   {test:/天ぷら/, ja:'天ぷら', zh:'天婦羅', en:'the tempura'},
   {test:/焼き魚/, ja:'焼き魚', zh:'烤魚', en:'the grilled fish'},
@@ -459,8 +466,11 @@ function posHighlight(r){ const t=jaText(r); return POS_HIGHLIGHTS.find(h=>h.tes
 const NEG_HIGHLIGHTS=[
   {test:/アレルギー/, ja:'ご予約時にお伝えいただいたアレルギー情報の共有'},
   {test:/会計/, ja:'お会計時のご説明'},
+  {test:/無言|挨拶がな/, ja:'スタッフからのお声がけ'},
   {test:/そっけな|聞き返/, ja:'スタッフの接客対応'},
   {test:/待ち|待たされ|時間がかか|近くかかり|分.{0,3}かかり/, ja:'お待たせした時間のご案内'},
+  {test:/料金に見合|料理内容/, ja:'お料理の内容'},
+  {test:/ギャップ/, ja:'ご期待に対する内容'},
 ];
 function negHighlight(r){ const t=jaText(r); const h=NEG_HIGHLIGHTS.find(h=>h.test.test(t)); return h?h.ja:null; }
 function fallbackDraft(r){
@@ -475,10 +485,10 @@ function fallbackDraft(r){
   if(isLow(r)){ const neg=negHighlight(r); return `${r.author}様\nこの度はご来店、また貴重なご意見をお寄せいただき誠にありがとうございます。${neg?neg+'につきまして、':''}ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`; }
   if(r.media==='instagram' && /駐車場/.test(r.text)) return `コメントありがとうございます！紅葉の時期は山麓園からの景色も一段ときれいで、私たちもおすすめのシーズンです。駐車場は普通車20台分ご用意しておりますが、紅葉シーズンの土日祝は満車になることがございますので、少し早めのご来店がおすすめです。またのお越しを心よりお待ちしております。`;
   if(r.media==='instagram' && /予約/.test(r.text) && /DM|ＤＭ/i.test(r.text)) return `コメントありがとうございます！恐れ入りますが、確実にご案内できるよう、ご予約はお電話または公式サイトから承っております。DMですと確認のお時間をいただいたり、行き違いが生じる場合がございますので、ご了承くださいませ。またのお越しをお待ちしております。`;
-  if(r.media==='instagram' && /夜のコース/.test(r.text)) return `コメントありがとうございます！ランチをお楽しみいただけて何よりです。夜のコースもぜひご賞味いただければと思いますので、ご予約の際はお電話または公式サイトからお気軽にお問い合わせください。またのお越しをお待ちしております。`;
+  if(r.media==='instagram' && /囲炉裏.?焼き|囲炉裏焼/.test(r.text)) return `コメントありがとうございます！ほうとう鍋をお楽しみいただけて何よりです。単品の囲炉裏焼きもイカやカニなど種類がございますので、次回はぜひご賞味ください。ご予約はお電話または公式サイトからお気軽にどうぞ。またのお越しをお待ちしております。`;
   if(r.media==='instagram' && /[？?]/.test(r.text)) return `コメントありがとうございます！ご質問の件は、恐れ入りますがお電話または公式サイトからご確認いただけますと幸いです。またのお越しをお待ちしております。`;
   if(r.media==='instagram') return `コメントありがとうございます！楽しんでいただけて嬉しいです。ご予約はお電話または公式サイトから承っております。またのお越しをお待ちしています。`;
-  if(/海鮮丼/.test(r.text) && /子ども/.test(r.text)) return `${r.author}様\nご家族でのご来店、誠にありがとうございます。海鮮丼を皆様で楽しんでいただけたご様子で、また、お子様用の取り皿もお役に立てましたようで何よりです。またのご家族でのお越しを心よりお待ちしております。\n${sign}`;
+  if(/ほうとう/.test(r.text) && /子ども/.test(r.text)) return `${r.author}様\nご家族でのご来店、誠にありがとうございます。ほうとう鍋や囲炉裏焼きを皆様で楽しんでいただけたご様子で、焼きマシュマロもお子様に喜んでいただけて何よりです。またのご家族でのお越しを心よりお待ちしております。\n${sign}`;
   if(/地元の食材/.test(r.text) && /駐車場/.test(r.text)) return `${r.author}様\nご来店・ご感想をいただき誠にありがとうございます。地元の食材を使った定食をお楽しみいただけて何よりです。駐車場につきましては貴重なご意見として承り、今後の参考にさせていただきます。またのお越しを心よりお待ちしております。\n${sign}`;
   { const hi=posHighlight(r); return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。${hi?hi.ja+'を':''}お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`; }
 }
