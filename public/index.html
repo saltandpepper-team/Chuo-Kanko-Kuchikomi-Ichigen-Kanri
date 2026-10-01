@@ -126,7 +126,6 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .detail{padding:20px;display:flex;flex-direction:column;gap:16px}
 .review-card{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
 .review-card p{margin:0;max-width:68ch;white-space:pre-wrap}
-.guard{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px;font-weight:700}
 .editor-head{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .editor-head h3{font-size:15px}
 textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;line-height:1.7;background:var(--surface);color:var(--ink);resize:vertical}
@@ -393,7 +392,6 @@ function renderDetail(){
       <p>${esc(r.text)}</p>
       ${r.ja?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${esc(r.ja)}</div>`:''}
     </div>
-    ${isLow(r)&&r.status!=='sent'?'<div class="guard">低評価の口コミです。まとめて承認はできません。内容を1件ずつ確認してください</div>':''}
     <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
     <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
     ${r.replyJa&&!r.drafting?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
