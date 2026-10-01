@@ -299,19 +299,26 @@ const ALL = [
   {id:17, media:'tabelog', store:'山麓園', author:'山梨グルメ巡り', rating:4, date:'9/21 12:40', lang:'ja', text:'窓から富士山が見えるお席に案内していただき、景色を楽しみながらほうとう鍋をいただきました。野菜もたっぷりで体が温まります。土日は混みやすいようなので、事前の予約がおすすめです。'},
   {id:18, media:'tabelog', store:'浅間茶屋', author:'甘味処めぐり', rating:5, date:'9/26 14:50', lang:'ja', text:'抹茶とお団子を目当てに伺いました。お団子は注文を受けてから丁寧に作っている様子が伝わる美味しさで、和菓子も季節感があって目でも楽しめました。店内も静かで落ち着いた時間を過ごせます。'},
   {id:19, media:'tabelog', store:'浅間茶屋', author:'ぶらり旅人', rating:3, date:'9/22 19:20', lang:'ja', text:'お茶とお団子のセットを注文したのですが、会計時にメニューには書かれていない席料のようなものが加算されていて少し戸惑いました。説明があれば納得できたと思います。味自体は良かったです。'},
-  {id:20, media:'tabelog', store:'浅間茶屋', author:'ひとり飯探訪', rating:4, date:'9/20 11:10', lang:'ja', text:'参拝帰りに一人でふらっと立ち寄りました。地元の食材を使った定食は優しい味付けで、山の景色を眺めながらゆっくり食事ができました。一人でも入りやすい雰囲気です。'}
+  {id:20, media:'tabelog', store:'浅間茶屋', author:'ひとり飯探訪', rating:4, date:'9/20 11:10', lang:'ja', text:'参拝帰りに一人でふらっと立ち寄りました。地元の食材を使った定食は優しい味付けで、山の景色を眺めながらゆっくり食事ができました。一人でも入りやすい雰囲気です。'},
+  {id:21, media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, date:'9/19 19:30', lang:'en', ja:'注文した内容と違う料理が運ばれてきて、指摘してからようやく正しいものに交換してもらえました。少し時間はかかりましたが、料理自体は美味しかったです。', text:"The dish that arrived didn't match what we ordered, and it took some explaining before staff brought the right one. The food itself was tasty once we got it sorted out."},
+  {id:22, media:'tripadvisor', store:'浅間茶屋', author:'林先生 (香港)', rating:4, date:'9/18 15:10', lang:'zh-TW', ja:'和菓子がとても繊細で、店員さんも丁寧でした。中国語のメニューがないのが残念です。', text:'日式甜點很精緻，店員很有禮貌。可惜沒有中文菜單。'},
+  {id:23, media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, date:'9/20 18:45', lang:'zh-CN', ja:'古民家の雰囲気がとても美しく、サービスも行き届いていました。炭火で焼いた岩魚が特に美味しかったです。また来ます！', text:'古民居的氛围非常美，服务也很周到。炭火烤的岩魚特别好吃，下次还会再来！'},
+  {id:24, media:'google', store:'山麓園', author:'T. Nakamura', rating:2, date:'9/19 20:00', lang:'ja', text:'予約時にエビアレルギーがあることを伝えていたのですが、当日の担当スタッフに共有されておらず、料理が運ばれてから確認することになりました。味は美味しかっただけに、情報共有はきちんとしていただきたいです。'},
+  {id:25, media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, date:'9/18 14:20', lang:'ja', text:'お団子が出てくるまで少し時間がかかり、待っている間に体が冷えてしまいました。寒い時期は特に早めの提供があると嬉しいです。'},
+  {id:26, media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, date:'9/20 09:15', lang:'ja', text:'ほうとう鍋美味しかったです！今度は単品の囲炉裏焼きも頼んでみたい🍶'},
+  {id:27, media:'google', store:'山麓園', author:'旅人（東京都）', rating:1, date:'9/17 21:10', lang:'ja', text:'食材や人件費の高騰は理解していますが、料金に見合った料理内容とは感じられませんでした。炭を運ぶスタッフの方が無言で置いていくだけで、店長らしき方もすれ違っても挨拶がなく、接客面で残念な印象を受けました。期待していただけに、正直なところギャップを感じてしまいました。'},
+  {id:28, media:'google', store:'浅間茶屋', author:'David L.', rating:5, date:'9/21 12:00', lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
 ];
 ALL.forEach(r=>{ r.status ??= 'new'; r.reply ??= ''; r.log ??= r.status==='sent'?['9/22 15:03　Google Business Profile API で返信を投稿']:[] });
 
+// デモ中にログイン後も少しずつ新着が届くようにするための、追加の口コミキュー
 const INCOMING = [
-  {media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, lang:'en', ja:'注文した内容と違う料理が運ばれてきて、指摘してからようやく正しいものに交換してもらえました。少し時間はかかりましたが、料理自体は美味しかったです。', text:"The dish that arrived didn't match what we ordered, and it took some explaining before staff brought the right one. The food itself was tasty once we got it sorted out."},
-  {media:'tripadvisor', store:'浅間茶屋', author:'林先生 (香港)', rating:4, lang:'zh-TW', ja:'和菓子がとても繊細で、店員さんも丁寧でした。中国語のメニューがないのが残念です。', text:'日式甜點很精緻，店員很有禮貌。可惜沒有中文菜單。'},
-  {media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, lang:'zh-CN', ja:'古民家の雰囲気がとても美しく、サービスも行き届いていました。炭火で焼いた岩魚が特に美味しかったです。また来ます！', text:'古民居的氛围非常美，服务也很周到。炭火烤的岩魚特别好吃，下次还会再来！'},
-  {media:'google', store:'山麓園', author:'T. Nakamura', rating:2, lang:'ja', text:'予約時にエビアレルギーがあることを伝えていたのですが、当日の担当スタッフに共有されておらず、料理が運ばれてから確認することになりました。味は美味しかっただけに、情報共有はきちんとしていただきたいです。'},
-  {media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, lang:'ja', text:'会計の際にメニューに載っていない「季節限定サービス料」のようなものが加算されていて、説明もなく少し戸惑いました。お団子自体はとても美味しかったです。'},
-  {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ほうとう鍋美味しかったです！今度は単品の囲炉裏焼きも頼んでみたい🍶'},
-  {media:'google', store:'山麓園', author:'旅人（東京都）', rating:1, lang:'ja', text:'食材や人件費の高騰は理解していますが、料金に見合った料理内容とは感じられませんでした。炭を運ぶスタッフの方が無言で置いていくだけで、店長らしき方もすれ違っても挨拶がなく、接客面で残念な印象を受けました。期待していただけに、正直なところギャップを感じてしまいました。'},
-  {media:'google', store:'浅間茶屋', author:'David L.', rating:5, lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
+  {media:'instagram', store:'山麓園', author:'@fuji.view', rating:null, lang:'ja', text:'紅葉がちょうど見頃でした🍁 また違う季節にも来てみたいです！'},
+  {media:'tripadvisor', store:'山麓園', author:'James K. (Canada)', rating:5, lang:'en', ja:'古民家の雰囲気が素晴らしく、囲炉裏で焼く体験も忘れられない思い出になりました。', text:'The farmhouse atmosphere was wonderful, and grilling at the irori hearth was an unforgettable experience.'},
+  {media:'google', store:'山麓園', author:'斉藤 R.', rating:5, lang:'ja', text:'子どもの誕生日で利用しました。囲炉裏で焼きマシュマロを一緒に作れて、子どもがとても喜んでいました。'},
+  {media:'google', store:'浅間茶屋', author:'Hannah P.', rating:5, lang:'en', ja:'夜景がとても綺麗で、お食事もゆっくり楽しめました。', text:'The night view was beautiful and we really enjoyed taking our time over the meal.'},
+  {media:'instagram', store:'浅間茶屋', author:'@dango.lover', rating:null, lang:'ja', text:'お団子と抹茶のセット、甘さ控えめで美味しかったです😊'},
+  {media:'tabelog', store:'浅間茶屋', author:'山歩き好き', rating:4, lang:'ja', text:'ハイキングの帰りに立ち寄りました。地元の食材を使った定食は優しい味で、山の景色を見ながらゆっくりできました。'}
 ];
 
 const DEFAULT_STYLE = `【お手本1】
@@ -783,10 +790,15 @@ function enter(store){
   try{ sessionStorage.setItem('rd-store',store); }catch(e){}
   notices=[]; renderBell(); renderPcBtn();
   renderAll(); autoDraft();
-  // デモ：ログインから少しして新着が1件届く
+  // デモ：ログイン後、3分おきに新着が1件ずつ届く
   clearTimeout(arrivalTimer);
-  arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll();
-    arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); } }, 30000); } }, 12000);
+  const scheduleNextArrival=()=>{
+    arrivalTimer=setTimeout(()=>{
+      if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); }
+      if(currentStore===store && incoming.length) scheduleNextArrival();
+    }, 180000);
+  };
+  if(incoming.length) scheduleNextArrival();
 }
 $('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();
