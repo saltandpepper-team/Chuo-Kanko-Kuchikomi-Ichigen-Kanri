@@ -289,7 +289,7 @@ const ALL = [
   {id:6, media:'tabelog', store:'浅間茶屋', author:'旅する胃袋', rating:4, date:'9/24 13:02', lang:'ja', text:'観光の合間にランチで利用。地元の食材を使った定食がどれも丁寧な味付けでした。駐車場がもう少し広いと嬉しいです。'},
   {id:7, media:'tripadvisor', store:'山麓園', author:'王 小姐 (台湾)', rating:4, date:'9/23 19:48', lang:'zh-TW', ja:'料理がとても美味しく、店員さんも親切でした。英語のメニューはありましたが、中国語もあるともっと便利です。', text:'餐點很好吃，店員也很親切。菜單有英文，但如果有中文就更方便了。'},
   {id:11, media:'google', store:'山麓園', author:'Michael B. (USA)', rating:4, date:'9/25 09:40', lang:'en', ja:'窓から見える富士山がきれいでした。炭火で焼いた岩魚は皮がパリッと香ばしくて絶品。提供が少し遅めでしたが、スタッフはとても親切でした。', text:'Beautiful views of Mt. Fuji from the dining room. The charcoal-grilled iwana fish was crispy and full of flavor. Service was a little slow, but the staff were very kind.'},
-  {id:12, media:'instagram', store:'山麓園', author:'@taipei_foodie', rating:null, date:'9/24 21:10', lang:'zh-TW', ja:'景色がとてもきれい！ベジタリアン向けのメニューはありますか？', text:'風景好美！請問有素食的選擇嗎？'},
+  {id:12, media:'instagram', store:'山麓園', author:'@taipei_foodie', rating:null, date:'9/24 21:10', lang:'zh-TW', ja:'景色が本当にきれいでした！富士山が見える窓際のお席を予約したいのですが、どうすればいいですか？', text:'風景真的很漂亮！想預約能看到富士山的窗邊座位，請問要怎麼預約呢？'},
   {id:13, media:'google', store:'浅間茶屋', author:'李先生（上海）', rating:5, date:'9/24 16:30', lang:'zh-CN', ja:'抹茶もお団子もとても美味しく、店内は静かで雰囲気も良かったです。とてもおすすめです。', text:'抹茶和团子都很好吃，店里很安静，氛围很好，非常推荐。'},
   {id:14, media:'instagram', store:'浅間茶屋', author:'@wanderlust.kyoto', rating:null, date:'9/23 11:05', lang:'en', ja:'とても居心地のいい茶屋！英語のメニューはありますか？', text:'Such a cozy tea house! Do you have an English menu?'},
   {id:9, media:'instagram', store:'山麓園', author:'@mountain_lunch', rating:null, date:'9/24 18:22', lang:'ja', text:'紅葉の時期に行きたいです！駐車場は何台くらい停められますか？'},
@@ -517,7 +517,8 @@ function fallbackDraft(r){
     }
     return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed ${enjoy}, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。${hi?hi.ja+'を':''}楽しんでいただけたとのこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
   }
-  if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！😊 我們有提供素食餐點，詳情歡迎來電或於官方網站確認。期待您的光臨！\n---\nコメントありがとうございます！😊 ベジタリアン向けのお料理もご用意しております。詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
+  if(r.lang==='zh-TW' && r.media==='instagram' && /窗邊|富士山/.test(r.text) && /预约|預約/.test(r.text)) return `謝謝您的留言！😊 能看到富士山的窗邊座位很受歡迎，建議提前致電或透過官方網站預約，我們會盡量為您安排。期待您的光臨！\n---\nコメントありがとうございます！😊 富士山が見える窓際のお席は人気がございますので、お電話または公式サイトから早めのご予約をおすすめしております。お越しをお待ちしております。`;
+  if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！😊 詳情歡迎來電或於官方網站確認。期待您的光臨！\n---\nコメントありがとうございます！😊 詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
   if(r.lang==='zh-TW'){
     const hi=posHighlight(r);
     if(r.media==='google'){
