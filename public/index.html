@@ -450,7 +450,7 @@ ${$('styleBox').value.slice(0,4000)}`;
 function jaText(r){ return r.lang==='ja' ? r.text : (r.ja||r.text); }
 // 高評価コメントで具体的に触れられている料理・景観などを拾うための辞書（先に書いたものが優先）
 const POS_HIGHLIGHTS=[
-  {test:/ほうとう/, ja:'ほうとう鍋', zh:'餺飥鍋', en:'the hōtō hot pot', detail:'当店のほうとう鍋は、お椀に3〜4杯分ほどのたっぷりとしたボリュームでご用意しております。'},
+  {test:/ほうとう/, ja:'ほうとう鍋', zh:'餺飥鍋', en:'the hōtō hot pot'},
   {test:/囲炉裏.?焼き|囲炉裏焼/, ja:'囲炉裏焼き', zh:'爐端燒', en:'the hearth-grilled skewers', detail:'囲炉裏の炭火は遠赤外線効果で、外はパリッと中はふっくらと仕上がるのが特徴です。'},
   {test:/岩魚/, ja:'炭火で焼いた岩魚', zh:'炭火烤岩魚', en:'the charcoal-grilled iwana fish', detail:'当店では養殖のニジマスではなく、旨味の詰まった岩魚を一尾ずつ炭火でじっくりと焼き上げております。'},
   {test:/マシュマロ/, ja:'焼きマシュマロ', zh:'烤棉花糖', en:'the roasted marshmallows', detail:'食後の焼きマシュマロも、囲炉裏ならではのお楽しみとしてご用意しております。'},
