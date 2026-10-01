@@ -492,6 +492,10 @@ const STORE_BLURB_ZH={
   '山麓園':'本店坐落在有150多年歷史的古民宅中，我們在圍爐（囲炉裏）用炭火精心烤製每一道菜，希望讓每位客人都能品嚐到山梨地區道地的風味。',
 };
 const STORE_BLURB_ZH_DEFAULT='我們用心準備每一道菜，希望每位客人都能度過輕鬆愉快的時光。';
+const STORE_BLURB_JA={
+  '山麓園':'当店は築150年以上の古民家を活かした店内で、囲炉裏を囲みながら一品一品を炭火で焼き上げており、山梨ならではの味をお楽しみいただけます。',
+};
+const STORE_BLURB_JA_DEFAULT='お料理は一品一品丁寧にご用意し、皆様にくつろぎのひとときをお楽しみいただけるよう努めております。';
 function googleLongPositive(r, hi, extraNote){
   const closing=STORE_CLOSING[r.store]||STORE_CLOSING_DEFAULT;
   const p1=`${r.author}様\nご投稿いただき、誠にありがとうございます。`;
@@ -517,8 +521,10 @@ function fallbackDraft(r){
     const hi=posHighlight(r); const enjoy=hi?hi.en:'your time with us';
     if(r.media==='google'){
       const blurb=STORE_BLURB_EN[r.store]||STORE_BLURB_EN_DEFAULT;
+      const blurbJa=STORE_BLURB_JA[r.store]||STORE_BLURB_JA_DEFAULT;
       const enBody=`Dear ${nm},\n\nThank you so much for taking the time to share your experience with us.\n\nWe are delighted that you enjoyed ${enjoy} during your visit. ${blurb}\n\nWe hope to welcome you back again on your next visit to Japan.\n\n${r.store} Staff`;
-      return `${enBody}\n---\n${googleLongPositive(r, hi)}`;
+      const jaBody=`${nm}様\n\nこの度は、ご感想をお寄せいただき誠にありがとうございます。\n\nご滞在中に${hi?hi.ja:'お食事'}をお楽しみいただけたとのこと、大変嬉しく思います。${blurbJa}\n\n次回日本にお越しの際も、ぜひまたお立ち寄りください。\n\n${sign}`;
+      return `${enBody}\n---\n${jaBody}`;
     }
     return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed ${enjoy}, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。${hi?hi.ja+'を':''}楽しんでいただけたとのこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
   }
@@ -528,8 +534,10 @@ function fallbackDraft(r){
     const hi=posHighlight(r);
     if(r.media==='google'){
       const blurb=STORE_BLURB_ZH[r.store]||STORE_BLURB_ZH_DEFAULT;
+      const blurbJa=STORE_BLURB_JA[r.store]||STORE_BLURB_JA_DEFAULT;
       const zhBody=`${nm}您好，\n\n非常感謝您撥冗分享這次的用餐體驗。\n\n很高興您喜歡${hi?hi.zh:'我們的餐點'}。${blurb}\n\n期待您再次光臨。\n\n${r.store} 全體員工`;
-      return `${zhBody}\n---\n${googleLongPositive(r, hi)}`;
+      const jaBody=`${nm}様\n\nこの度は、お食事のご感想をお寄せいただき誠にありがとうございます。\n\n${hi?hi.ja:'お料理'}をお楽しみいただけたとのこと、大変嬉しく思います。${blurbJa}\n\nまたのご来店を心よりお待ちしております。\n\n${sign}`;
+      return `${zhBody}\n---\n${jaBody}`;
     }
     return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡${hi?hi.zh:'我們的餐點'}。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。${hi?hi.ja+'を':'お料理を'}気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`;
   }
@@ -537,8 +545,10 @@ function fallbackDraft(r){
     const hi=posHighlight(r);
     if(r.media==='google'){
       const blurb=STORE_BLURB_ZH[r.store]||STORE_BLURB_ZH_DEFAULT;
+      const blurbJa=STORE_BLURB_JA[r.store]||STORE_BLURB_JA_DEFAULT;
       const zhBody=`${nm}您好，\n\n非常感谢您抽空分享这次的用餐体验。\n\n很高兴您喜欢${hi?hi.zh:'我们的料理'}。${blurb}\n\n期待您下次再来，我们会用心为您服务。\n\n${r.store} 全体员工`;
-      return `${zhBody}\n---\n${googleLongPositive(r, hi)}`;
+      const jaBody=`${nm}様\n\nこの度は、お食事のご感想をお寄せいただき誠にありがとうございます。\n\n${hi?hi.ja:'お料理'}をお楽しみいただけたとのこと、大変嬉しく思います。${blurbJa}\n\nまたのご来店を心よりお待ちしております。\n\n${sign}`;
+      return `${zhBody}\n---\n${jaBody}`;
     }
     return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢${hi?hi.zh:'我们的料理'}和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。${hi?hi.ja+'と':'お料理と'}お店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`;
   }
