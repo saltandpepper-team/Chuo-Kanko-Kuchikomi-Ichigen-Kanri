@@ -307,7 +307,9 @@ const ALL = [
   {id:25, media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, date:'9/18 14:20', lang:'ja', text:'お団子が出てくるまで少し時間がかかり、待っている間に体が冷えてしまいました。寒い時期は特に早めの提供があると嬉しいです。'},
   {id:26, media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, date:'9/20 09:15', lang:'ja', text:'ほうとう鍋美味しかったです！今度は単品の囲炉裏焼きも頼んでみたい🍶'},
   {id:27, media:'google', store:'山麓園', author:'旅人（東京都）', rating:1, date:'9/17 21:10', lang:'ja', text:'食材や人件費の高騰は理解していますが、料金に見合った料理内容とは感じられませんでした。炭を運ぶスタッフの方が無言で置いていくだけで、店長らしき方もすれ違っても挨拶がなく、接客面で残念な印象を受けました。期待していただけに、正直なところギャップを感じてしまいました。'},
-  {id:28, media:'google', store:'浅間茶屋', author:'David L.', rating:5, date:'9/21 12:00', lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
+  {id:28, media:'google', store:'浅間茶屋', author:'David L.', rating:5, date:'9/21 12:00', lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'},
+  {id:29, media:'tripadvisor', store:'山麓園', author:'旅行好きサラリーマン', rating:5, date:'9/22 10:05', lang:'ja', text:'河口湖観光の合間に口コミを見て伺いました。炭火の香りが店内に漂っていて、岩魚もほうとう鍋もすごく美味しかったです。富士山がきれいに見える日にまた来たいです。'},
+  {id:30, media:'tripadvisor', store:'浅間茶屋', author:'ひとり旅ノート', rating:4, date:'9/19 16:40', lang:'ja', text:'参拝の帰りに口コミを頼りに寄ってみました。夜景を見ながらお茶とお団子をいただけて、落ち着いた時間を過ごせました。席数が少なめなので、混雑時は少し待つかもしれません。'}
 ];
 ALL.forEach(r=>{ r.status ??= 'new'; r.reply ??= ''; r.log ??= r.status==='sent'?['9/22 15:03　Google Business Profile API で返信を投稿']:[] });
 
@@ -519,8 +521,8 @@ function googleLongApology(r, neg){
   const p4=`またお越しいただける機会がございましたら、より良いお時間をお過ごしいただけるよう努めてまいります。`;
   return [p1,p2,p3,p4].filter(Boolean).join('\n\n');
 }
-// 食べログは他媒体よりも口コミ単位で内容に触れた、定型文に見えない返信にする
-const TABELOG_REPLIES={
+// 食べログ・トリップアドバイザー（日本語）は他媒体よりも口コミ単位で内容に触れた、定型文に見えない返信にする
+const CUSTOM_REPLIES={
   2: 'グルメ好き会社員様\nご来店ありがとうございました。19時台は特に混み合う時間帯で、結果としてお待たせする形になってしまい申し訳ございませんでした。今後は混雑状況に応じて、入店時に目安のお時間をお伝えできるよう改善いたします。お味の面でご満足いただけていたようで、その点は本当に嬉しく思います。またのご来店をお待ちしております。\n山麓園',
   6: '旅する胃袋様\n観光の合間にお立ち寄りいただきありがとうございます。地元の食材を使った定食を気に入っていただけて何よりです。駐車場については台数が限られており、ご不便をおかけすることがあるかと思いますが、貴重なご意見として今後の検討材料にさせていただきます。またのお越しをお待ちしております。\n浅間茶屋',
   15: '炭火グルメ探訪様\n食べログを見てお越しくださったとのこと、ありがとうございます！岩魚は一尾ずつ炭火でじっくり焼いているので、パリッと仕上がったと言っていただけると励みになります。焼きマシュマロで盛り上がっていただけた様子も伝わってきて、こちらまで嬉しくなりました。築150年の建物も大切に使っておりますので、また季節を変えてぜひいらしてください。\n山麓園',
@@ -529,11 +531,13 @@ const TABELOG_REPLIES={
   18: '甘味処めぐり様\n抹茶とお団子を楽しみにお越しくださったとのこと、嬉しいです。お団子は一つひとつ手作りしていて、和菓子も季節ごとに内容を変えていますので、また違う季節にもぜひ足を運んでいただけたらと思います。\n浅間茶屋',
   19: 'ぶらり旅人様\nお会計の際にご説明が足りず、戸惑わせてしまい申し訳ございませんでした。お品書きの表記を見直し、事前にご案内できるようにいたします。お味は気に入っていただけていたようで、その点は救われる思いです。\n浅間茶屋',
   20: 'ひとり飯探訪様\nお一人でもゆっくりしていただけたようで何よりです。地元の食材を使った定食は季節ごとに内容を変えているので、山の景色とあわせて違う時期にもお楽しみいただけると思います。またふらっと立ち寄っていただけたら嬉しいです。\n浅間茶屋',
+  29: '旅行好きサラリーマン様\n口コミを見て立ち寄ってくださったとのこと、ありがとうございます。炭火で焼いた岩魚とほうとう鍋、両方楽しんでいただけて嬉しいです。富士山がよく見える日は本当に特別な景色になりますので、ぜひ晴れた日にまたいらしてください。\n山麓園',
+  30: 'ひとり旅ノート様\n口コミを参考にお立ち寄りいただき、ありがとうございます。夜景を眺めながらゆっくりお過ごしいただけたようで嬉しいです。おっしゃる通り席数が限られているため、混雑する時間帯はお待たせしてしまうこともあり、申し訳ございません。またのお越しをお待ちしております。\n浅間茶屋',
 };
 function fallbackDraft(r){
   const sign=`${r.store} スタッフ一同`;
   const nm=r.author.split(/ \(|（/)[0];
-  if(r.media==='tabelog' && TABELOG_REPLIES[r.id]) return TABELOG_REPLIES[r.id];
+  if(CUSTOM_REPLIES[r.id]) return CUSTOM_REPLIES[r.id];
   if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for serving the wrong dish and for the confusion it caused. We have shared your comments with our whole team and will double-check orders more carefully before they reach the table. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。ご注文と異なる料理をお出ししてしまい、ご迷惑をおかけし大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、提供前の確認を徹底してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
   if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! 😊 Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon!\n---\nコメントありがとうございます！😊 英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
   if(r.lang==='en'){
