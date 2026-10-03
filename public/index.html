@@ -133,6 +133,11 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .editor-head h3{font-size:15px}
 textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;line-height:1.7;background:var(--surface);color:var(--ink);resize:vertical}
 .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.instr{display:flex;flex-direction:column;gap:4px}
+.instr label{font-size:12px;font-weight:700;color:var(--muted)}
+.instr input{width:100%;font:inherit;font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.instr input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.instr input::placeholder{color:var(--muted);opacity:.8}
 .route{font-size:12px;color:var(--muted)}
 .ai-state{color:var(--brand)}
 .log{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -380,11 +385,12 @@ function renderDetail(){
   const m=MEDIA[r.media];
   const langNote = r.lang&&r.lang!=='ja' ? `<span class="pill lang-pill">${LANG[r.lang]}の口コミ → ${LANG[r.lang]}で返信</span>` : '';
   const route = m.auto ? `承認すると ${m.api} で自動送信します` : `承認するとAIが${m.label}の管理画面を操作し、返信欄に入力します。送信ボタンは担当者が押します`;
-  let actions='';
+  let actions='', instr='';
   if(r.status==='sent'){ actions='<span class="pill s-sent">返信済み</span>'; }
   else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button>`; }
   else {
-    actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'AIで書き直す':'AIで下書き'}</button>
+    instr=`<div class="instr"><label for="instrBox">修正指示・希望のニュアンス（任意）</label><input type="text" id="instrBox" value="${esc(r.instr||'')}" placeholder="例：もっと短く / 感謝を強調 / 駐車場の案内を補足" ${r.drafting?'disabled':''}></div>`;
+    actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'指示を入れて書き直す':'AIで下書き'}</button>
       <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>`;
   }
   $('detail').innerHTML = `
@@ -398,20 +404,32 @@ function renderDetail(){
     <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
     <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
     ${r.replyJa&&!r.drafting?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
+    ${instr}
     <div class="actions">${actions}</div>
     <p class="route" style="margin:0">${r.status==='sent'?'':route}</p>
     <div class="log">${r.log.length? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
   const box=$('replyBox');
   box.addEventListener('input',()=>{ r.reply=box.value; const a=$('approveBtn'); if(a) a.disabled=!box.value.trim(); if(r.status==='new'&&box.value.trim()){ r.status='draft'; renderList(); renderStats(); } });
-  $('draftBtn')?.addEventListener('click',()=>draft(r));
+  const ib=$('instrBox');
+  ib?.addEventListener('input',()=>{ r.instr=ib.value; });
+  ib?.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.isComposing){ e.preventDefault(); draft(r,false,ib.value); } });
+  $('draftBtn')?.addEventListener('click',()=>draft(r,false,ib?.value));
   $('approveBtn')?.addEventListener('click',()=>approve(r));
   $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
 }
 function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
 
-function buildPrompt(r){
+function buildPrompt(r, instr){
   const lang = LANG[r.lang]||'口コミと同じ言語';
-  return `あなたは観光地の飲食店「${r.store}」の口コミ返信担当です。下の「お手本」の言葉づかい・長さ・署名のスタイルに合わせて、口コミへの返信文を1つだけ書いてください。
+  const top = instr ? `【最優先の指示】
+担当者から次の修正指示があります。下のルールやお手本と食い違う場合も、この指示を最優先で反映してください（ただし言語と出力形式のルールは守る）。
+「${instr.slice(0,500)}」
+${r.reply.trim()?`
+現在の返信文（これを指示に沿って書き直す）:
+${r.reply.trim()}
+`:''}
+` : '';
+  return `${top}あなたは観光地の飲食店「${r.store}」の口コミ返信担当です。下の「お手本」の言葉づかい・長さ・署名のスタイルに合わせて、口コミへの返信文を1つだけ書いてください。
 
 ルール:
 - ${lang}で書く${r.lang!=='ja'?'。返信の後に「---」だけの行を入れ、その下に日本語訳を付ける':''}
@@ -444,19 +462,20 @@ function fallbackDraft(r){
   return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`;
 }
 
-async function draft(r, silent){
+async function draft(r, silent, instr){
   if(r.drafting) return;
+  instr=(instr||'').trim();
   r.drafting=true; r.partial='';
   if(r.id===selectedId) renderDetail();
   let text='';
   try{
     if(!sample) throw {code:'unavailable'};
-    const res = await sample(buildPrompt(r), {modelTier:'quick', cache:false, onText:({text:t})=>{
+    const res = await sample(buildPrompt(r, instr), {modelTier:'quick', cache:false, onText:({text:t})=>{
       r.partial=t;
       if(r.id===selectedId){ const b=$('replyBox'); if(b) b.value=t; }
     }});
     text=res.text.trim();
-    r.log.push(`${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
+    r.log.push(instr ? `${now()}　AIが指示「${instr}」に沿って書き直し` : `${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
   }catch(e){
     text=fallbackDraft(r);
     r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため）`);
