@@ -31,7 +31,9 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .login-card input:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 .login-card .btn.primary{justify-content:center;padding:11px;margin-top:12px}
 .login-err{margin:4px 0 0;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
-.who{font-size:13px;color:var(--muted)} .who b{color:var(--brand)}
+.who{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px} .who b{color:var(--brand)}
+.store-select{font:inherit;font-size:13px;font-weight:700;color:var(--brand);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+.store-select:hover{border-color:var(--accent)}
 .bell-wrap{position:relative}
 .bell{position:relative;padding:8px 10px}
 .badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:999px;background:var(--warn);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
@@ -194,7 +196,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
       <span class="demo-flag" style="align-self:start;margin-top:4px">デモ：表示中の口コミはすべて架空のサンプルです</span>
     </div>
     <div class="row">
-      <span class="who">ログイン中：<b id="whoStore"></b></span>
+      <span class="who"><label for="storeSelect">ログイン中：</label><select id="storeSelect" class="store-select" aria-label="表示する店舗"><option value="山麓園">山麓園</option><option value="浅間茶屋">浅間茶屋</option></select></span>
       <div class="bell-wrap">
         <button class="btn bell" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="通知">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -549,12 +551,14 @@ $('fetchBtn').addEventListener('click',()=>{
 
 // ---- 通知 ----
 let notices=[], arrivalTimer=null, audioCtx=null;
-function unread(){ return notices.filter(n=>!n.read).length; }
+/** 表示中の店舗の通知だけを対象にする */
+function storeNotices(){ return notices.filter(n=>ALL.find(a=>a.id===n.id)?.store===currentStore); }
+function unread(){ return storeNotices().filter(n=>!n.read).length; }
 function renderBell(){
-  const n=unread(), b=$('bellBadge');
+  const n=unread(), b=$('bellBadge'), list=storeNotices();
   b.hidden=!n; b.textContent=n>99?'99+':n;
   document.title=(n?`(${n}) `:'')+'口コミ一元管理_返信文自動生成';
-  $('bellList').innerHTML = notices.length ? notices.map(x=>{ const r=ALL.find(a=>a.id===x.id); if(!r) return '';
+  $('bellList').innerHTML = list.length ? list.map(x=>{ const r=ALL.find(a=>a.id===x.id); if(!r) return '';
     return `<button type="button" class="bell-item ${x.read?'':'unread'}" data-nid="${r.id}">
       <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${isLow(r)?'<span class="need">要確認</span>':''}<span style="flex:1"></span><span class="meta">${r.date}</span></span>
       <span class="ex">${esc(r.author)}：${esc(r.text)}</span></button>`; }).join('') : '<div class="bell-empty">新しい通知はありません</div>';
@@ -600,7 +604,7 @@ function openFromNotice(id){
 $('bellBtn').addEventListener('click',()=>{ const p=$('bellPanel'); p.hidden=!p.hidden; $('bellBtn').setAttribute('aria-expanded',String(!p.hidden)); });
 document.addEventListener('click',e=>{ if(!e.target.closest('.bell-wrap')){ $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false'); } });
 $('bellList').addEventListener('click',e=>{ const b=e.target.closest('[data-nid]'); if(b) openFromNotice(+b.dataset.nid); });
-$('readAllBtn').addEventListener('click',()=>{ notices.forEach(n=>n.read=true); renderBell(); });
+$('readAllBtn').addEventListener('click',()=>{ storeNotices().forEach(n=>n.read=true); renderBell(); });
 function renderPcBtn(){
   const btn=$('pcNotifyBtn'), note=$('pcNotifyNote');
   const demoNote='このデモ画面ではPCの通知を出せないため、画面内の通知と音でお見せしています。本番のアプリでは、ブラウザを閉じていてもPCに通知が届きます。';
@@ -625,20 +629,27 @@ $('bulkBtn').addEventListener('click',async()=>{
 });
 
 // ---- ログイン（デモ用：IDとパスワードのハッシュで照合。本番はサーバー側で認証） ----
-const ACCOUNTS = {
-  '28fb1fd0f055527eec8df4dbbf2f10afb53b37f896641b2895837f2fbee476f0':'山麓園',
-  '7b538f6ecf5e384876f82f1490104a0d700d8241e3f9c1598463394fe2fd61ac':'浅間茶屋'
-};
+const ACCOUNT_HASH = '6ab56aa52e16eabdda7801c7f73a656c250447be48ef168ff895d7aaa45ab362';
+const STORES = ['山麓園','浅間茶屋'];
+const DEFAULT_STORE = '山麓園';
 async function sha256(t){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
-function enter(store){
+/** ログイン直後：通知をリセットして既定の店舗（山麓園）を表示 */
+function login(store){
+  notices=[];
+  $('loginView').hidden=true; $('appView').hidden=false;
+  renderPcBtn();
+  switchStore(STORES.includes(store)?store:DEFAULT_STORE);
+}
+/** 店舗の切り替え：口コミ一覧・集計・通知を選択した店舗の内容に入れ替える */
+function switchStore(store){
   currentStore=store;
   reviews=ALL.filter(r=>r.store===store);
   incoming=INCOMING.filter(r=>r.store===store && !ALL.some(a=>a.text===r.text));
   selectedId=reviews[0]?.id ?? null; mf='all'; sf='all';
-  $('whoStore').textContent=store;
-  $('loginView').hidden=true; $('appView').hidden=false;
+  $('storeSelect').value=store;
+  $('notifyStack').innerHTML=''; $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false');
   try{ sessionStorage.setItem('rd-store',store); }catch(e){}
-  notices=[]; renderBell(); renderPcBtn();
+  renderBell();
   renderAll(); autoDraft();
   // デモ：ログインから少しして新着が1件届く
   clearTimeout(arrivalTimer);
@@ -650,17 +661,18 @@ $('loginForm').addEventListener('submit',async e=>{
   const id=$('loginId').value.trim().toLowerCase(), pw=$('loginPw').value, err=$('loginErr');
   if(!id||!pw){ err.textContent='IDとパスワードを入力してください'; err.hidden=false; return; }
   $('loginBtn').disabled=true;
-  let store=null; try{ store=ACCOUNTS[await sha256(id+'\n'+pw)]; }catch(x){}
+  let ok=false; try{ ok=(await sha256(id+'\n'+pw))===ACCOUNT_HASH; }catch(x){}
   $('loginBtn').disabled=false;
-  if(!store){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
-  err.hidden=true; $('loginPw').value=''; enter(store);
+  if(!ok){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
+  err.hidden=true; $('loginPw').value=''; login(DEFAULT_STORE);
 });
+$('storeSelect').addEventListener('change',e=>{ if(STORES.includes(e.target.value)) switchStore(e.target.value); });
 $('logoutBtn').addEventListener('click',()=>{
   try{ sessionStorage.removeItem('rd-store'); }catch(e){}
   clearTimeout(arrivalTimer); notices=[]; document.title='口コミ一元管理_返信文自動生成'; $('notifyStack').innerHTML='';
   currentStore=null; reviews=[]; $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
 });
-try{ const s=sessionStorage.getItem('rd-store'); if(s && Object.values(ACCOUNTS).includes(s)) enter(s); }catch(e){}
+try{ const s=sessionStorage.getItem('rd-store'); if(s && STORES.includes(s)) login(s); }catch(e){}
 (async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
 </script>
 
