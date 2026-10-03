@@ -165,6 +165,22 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
 .send-zone{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .send-zone .btn.primary{animation:none}
 .send-zone.ready .btn.primary{outline:4px solid #F39800;outline-offset:4px}
+.api-modal{background:var(--surface);border-radius:12px;width:min(720px,100%);box-shadow:var(--shadow);display:flex;flex-direction:column;max-height:calc(100% - 32px);overflow:hidden}
+.api-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.api-head h2{font-size:16px;color:var(--brand)}
+.api-body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.api-tabs{display:flex;gap:6px}
+.api-store{display:flex;flex-direction:column;gap:12px}
+.api-group{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.api-group legend{font-weight:700;font-size:13px;padding:0 6px;display:flex;align-items:center;gap:6px}
+.api-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.api-field.wide{grid-column:1/-1}
+.api-field label{font-size:12px;font-weight:700;color:var(--muted)}
+.api-field input{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.api-field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.api-note{background:var(--wait-soft);color:var(--wait);border-radius:8px;padding:8px 12px;font-size:12px;margin:0}
+.api-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line)}
+@media (max-width:600px){.api-group{grid-template-columns:1fr}}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:13px;z-index:20;max-width:calc(100% - 32px)}
 @media (max-width:1100px){.summary{grid-template-columns:1fr}.total{flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px}}
 @media (max-width:900px){.main{grid-template-columns:1fr}.total:hover{border-color:var(--brand)}
@@ -217,6 +233,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
         </div>
       </div>
       <button class="btn" id="logoutBtn" type="button">ログアウト</button>
+      <button class="btn" id="apiBtn" type="button" aria-haspopup="dialog">API接続設定</button>
       <button class="btn" id="fetchBtn" type="button">新着を取得</button>
     </div>
   </header>
@@ -273,6 +290,20 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
       </div>
     </div>
   </div>
+</div>
+<div class="overlay" id="apiOverlay" hidden>
+  <form class="api-modal" id="apiForm" role="dialog" aria-modal="true" aria-labelledby="apiTitle" autocomplete="off" novalidate>
+    <div class="api-head"><h2 id="apiTitle">API接続設定</h2><button class="btn" id="apiClose" type="button" style="padding:2px 10px;font-size:12px">閉じる</button></div>
+    <div class="api-body">
+      <p class="api-note">入力した認証情報は、このブラウザ（このPC）の中にだけ保存され、他のPCや他の人には共有されません。Client Secretやトークンをブラウザに置く方式は接続確認用です。本番運用ではサーバー（バックエンド）側で保管・通信してください。</p>
+      <div class="api-tabs" role="group" aria-label="設定する店舗" id="apiTabs"></div>
+      <div id="apiStores"></div>
+    </div>
+    <div class="api-foot">
+      <button class="btn" id="apiClear" type="button">この店舗の設定を削除</button>
+      <button class="btn primary" id="apiSave" type="submit">保存する</button>
+    </div>
+  </form>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="notify-stack" id="notifyStack" aria-live="polite"></div>
@@ -642,11 +673,18 @@ async function approve(r){
   r.reply=$('replyBox').value.trim();
   if(!r.reply) return;
   if(MEDIA[r.media].auto){
+    if(!apiReady(r.store, r.media)){ toast(NO_KEY_MSG); return; }
+    if(!r.extId){ toast('この口コミはデモ用のサンプルのため、実際には送信できません。「新着を取得」で取得した口コミから送信してください'); return; }
     const btn=$('approveBtn'); btn.disabled=true; btn.textContent='送信中…';
     r.log.push(`${now()}　承認（${currentStore}）`);
-    await new Promise(res=>setTimeout(res,900));
-    r.status='sent'; r.log.push(`${now()}　${MEDIA[r.media].api} で返信を投稿`);
-    toast(`${MEDIA[r.media].label}に返信を送信しました`);
+    try{
+      await API.reply(r);
+      r.status='sent'; r.log.push(`${now()}　${MEDIA[r.media].api} で返信を投稿`);
+      toast(`${MEDIA[r.media].label}に返信を送信しました`);
+    }catch(e){
+      r.log.push(`${now()}　送信に失敗：${e.message}`);
+      toast(`送信に失敗しました：${e.message}`);
+    }
     renderAll();
   } else {
     r.log.push(`${now()}　承認（${currentStore}）`);
@@ -707,11 +745,170 @@ function arrive(x){
   notify(r);
   return r;
 }
-$('fetchBtn').addEventListener('click',()=>{
-  if(!incoming.length){ toast('新しい口コミはありません'); return; }
-  const n=incoming.splice(0,incoming.length);
-  n.forEach(arrive);
-  toast(`新着の口コミを${n.length}件取得しました`); renderAll();
+$('fetchBtn').addEventListener('click',async()=>{
+  const store=currentStore, kinds=['google','instagram'].filter(m=>apiReady(store,m));
+  if(!kinds.length){ toast(NO_KEY_MSG); return; }
+  const btn=$('fetchBtn'); btn.disabled=true; btn.textContent='取得中…';
+  let added=0; const fails=[];
+  for(const m of kinds){
+    try{ const items=await (m==='google'?API.fetchGoogle(store):API.fetchInstagram(store)); items.slice().reverse().forEach(x=>{ if(addFetched(store,x)) added++; }); }
+    catch(e){ fails.push(`${MEDIA[m].label}：${e.message}`); }
+  }
+  btn.disabled=false; btn.textContent='新着を取得';
+  if(currentStore===store){ reviews=ALL.filter(r=>r.store===store); renderAll(); }
+  const skipped=['google','instagram'].filter(m=>!kinds.includes(m)).map(m=>MEDIA[m].label);
+  toast([fails.length?`取得に失敗しました（${fails.join(' / ')}）`:'', added?`新着の口コミを${added}件取得しました`:(fails.length?'':'新しい口コミはありません'), skipped.length?`${skipped.join('・')}は未設定のため取得していません`:''].filter(Boolean).join('。'));
+});
+/** APIから取得した口コミを一覧に追加（同じ口コミは二重に追加しない） */
+function addFetched(store, x){
+  if(ALL.some(a=>a.extId===x.extId)) return false;
+  const id=Math.max(0,...ALL.map(r=>r.id))+1;
+  const r={...x,id,store,reply:x.reply||'',status:x.reply?'sent':'new',log:[`${now()}　${API_NAME[x.media]} から取得`]};
+  ALL.unshift(r);
+  if(r.status==='new' && store===currentStore) notify(r);
+  return true;
+}
+
+// ---- API連携（Google Business Profile API / Instagram Graph API） ----
+// 通信処理はこの API オブジェクトにまとめています。本番でバックエンド経由にする場合は、
+// 各関数の中身を自社サーバーのエンドポイント呼び出しに置き換えてください。
+const NO_KEY_MSG='APIキーが設定されていません。API設定画面からキーを入力してください';
+const API_STORE_KEY='rd-api-v1';
+const GRAPH='https://graph.facebook.com/v23.0';
+const API_FIELDS={
+  google:{label:'Google Business Profile', fields:[
+    ['clientId','Client ID',false],['clientSecret','Client Secret',true],['refreshToken','Refresh Token',true],
+    ['locationId','Location ID（数字のみ、または accounts/…/locations/… 形式）',false,true]]},
+  instagram:{label:'Instagram Graph API', fields:[
+    ['appId','Facebook App ID',false],['igUserId','Instagram Business Account ID',false],['accessToken','Access Token',true,true]]}
+};
+let apiConf={};
+try{ apiConf=JSON.parse(localStorage.getItem(API_STORE_KEY)||'{}')||{}; }catch(e){ apiConf={}; }
+function saveApiConf(){ try{ localStorage.setItem(API_STORE_KEY, JSON.stringify(apiConf)); return true; }catch(e){ return false; } }
+function apiCfg(store, media){ return apiConf[store]?.[media]||{}; }
+/** 必要な項目がすべて入っているか（Facebook App ID は通信には使わないため必須にしない） */
+function apiReady(store, media){
+  const c=apiCfg(store,media);
+  if(media==='google') return !!(c.clientId&&c.clientSecret&&c.refreshToken&&c.locationId);
+  if(media==='instagram') return !!(c.accessToken&&c.igUserId);
+  return false;
+}
+async function apiJson(res){
+  let body=null; try{ body=await res.json(); }catch(e){}
+  if(!res.ok || body?.error){
+    const msg=body?.error?.message || body?.error_description || (typeof body?.error==='string'?body.error:'') || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return body||{};
+}
+function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?now():`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function guessLang(t){
+  t=String(t||'');
+  if(/[぀-ヿ]/.test(t)) return 'ja';
+  if(/[一-鿿]/.test(t)) return /[們個這說時會來為對問點華灣鐘體]/.test(t)?'zh-TW':'zh-CN';
+  return /[a-z]/i.test(t)?'en':'ja';
+}
+const googleTokens={};
+const STAR={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5};
+const API={
+  /** Refresh Token からアクセストークンを取得（有効期限内はキャッシュを使う） */
+  async googleToken(store){
+    const c=apiCfg(store,'google'), t=googleTokens[store];
+    if(t && t.exp>Date.now()+60000) return t.token;
+    const res=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({client_id:c.clientId,client_secret:c.clientSecret,refresh_token:c.refreshToken,grant_type:'refresh_token'})});
+    const j=await apiJson(res);
+    googleTokens[store]={token:j.access_token, exp:Date.now()+(j.expires_in||3600)*1000};
+    return j.access_token;
+  },
+  /** Location ID を accounts/{accountId}/locations/{locationId} 形式にそろえる */
+  async googleLocation(store, token){
+    const c=apiCfg(store,'google'), loc=String(c.locationId).trim().replace(/^\/+|\/+$/g,'');
+    if(/^accounts\/[^/]+\/locations\/[^/]+$/.test(loc)) return loc;
+    const id=loc.replace(/^locations\//,'');
+    if(c.accountName) return `${c.accountName}/locations/${id}`;
+    const j=await apiJson(await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts',{headers:{Authorization:`Bearer ${token}`}}));
+    const acc=j.accounts?.[0]?.name;
+    if(!acc) throw new Error('Googleビジネスプロフィールのアカウントが見つかりません');
+    c.accountName=acc; saveApiConf();
+    return `${acc}/locations/${id}`;
+  },
+  async fetchGoogle(store){
+    const token=await API.googleToken(store);
+    const loc=await API.googleLocation(store, token);
+    const j=await apiJson(await fetch(`https://mybusiness.googleapis.com/v4/${loc}/reviews?pageSize=50&orderBy=${encodeURIComponent('updateTime desc')}`,{headers:{Authorization:`Bearer ${token}`}}));
+    return (j.reviews||[]).map(v=>({
+      media:'google', extId:'google:'+v.name, extName:v.name,
+      author:v.reviewer?.displayName||'Googleユーザー', rating:STAR[v.starRating]??null,
+      date:fmtDate(v.createTime), lang:guessLang(v.comment), text:v.comment||'（コメントなし・評価のみ）',
+      reply:v.reviewReply?.comment||''
+    }));
+  },
+  async fetchInstagram(store){
+    const c=apiCfg(store,'instagram'), tk=encodeURIComponent(c.accessToken), uid=encodeURIComponent(c.igUserId);
+    const me=await apiJson(await fetch(`${GRAPH}/${uid}?fields=username&access_token=${tk}`));
+    const media=await apiJson(await fetch(`${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=10&access_token=${tk}`));
+    const out=[];
+    for(const p of media.data||[]){
+      const cm=await apiJson(await fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
+      for(const k of cm.data||[]){
+        if(k.username===me.username) continue;
+        const mine=(k.replies?.data||[]).find(x=>x.username===me.username);
+        out.push({media:'instagram', extId:'instagram:'+k.id, extName:k.id, permalink:p.permalink,
+          author:'@'+(k.username||'instagram'), rating:null, date:fmtDate(k.timestamp), lang:guessLang(k.text), text:k.text||'', reply:mine?.text||''});
+      }
+    }
+    return out;
+  },
+  /** 返信の投稿：Google は reviews/{id}/reply へ PUT、Instagram は comments/{id}/replies へ POST */
+  async reply(r){
+    if(r.media==='google'){
+      const token=await API.googleToken(r.store);
+      await apiJson(await fetch(`https://mybusiness.googleapis.com/v4/${r.extName}/reply`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({comment:r.reply})}));
+    } else if(r.media==='instagram'){
+      const c=apiCfg(r.store,'instagram');
+      await apiJson(await fetch(`${GRAPH}/${encodeURIComponent(r.extName)}/replies`,{method:'POST',body:new URLSearchParams({message:r.reply,access_token:c.accessToken})}));
+    } else throw new Error('この媒体はAPI送信に対応していません');
+  }
+};
+
+// API接続設定のモーダル
+let apiTab=null;
+function renderApiModal(){
+  $('apiTabs').innerHTML=STORES.map(st=>{
+    const n=['google','instagram'].filter(m=>apiReady(st,m)).length;
+    return `<button type="button" class="chip" data-st="${st}" aria-pressed="${st===apiTab}">${st}（${n?`${n}/2 設定済み`:'未設定'}）</button>`;
+  }).join('');
+  $('apiStores').innerHTML=`<div class="api-store">${Object.entries(API_FIELDS).map(([m,g])=>`
+    <fieldset class="api-group"><legend>${mediaHtml(m)}${g.label}<span class="pill ${apiReady(apiTab,m)?'s-sent':'s-new'}">${apiReady(apiTab,m)?'設定済み':'未設定'}</span></legend>
+      ${g.fields.map(([k,l,secret,wide])=>`<div class="api-field${wide?' wide':''}"><label for="api-${m}-${k}">${l}</label><input id="api-${m}-${k}" data-m="${m}" data-k="${k}" type="${secret?'password':'text'}" autocomplete="off" spellcheck="false" value="${esc(apiCfg(apiTab,m)[k]||'')}"></div>`).join('')}
+    </fieldset>`).join('')}</div>`;
+}
+function readApiInputs(){
+  const st=apiConf[apiTab]||(apiConf[apiTab]={});
+  document.querySelectorAll('#apiStores input[data-m]').forEach(i=>{
+    const m=i.dataset.m, k=i.dataset.k, v=i.value.trim();
+    st[m] ??= {};
+    if(k==='locationId' && st[m][k]!==v) delete st[m].accountName;
+    if(st[m][k]!==v) delete googleTokens[apiTab];
+    st[m][k]=v;
+  });
+}
+function openApi(){ apiTab=currentStore||STORES[0]; renderApiModal(); $('apiOverlay').hidden=false; $('apiStores').querySelector('input')?.focus(); }
+function closeApi(){ $('apiOverlay').hidden=true; $('apiBtn').focus(); }
+$('apiBtn').addEventListener('click',openApi);
+$('apiClose').addEventListener('click',closeApi);
+$('apiOverlay').addEventListener('click',e=>{ if(e.target.id==='apiOverlay') closeApi(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('apiOverlay').hidden) closeApi(); });
+$('apiTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-st]'); if(!b) return; readApiInputs(); apiTab=b.dataset.st; renderApiModal(); });
+$('apiForm').addEventListener('submit',e=>{
+  e.preventDefault(); readApiInputs();
+  toast(saveApiConf()?`${apiTab}のAPI接続設定を保存しました`:'このブラウザでは設定を保存できませんでした（このタブを閉じるまでは有効です）');
+  renderApiModal();
+});
+$('apiClear').addEventListener('click',()=>{
+  if(!confirm(`${apiTab}のAPI接続設定を削除しますか？`)) return;
+  delete apiConf[apiTab]; delete googleTokens[apiTab]; saveApiConf(); renderApiModal(); toast(`${apiTab}のAPI接続設定を削除しました`);
 });
 
 // ---- 通知 ----
@@ -816,8 +1013,9 @@ function switchStore(store){
   try{ sessionStorage.setItem('rd-store',store); }catch(e){}
   renderBell();
   renderAll(); autoDraft();
-  // デモ：ログインから少しして新着が1件届く
+  // デモ：ログインから少しして新着が1件届く（API接続設定済みの店舗では実データのみ扱うため行わない）
   clearTimeout(arrivalTimer);
+  if(['google','instagram'].some(m=>apiReady(store,m))) return;
   arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll();
     arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); } }, 30000); } }, 12000);
 }
