@@ -467,20 +467,22 @@ function renderDetail(){
   box.addEventListener('input',()=>{ r.reply=box.value; const a=$('approveBtn'); if(a) a.disabled=!box.value.trim(); if(r.status==='new'&&box.value.trim()){ r.status='draft'; renderList(); renderStats(); } });
   const ib=$('instrBox');
   ib?.addEventListener('input',()=>{ r.instr=ib.value; });
-  ib?.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.isComposing){ e.preventDefault(); draft(r,false,ib.value); } });
-  $('draftBtn')?.addEventListener('click',()=>draft(r,false,ib?.value));
+  ib?.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.isComposing){ e.preventDefault(); r.instr=ib.value; draft(r,false,ib.value); } });
+  $('draftBtn')?.addEventListener('click',()=>{ const v=$('instrBox')?.value ?? ''; r.instr=v; draft(r,false,v); });
   $('approveBtn')?.addEventListener('click',()=>approve(r));
   $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
 }
 function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
 
+/** 修正指示欄の入力値（表示中の口コミのときだけ画面から読む） */
+function readInstr(r){ const b=$('instrBox'); return (r && r.id===selectedId && b) ? b.value.trim() : (r?.instr||'').trim(); }
 function buildPrompt(r, instr){
+  instr = (instr ?? readInstr(r)).trim();
   const lang = LANG[r.lang]||'口コミと同じ言語';
-  const top = instr ? `【最優先の指示】
-担当者から次の修正指示があります。下のルールやお手本と食い違う場合も、この指示を最優先で反映してください（ただし言語と出力形式のルールは守る）。
-「${instr.slice(0,500)}」
+  const top = instr ? `【最重要の修正指示】ユーザーから以下の指定がありました。この指示を最優先して返信文を作成・書き直してください：『${instr.slice(0,500)}』
+この指示は、下の「構成」「ルール」「お手本」（長さ・段落構成・言葉づかいを含む）よりも優先します。食い違う場合は必ずこの指示に従ってください（ただし、返信する言語と、返信文だけを出力する形式は守る）。
 ${r.reply.trim()?`
-現在の返信文（これを指示に沿って書き直す）:
+現在の返信文（これを上の指示に沿って書き直す）:
 ${r.reply.trim()}
 `:''}
 ` : '';
@@ -499,7 +501,7 @@ ${r.reply.trim()}
 
 ルール:
 - ${lang}で書く${r.lang!=='ja'?'。返信の後に「---」だけの行を入れ、その下に日本語訳を付ける（日本語訳も同じ段落構成にする）':''}
-- 長さは${len}${ig?'（Instagramのコメントへの返信のため、上の構成を3段落ほどにまとめる）':''}
+- 長さは${len}${instr?'（【最重要の修正指示】に長さ・構成の指定があればそちらを優先）':''}${ig?'（Instagramのコメントへの返信のため、上の構成を3段落ほどにまとめる）':''}
 - 口コミで触れられている具体的な内容・メニュー名・設備には必ず詳しく言及する
 - お店の事実（メニュー・設備・建物・アクセスなど）は、口コミに書かれていることと、「${r.store}」のお手本に書かれていることだけを使う。どちらにもない事実や、他店舗のお手本にしかない事実は書かない
 - できない約束はしない
@@ -513,7 +515,9 @@ ${r.reply.trim()}
 ${r.text}
 
 お手本:
-${$('styleBox').value.slice(0,4000)}`;
+${$('styleBox').value.slice(0,4000)}${instr?`
+
+【再確認】上の【最重要の修正指示】『${instr.slice(0,500)}』を必ず反映した返信文だけを出力してください。`:''}`;
 }
 function fallbackDraft(r){
   const sign=`${r.store} スタッフ一同`;
@@ -643,22 +647,31 @@ ${sign}`;
 
 async function draft(r, silent, instr){
   if(r.drafting) return;
-  instr=(instr||'').trim();
+  instr=(instr ?? readInstr(r)).trim();
+  r.instr=instr;
   r.drafting=true; r.partial='';
   if(r.id===selectedId) renderDetail();
+  const before=r.reply;
   let text='';
   try{
     if(!sample) throw {code:'unavailable'};
-    const res = await sample(buildPrompt(r, instr), {modelTier:'quick', cache:false, onText:({text:t})=>{
+    const res = await sample(buildPrompt(r, instr), {modelTier:instr?'default':'quick', cache:false, onText:({text:t})=>{
       r.partial=t;
       if(r.id===selectedId){ const b=$('replyBox'); if(b) b.value=t; }
     }});
     text=res.text.trim();
-    r.log.push(instr ? `${now()}　AIが指示「${instr}」に沿って書き直し` : `${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
+    r.log.push(instr ? `${now()}　AIが修正指示「${instr}」を反映して再生成` : `${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
   }catch(e){
-    text=fallbackDraft(r);
-    r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため）`);
-    if(e.code && e.code!=='unavailable' && !silent) toast('AIに接続できなかったため、定型文で下書きしました');
+    if(instr && before.trim()){
+      // AIに接続できないと修正指示は反映できないため、今の返信文を定型文で上書きしない
+      text=before+(r.replyJa?`\n---\n${r.replyJa}`:'');
+      r.log.push(`${now()}　AIに接続できないため、修正指示「${instr}」を反映できませんでした（返信文は変更なし）`);
+      if(!silent) toast('AIに接続できないため、修正指示を反映できませんでした。返信文は変更していません');
+    } else {
+      text=fallbackDraft(r);
+      r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため${instr?'、修正指示は未反映':''}）`);
+      if(!silent && (instr || (e.code && e.code!=='unavailable'))) toast(instr?'AIに接続できないため、修正指示を反映できず定型文で下書きしました':'AIに接続できなかったため、定型文で下書きしました');
+    }
   }
   r.drafting=false; r.partial='';
   const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
@@ -987,7 +1000,7 @@ $('bulkBtn').addEventListener('click',async()=>{
   const targets=reviews.filter(r=>r.status==='new' && !isLow(r) && r.rating!=null);
   if(!targets.length){ toast('下書きが必要な高評価の口コミはありません'); return; }
   const b=$('bulkBtn'); b.disabled=true;
-  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i],true); renderFilters(); renderStats(); renderList(); }
+  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i],true,''); renderFilters(); renderStats(); renderList(); }
   b.disabled=false; b.textContent='高評価の下書きをまとめて作成';
   toast(`${targets.length}件の下書きを作成しました。内容を確認して承認してください`); renderAll();
 });
