@@ -338,6 +338,9 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
 
 <script type="module" src="/firebase-init.js"></script>
 <script>
+// 本番（Firebase Hosting 上）ではサーバー経由で連携し、デモ用のサンプル口コミは表示しない
+const BACKEND_HOSTS = ['chuo-kanko-kuchikomi-ichigen-kanri.web.app','chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com'];
+const BACKEND = BACKEND_HOSTS.includes(location.hostname);
 const MEDIA = {
   google:{label:'Google', auto:true, api:'Google Business Profile API'},
   instagram:{label:'Instagram', auto:true, api:'Instagram Graph API'},
@@ -373,6 +376,8 @@ const INCOMING = [
   {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ランチ美味しかったです！次は夜のコースも行ってみたい🍶'},
   {media:'google', store:'浅間茶屋', author:'David L.', rating:5, lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
 ];
+
+if(BACKEND){ ALL.length=0; INCOMING.length=0; }
 
 const DEFAULT_STYLE = `【お手本1】山麓園・高評価の口コミへの返信
 ご投稿いただき、誠にありがとうございます。
@@ -792,9 +797,10 @@ function arrive(x){
   notify(r);
   return r;
 }
-$('fetchBtn').addEventListener('click',async()=>{
+$('fetchBtn').addEventListener('click',()=>fetchNew());
+async function fetchNew(silent){
   const store=currentStore, kinds=['google','instagram'].filter(m=>apiReady(store,m));
-  if(!kinds.length){ toast(NO_KEY_MSG); return; }
+  if(!kinds.length){ if(!silent) toast(NO_KEY_MSG); return; }
   const btn=$('fetchBtn'); btn.disabled=true; btn.textContent='取得中…';
   let added=0; const fails=[];
   for(const m of kinds){
@@ -802,10 +808,11 @@ $('fetchBtn').addEventListener('click',async()=>{
     catch(e){ fails.push(`${MEDIA[m].label}：${e.message}`); }
   }
   btn.disabled=false; btn.textContent='新着を取得';
-  if(currentStore===store){ reviews=ALL.filter(r=>r.store===store); renderAll(); }
+  if(currentStore===store){ reviews=ALL.filter(r=>r.store===store); if(!reviews.some(r=>r.id===selectedId)){ selectedId=reviews[0]?.id ?? null; } renderAll(); autoDraft(); }
   const skipped=['google','instagram'].filter(m=>!kinds.includes(m)).map(m=>MEDIA[m].label);
+  if(silent && !added && !fails.length) return;
   toast([fails.length?`取得に失敗しました（${fails.join(' / ')}）`:'', added?`新着の口コミを${added}件取得しました`:(fails.length?'':'新しい口コミはありません'), skipped.length?`${skipped.join('・')}は未設定のため取得していません`:''].filter(Boolean).join('。'));
-});
+}
 /** APIから取得した口コミを一覧に追加（同じ口コミは二重に追加しない） */
 function addFetched(store, x){
   if(ALL.some(a=>a.extId===x.extId)) return false;
@@ -929,6 +936,7 @@ function saveApiConf(){ try{ localStorage.setItem(API_STORE_KEY, JSON.stringify(
 function apiCfg(store, media){ return apiConf[store]?.[media]||{}; }
 /** 必要な項目がすべて入っているか（Facebook App ID は通信には使わないため必須にしない） */
 function apiReady(store, media){
+  if(BACKEND) return !!beStatus[store]?.[media]?.connected;
   const c=apiCfg(store,media);
   if(media==='google') return !!(c.clientId&&c.clientSecret&&c.refreshToken&&c.locationId);
   if(media==='instagram') return !!(c.accessToken&&c.igUserId);
@@ -1016,6 +1024,7 @@ const API={
 // API接続設定のモーダル
 let apiTab=null;
 function renderApiModal(){
+  if(BACKEND) return renderApiModalBackend();
   $('apiTabs').innerHTML=STORES.map(st=>{
     const n=['google','instagram'].filter(m=>apiReady(st,m)).length;
     return `<button type="button" class="chip" data-st="${st}" aria-pressed="${st===apiTab}">${st}（${n?`${n}/2 設定済み`:'未設定'}）</button>`;
@@ -1026,6 +1035,7 @@ function renderApiModal(){
     </fieldset>`).join('')}</div>`;
 }
 function readApiInputs(){
+  if(BACKEND) return;
   const st=apiConf[apiTab]||(apiConf[apiTab]={});
   document.querySelectorAll('#apiStores input[data-m]').forEach(i=>{
     const m=i.dataset.m, k=i.dataset.k, v=i.value.trim();
@@ -1051,6 +1061,79 @@ $('apiClear').addEventListener('click',()=>{
   if(!confirm(`${apiTab}のAPI接続設定を削除しますか？`)) return;
   delete apiConf[apiTab]; delete googleTokens[apiTab]; saveApiConf(); renderApiModal(); toast(`${apiTab}のAPI接続設定を削除しました`);
 });
+
+// ---- 本番：サーバー（Cloud Functions）経由の連携 ----
+// Google・Instagram は各社の画面で「許可」を押して連携（パスワード不要）。トークンはサーバーにだけ保存される
+let beStatus={}, beLoggedIn=false;
+function backend(){ return window.appBackend ? Promise.resolve(window.appBackend) : new Promise(r=>window.addEventListener('app-backend-ready',()=>r(window.appBackend),{once:true})); }
+async function call(path, body){
+  const be=await backend(); const token=await be.token();
+  if(!token){ const e=new Error('ログインの有効期限が切れました。もう一度ログインしてください'); e.code='backend'; e.status=401; throw e; }
+  const res=await fetch(path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  let j=null; try{ j=await res.json(); }catch(e){}
+  if(!res.ok){ const e=new Error(j?.error||`サーバーとの通信に失敗しました（HTTP ${res.status}）`); e.code='backend'; e.status=res.status; throw e; }
+  return j||{};
+}
+async function refreshStatus(){ beStatus=(await call('/api/status')).stores||{}; }
+if(BACKEND){
+  const map=x=>({...x, date:fmtDate(x.createTime), lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
+  const q=(m,st)=>`/api/reviews?media=${m}&store=${encodeURIComponent(st)}`;
+  API.fetchGoogle=async store=>(await call(q('google',store))).items.map(map);
+  API.fetchInstagram=async store=>(await call(q('instagram',store))).items.map(map);
+  API.reply=async r=>{ await call('/api/reply',{store:r.store, media:r.media, extName:r.extName, comment:r.reply}); };
+  $('apiSave').hidden=true; $('apiClear').hidden=true;
+  document.querySelector('#apiOverlay .api-note').textContent='パスワードの入力は不要です。「連携する」を押し、Google／Meta（Facebook）の画面で許可するだけで連携できます。連携情報はサーバーで安全に保管され、このブラウザには保存されません。';
+}
+const BE_LABEL={google:'Googleビジネスプロフィール', instagram:'Instagram（Facebookページ経由）'};
+function renderApiModalBackend(){
+  $('apiTabs').innerHTML=STORES.map(st=>{
+    const n=['google','instagram'].filter(m=>apiReady(st,m)).length;
+    return `<button type="button" class="chip" data-st="${st}" aria-pressed="${st===apiTab}">${st}（${n?`${n}/2 連携済み`:'未連携'}）</button>`;
+  }).join('');
+  $('apiStores').innerHTML=`<div class="api-store">${['google','instagram'].map(m=>{
+    const c=beStatus[apiTab]?.[m]||{};
+    const pill=c.connected?'<span class="pill s-sent">連携済み</span>':c.needsPick?'<span class="pill s-filled">店舗の選択が必要</span>':'<span class="pill s-new">未連携</span>';
+    const body=c.connected
+      ? `<p class="hint wide" style="grid-column:1/-1">連携先：<b>${esc(c.label)}</b></p><div class="actions" style="grid-column:1/-1"><button type="button" class="btn" data-act="connect" data-m="${m}">連携し直す</button><button type="button" class="btn" data-act="disconnect" data-m="${m}">連携を解除</button></div>`
+      : c.needsPick
+        ? `<div class="api-field wide"><label for="pick-${m}">${apiTab}として使う${m==='google'?'ロケーション':'アカウント'}を選んでください</label><select id="pick-${m}" class="store-select" style="font-weight:400">${(c.candidates||[]).map(x=>`<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('')}</select></div><div class="actions" style="grid-column:1/-1"><button type="button" class="btn primary" data-act="pick" data-m="${m}">この${m==='google'?'ロケーション':'アカウント'}にする</button><button type="button" class="btn" data-act="disconnect" data-m="${m}">やめる</button></div>`
+        : `<p class="hint" style="grid-column:1/-1">${m==='google'?'Googleビジネスプロフィールを管理しているGoogleアカウントでログインし、許可してください。':'Instagramのビジネスアカウントにつながっている Facebook ページを管理するアカウントでログインし、許可してください。'}</p><div class="actions" style="grid-column:1/-1"><button type="button" class="btn primary" data-act="connect" data-m="${m}">${m==='google'?'Google':'Instagram'}と連携する</button></div>`;
+    return `<fieldset class="api-group"><legend>${mediaHtml(m)}${BE_LABEL[m]}${pill}</legend>${body}</fieldset>`;
+  }).join('')}</div>`;
+}
+$('apiStores').addEventListener('click',async e=>{
+  if(!BACKEND) return;
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const m=b.dataset.m, store=apiTab;
+  b.disabled=true;
+  try{
+    if(b.dataset.act==='connect'){ const {url}=await call(`/api/${m}/auth-url?store=${encodeURIComponent(store)}`); location.href=url; return; }
+    if(b.dataset.act==='pick'){ await call(`/api/${m}/select`,{store, id:$('pick-'+m).value}); toast(`${store}の${MEDIA[m].label}連携が完了しました`); }
+    if(b.dataset.act==='disconnect'){ if(!confirm(`${store}の${MEDIA[m].label}連携を解除しますか？`)){ b.disabled=false; return; } await call(`/api/${m}/disconnect`,{store}); toast(`${store}の${MEDIA[m].label}連携を解除しました`); }
+    await refreshStatus(); renderApiModal();
+    if(store===currentStore) fetchNew(true);
+  }catch(err){ toast(err.message); b.disabled=false; }
+});
+/** 本番：ログイン後の処理（連携状態の取得 → 画面表示 → 連携直後の案内 → 新着の自動取得） */
+async function afterBackendLogin(){
+  if(beLoggedIn) return; beLoggedIn=true;
+  try{ await refreshStatus(); }
+  catch(e){
+    beLoggedIn=false;
+    if(e.status===401||e.status===403){ (await backend()).signOut(); $('loginErr').textContent=e.message; $('loginErr').hidden=false; return; }
+    toast(e.message);
+  }
+  const qp=new URLSearchParams(location.search), qStore=qp.get('store');
+  let saved=null; try{ saved=sessionStorage.getItem('rd-store'); }catch(e){}
+  login(STORES.includes(qStore)?qStore:(STORES.includes(saved)?saved:DEFAULT_STORE));
+  if(qp.has('connected')||qp.has('connectError')){
+    history.replaceState(null,'',location.pathname);
+    if(qp.has('connectError')) toast(`${MEDIA[qp.get('connectError')]?.label||''}の連携に失敗しました：${qp.get('message')||''}`);
+    else toast(qp.get('pick')?`${MEDIA[qp.get('connected')]?.label}の連携先を選んでください`:`${MEDIA[qp.get('connected')]?.label}と連携しました`);
+    if(qp.get('pick')||qp.has('connectError')) openApi();
+  }
+  // 新着の自動取得は switchStore（login）の中で行う
+}
 
 // ---- 通知 ----
 let notices=[], arrivalTimer=null, audioCtx=null;
@@ -1156,7 +1239,7 @@ function switchStore(store){
   renderAll(); autoDraft();
   // デモ：ログインから少しして新着が1件届く（API接続設定済みの店舗では実データのみ扱うため行わない）
   clearTimeout(arrivalTimer);
-  if(['google','instagram'].some(m=>apiReady(store,m))) return;
+  if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && r.media!=='tabelog')) fetchNew(true); return; }
   arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll();
     arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); } }, 30000); } }, 12000);
 }
@@ -1165,6 +1248,15 @@ $('loginForm').addEventListener('submit',async e=>{
   const id=$('loginId').value.trim().toLowerCase(), pw=$('loginPw').value, err=$('loginErr');
   if(!id||!pw){ err.textContent='IDとパスワードを入力してください'; err.hidden=false; return; }
   $('loginBtn').disabled=true;
+  if(BACKEND){
+    try{ await (await backend()).signIn(id,pw); err.hidden=true; $('loginPw').value=''; await afterBackendLogin(); }
+    catch(x){
+      const c=x.code||'';
+      err.textContent=/too-many-requests/.test(c)?'ログインの試行回数が多すぎます。しばらくしてからお試しください':/network/.test(c)?'通信できませんでした。ネットワークをご確認ください':'IDまたはパスワードが違います';
+      err.hidden=false; $('loginPw').value=''; $('loginPw').focus();
+    }
+    $('loginBtn').disabled=false; return;
+  }
   let ok=false; try{ ok=(await sha256(id+'\n'+pw))===ACCOUNT_HASH; }catch(x){}
   $('loginBtn').disabled=false;
   if(!ok){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
@@ -1173,11 +1265,18 @@ $('loginForm').addEventListener('submit',async e=>{
 $('storeSelect').addEventListener('change',e=>{ if(STORES.includes(e.target.value)) switchStore(e.target.value); });
 $('logoutBtn').addEventListener('click',()=>{
   try{ sessionStorage.removeItem('rd-store'); }catch(e){}
+  if(BACKEND){ beLoggedIn=false; ALL.length=0; backend().then(be=>be.signOut()); }
   clearTimeout(arrivalTimer); notices=[]; document.title='口コミ一元管理_返信文自動生成'; $('notifyStack').innerHTML='';
   currentStore=null; reviews=[]; $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
 });
-try{ const s=sessionStorage.getItem('rd-store'); if(s && STORES.includes(s)) login(s); }catch(e){}
-(async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
+if(BACKEND){
+  // 本番：ログイン状態はFirebase Authenticationが保持。AIの返信文はサーバー経由で作成
+  sample = async (prompt, opts={}) => ({ text:(await call('/api/ai/generate',{prompt, tier:opts.modelTier})).text });
+  backend().then(be=>be.onUser(u=>{ if(u) afterBackendLogin(); }));
+} else {
+  try{ const s=sessionStorage.getItem('rd-store'); if(s && STORES.includes(s)) login(s); }catch(e){}
+  (async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
+}
 </script>
 
 </body></html>
