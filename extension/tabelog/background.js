@@ -192,6 +192,10 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return sendResponse({ drafts: out, error: Object.keys(out).length < msg.reviews.filter(r => !r.replied).length ? status.lastError : '' });
     }
     if (msg.type === 'checkNow') return sendResponse(await runCheck());
+    if (msg.type === 'appPage') {
+      if (msg.isApp || /kuchikomi|%E5%8F%A3%E3%82%B3%E3%83%9F|口コミ/i.test(msg.url || '')) await setStatus({ appSeenAt: Date.now(), appUrl: String(msg.url || ''), appOk: !!msg.isApp });
+      return sendResponse({ ok: true });
+    }
     if (msg.type === 'appSetDraft') {
       // アプリで承認（編集）した返信文を、食べログの返信欄に入れる文として保存
       const { drafts = {} } = await chrome.storage.local.get('drafts');

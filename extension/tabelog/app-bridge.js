@@ -25,7 +25,10 @@
     window.postMessage({ source: 'tabelog-assistant', type: 'ready' }, '*');
     push();
   }
+  // 拡張機能の設定画面に「アプリの画面とつながったか」を表示するための報告
+  const report = () => { try { chrome.runtime.sendMessage({ type: 'appPage', url: location.href.slice(0, 300), isApp: isApp() }); } catch (e) {} };
   start();
+  setTimeout(report, 3000);
   if (!started) {
     const mo = new MutationObserver(() => { start(); if (started) mo.disconnect(); });
     mo.observe(document.documentElement, { childList: true, subtree: true, attributes: true });

@@ -19,7 +19,8 @@ async function renderStatus() {
   const lines = [
     `最終確認：${fmt(status.lastCheckAt)}`,
     status.lastResult ? `結果：${status.lastResult}` : '',
-    `作成済みの返信文：${Object.keys(drafts).length}件`
+    `作成済みの返信文：${Object.keys(drafts).length}件`,
+    status.appSeenAt ? `アプリとの接続：${fmt(status.appSeenAt)}（${status.appOk ? 'つながりました' : 'アプリの画面として認識できませんでした。最新のアプリのファイルか確認してください'}）\n　${decodeURI(status.appUrl || '')}` : 'アプリとの接続：まだありません（アプリをこのChromeで開くと表示されます）'
   ].filter(Boolean);
   $('status').innerHTML = '';
   $('status').append(lines.join('\n'));
