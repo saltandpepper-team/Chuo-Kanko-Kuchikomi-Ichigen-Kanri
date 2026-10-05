@@ -74,6 +74,7 @@ async function generateReply(review, store) {
 async function ensureDrafts(reviews, store, force) {
   const { drafts } = await getState();
   const made = [];
+  let error = '';
   for (const r of reviews) {
     if (r.replied) continue;
     if (drafts[r.key] && !force) continue;
@@ -83,11 +84,12 @@ async function ensureDrafts(reviews, store, force) {
       made.push(r.key);
       await chrome.storage.local.set({ drafts });
     } catch (e) {
+      error = e.message;
       await setStatus({ lastError: e.message, lastErrorAt: Date.now() });
       break;
     }
   }
-  return { drafts, made };
+  return { drafts, made, error };
 }
 async function updateBadge(reviews) {
   const { drafts } = await getState();
@@ -113,7 +115,10 @@ async function runCheck() {
       clearTimeout(check.timer);
       const id = check.tabId; check = null;
       try { await chrome.tabs.remove(id); } catch (e) {}
-      await setStatus({ lastCheckAt: Date.now(), lastResult: result.ok ? `口コミ ${result.total}件を確認（新しい下書き ${result.made}件）` : result.error, ...(result.ok ? { lastError: '' } : { lastError: result.error, lastErrorAt: Date.now() }) });
+      const err = result.ok ? (result.aiError || '') : result.error;
+      await setStatus({ lastCheckAt: Date.now(),
+        lastResult: result.ok ? `口コミ ${result.total}件を確認（未返信 ${result.unreplied}件・新しく作った返信文 ${result.made}件）` : result.error,
+        lastError: err, ...(err ? { lastErrorAt: Date.now() } : {}) });
       resolve(result);
     };
     check = { tabId: tab.id, loginTried: false, done, timer: setTimeout(() => done({ ok: false, error: '食べログの画面が時間内に読み込めませんでした' }), 90000) };
@@ -149,7 +154,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const store = msg.store || '';
       if (isCheck) {
         const { notified } = await getState();
-        const { drafts, made } = await ensureDrafts(msg.reviews, store, false);
+        const { drafts, made, error: aiError } = await ensureDrafts(msg.reviews, store, false);
         const fresh = msg.reviews.filter(r => !r.replied && !notified[r.key]);
         if (fresh.length) {
           fresh.forEach(r => { notified[r.key] = Date.now(); });
@@ -161,7 +166,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         }
         await updateBadge(msg.reviews);
         sendResponse({ mode: 'check' });
-        check.done({ ok: true, total: msg.reviews.length, made: made.length });
+        check.done({ ok: true, total: msg.reviews.length, unreplied: msg.reviews.filter(r => !r.replied).length, made: made.length, aiError });
         return;
       }
       await updateBadge(msg.reviews);
