@@ -801,11 +801,21 @@ function addFetched(store, x){
 const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top';
 let tbBridge=false;
 function tabelogHello(){ window.postMessage({source:'kuchikomi-app', type:'hello'}, '*'); }
+/** 拡張機能とつながったら実データで使うため、デモ用のサンプル口コミと自動の新着デモを消す */
+function useRealData(){
+  if(tbBridge) return;
+  tbBridge=true;
+  if(BACKEND) return;
+  for(let i=ALL.length-1;i>=0;i--) if(!ALL[i].extId) ALL.splice(i,1);
+  INCOMING.length=0; incoming=[]; clearTimeout(arrivalTimer);
+  notices=notices.filter(n=>ALL.some(a=>a.id===n.id));
+  if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); renderBell(); }
+}
 window.addEventListener('message',e=>{
   if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
-  if(e.data.type==='ready'){ tbBridge=true; return; }
+  if(e.data.type==='ready'){ useRealData(); return; }
   if(e.data.type!=='reviews' || !Array.isArray(e.data.reviews)) return;
-  tbBridge=true;
+  useRealData();
   let added=0, changed=false;
   e.data.reviews.slice().sort((a,b)=>(a.firstSeenAt||0)-(b.firstSeenAt||0)).forEach(x=>{
     const store=STORES.includes(x.store)?x.store:null;
@@ -1165,6 +1175,7 @@ function switchStore(store){
   tabelogHello();
   // デモ：ログインから少しして新着が1件届く（API接続設定済みの店舗では実データのみ扱うため行わない）
   clearTimeout(arrivalTimer);
+  if(tbBridge && !BACKEND) return;
   if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && r.media!=='tabelog')) fetchNew(true); return; }
   arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll();
     arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); } }, 30000); } }, 12000);
