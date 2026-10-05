@@ -133,6 +133,17 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   }
 });
 
+// ---- アプリ（口コミ一元管理）に渡すため、読み取った口コミを保存 ----
+async function rememberReviews(list, store) {
+  const { reviews = {} } = await chrome.storage.local.get('reviews');
+  const t = Date.now();
+  list.forEach(r => { reviews[r.key] = { key: r.key, store, author: r.author, rating: r.rating, text: r.text, title: r.title || '', date: r.date || '', replied: !!r.replied, reply: r.reply || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
+  // 古いものから削除して最大300件に保つ
+  const keys = Object.keys(reviews).sort((a, b) => reviews[b].seenAt - reviews[a].seenAt);
+  keys.slice(300).forEach(k => delete reviews[k]);
+  await chrome.storage.local.set({ reviews });
+}
+
 // ---- content.js からのメッセージ ----
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   (async () => {
@@ -152,6 +163,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     if (msg.type === 'pageData') {
       const store = msg.store || '';
+      await rememberReviews(msg.reviews, store);
       if (isCheck) {
         const { notified } = await getState();
         const { drafts, made, error: aiError } = await ensureDrafts(msg.reviews, store, false);
@@ -180,6 +192,13 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       return sendResponse({ drafts: out, error: Object.keys(out).length < msg.reviews.filter(r => !r.replied).length ? status.lastError : '' });
     }
     if (msg.type === 'checkNow') return sendResponse(await runCheck());
+    if (msg.type === 'appSetDraft') {
+      // アプリで承認（編集）した返信文を、食べログの返信欄に入れる文として保存
+      const { drafts = {} } = await chrome.storage.local.get('drafts');
+      const reply = String(msg.reply || '').slice(0, 4000);
+      if (msg.key && reply) { drafts[msg.key] = { ...(drafts[msg.key] || {}), reply, fromApp: true, updatedAt: Date.now() }; await chrome.storage.local.set({ drafts }); }
+      return sendResponse({ ok: true });
+    }
     sendResponse({});
   })();
   return true;

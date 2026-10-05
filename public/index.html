@@ -180,13 +180,6 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
 .api-note{background:var(--wait-soft);color:var(--wait);border-radius:8px;padding:8px 12px;font-size:12px;margin:0}
 .api-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line)}
 @media (max-width:600px){.api-group{grid-template-columns:1fr}}
-.ql-import{font-size:12px;padding:5px 10px;margin-left:auto}
-.tb-steps{margin:0;padding-left:20px;display:flex;flex-direction:column;gap:4px;font-size:13px}
-.tb-paste{min-height:140px;font-size:12px}
-.tb-preview{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;max-height:300px;overflow:auto}
-.tb-item{display:grid;grid-template-columns:20px 1fr;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);font-size:13px;align-items:start}
-.tb-item:last-child{border-bottom:none}
-.tb-item input{margin-top:4px}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:13px;z-index:20;max-width:calc(100% - 32px)}
 @media (max-width:1100px){.summary{grid-template-columns:1fr}.total{flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px}}
 @media (max-width:900px){.main{grid-template-columns:1fr}.total:hover{border-color:var(--brand)}
@@ -214,7 +207,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
   </form>
 </main>
 
-<div class="wrap" id="appView" hidden>
+<div class="wrap" id="appView" data-kuchikomi-app hidden>
   <header class="top">
     <div class="brand">
       <span class="client">中央観光株式会社様</span>
@@ -251,7 +244,6 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
     <a class="ql m-instagram" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram<span aria-hidden="true">↗</span></a>
     <a class="ql m-tabelog" href="https://owner.tabelog.com/" target="_blank" rel="noopener noreferrer">食べログ<span aria-hidden="true">↗</span></a>
     <a class="ql m-tripadvisor" href="https://www.tripadvisor.jp/Owners" target="_blank" rel="noopener noreferrer">トリップアドバイザー<span aria-hidden="true">↗</span></a>
-    <button class="btn ql-import" id="tbImportBtn" type="button" aria-haspopup="dialog">食べログの口コミを取り込む</button>
   </nav>
 
   <section class="summary" aria-label="媒体ごとの件数">
@@ -312,26 +304,6 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
       <button class="btn primary" id="apiSave" type="submit">保存する</button>
     </div>
   </form>
-</div>
-<div class="overlay" id="tbOverlay" hidden>
-  <div class="api-modal" role="dialog" aria-modal="true" aria-labelledby="tbTitle">
-    <div class="api-head"><h2 id="tbTitle">食べログの口コミを取り込む</h2><button class="btn" id="tbClose" type="button" style="padding:2px 10px;font-size:12px">閉じる</button></div>
-    <div class="api-body">
-      <p class="hint" id="tbStoreNote"></p>
-      <ol class="tb-steps">
-        <li>食べログ店舗管理画面の<a href="https://owner.tabelog.com/owner_rst/reply_top" target="_blank" rel="noopener noreferrer">「口コミ返信」ページ</a>を開く（ログインした状態で）</li>
-        <li>ページ上で <b>Ctrl＋A</b>（Macは <b>⌘＋A</b>）で全体を選択し、<b>Ctrl＋C</b>（⌘＋C）でコピー</li>
-        <li>下の欄に貼り付けて「読み取る」を押す</li>
-      </ol>
-      <textarea id="tbPaste" class="tb-paste" placeholder="ここに「口コミ返信」ページの内容を貼り付けてください"></textarea>
-      <div class="actions"><button class="btn" id="tbParse" type="button">読み取る</button><span class="route" id="tbCount"></span></div>
-      <div class="tb-preview" id="tbPreview" hidden></div>
-    </div>
-    <div class="api-foot">
-      <span class="hint">取り込み済みの口コミは重複して追加されません</span>
-      <button class="btn primary" id="tbAdd" type="button" disabled>取り込む</button>
-    </div>
-  </div>
 </div>
 <div class="toast" id="toast" hidden></div>
 <div class="notify-stack" id="notifyStack" aria-live="polite"></div>
@@ -824,96 +796,49 @@ function addFetched(store, x){
   return true;
 }
 
-// ---- 食べログ連携（店舗管理画面「口コミ返信」ページの内容を貼り付けて取り込む） ----
+// ---- 食べログ連携（Chrome拡張機能「食べログ 口コミ返信アシスタント」から受け取る） ----
+// 拡張機能が食べログ店舗管理画面で読み取った口コミと、AIが作った返信文がこのページに届く
 const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top';
-const TB_DATE=/'(\d{2})\/(\d{1,2})\/(\d{1,2})/;
-const TB_AUTHOR=/^(.+?)\s*[（(]\s*([\d,]+)\s*[)）]/;
-const TB_SKIP=/^(使った金額|[¥￥]|[（(](テイクアウト|デリバリー|その他|夜|昼)|[\[［]|料理・味|サービス|雰囲気|CP|酒・ドリンク|[\]］]|[-－―ー—|｜]+$|\d+$|認証済|夜の点数|昼の点数|訪問理由)/;
-const TB_FOOTER=/^(前の\d+件|次の\d+件|次へ|前へ|ページの先頭|表示件数|Copyright|©|会社情報|利用規約|プライバシー)/;
-const TB_UI=/^(返信する|返信を書く|この口コミに返信|口コミに返信|返信内容を入力|送信する|確認する|もっと見る|続きを読む|いいね|保存|通報|写真をもっと見る)/;
-const TB_REPLIED=/(店舗からの返信|お店からの返信|店舗からのお礼|お店からのコメント|返信済み)/;
-/** 「口コミ返信」ページをコピーしたテキストから口コミを読み取る */
-function parseTabelog(raw){
-  const L=String(raw).replace(/\r/g,'').split('\n').map(x=>x.replace(/ /g,' ').trim()).filter(Boolean);
-  const starts=[];
-  for(let i=0;i<L.length;i++){
-    if(!TB_DATE.test(L[i])) continue;
-    const near=L.slice(i,i+2).join(' ');
-    if(!/訪問/.test(near)) continue;
-    // 日付の前後どちらかがタイトル、その次が「投稿者名（件数）」
-    let a=-1; for(let k=i+1;k<=i+3&&k<L.length;k++){ if(TB_AUTHOR.test(L[k]) && !TB_DATE.test(L[k])){ a=k; break; } }
-    if(a<0) continue;
-    const titleIdx = (a===i+1 || /訪問/.test(L[i+1]||'') && a===i+2) ? i-1 : i+1;
-    starts.push({i, a, t:titleIdx, s:Math.min(i,titleIdx)});
-  }
-  const out=[];
-  starts.forEach((st,n)=>{
-    let end = n+1<starts.length ? starts[n+1].s : L.length;
-    for(let k=st.a+1;k<end;k++){ if(TB_FOOTER.test(L[k])){ end=k; break; } }
-    const block=L.slice(st.a+1,end);
-    const [,yy,mm,dd]=L[st.i].match(TB_DATE);
-    const au=L[st.a].match(TB_AUTHOR);
-    let rating=null;
-    for(const x of block.slice(0,4)){ const m=x.match(/(?:^|\s)([1-5]\.\d{1,2})(?=\s|$|\s*[\[［])/); if(m){ rating=+m[1]; break; } }
-    let k=0;
-    const head=block.findIndex(x=>/^使った金額/.test(x));
-    k = head>=0 ? head+1 : 0;
-    while(k<block.length && (TB_SKIP.test(block[k]) || /^[1-5]\.\d{1,2}/.test(block[k]))) k++;
-    let body=[], reply=[], inReply=false;
-    for(;k<block.length;k++){
-      const x=block[k];
-      if(TB_REPLIED.test(x)){ inReply=true; continue; }
-      if(TB_UI.test(x)) continue;
-      (inReply?reply:body).push(x);
+let tbBridge=false;
+function tabelogHello(){ window.postMessage({source:'kuchikomi-app', type:'hello'}, '*'); }
+window.addEventListener('message',e=>{
+  if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
+  if(e.data.type==='ready'){ tbBridge=true; return; }
+  if(e.data.type!=='reviews' || !Array.isArray(e.data.reviews)) return;
+  tbBridge=true;
+  let added=0, changed=false;
+  e.data.reviews.slice().sort((a,b)=>(a.firstSeenAt||0)-(b.firstSeenAt||0)).forEach(x=>{
+    const store=STORES.includes(x.store)?x.store:null;
+    if(!store || !x.key || !x.text) return;
+    const ex=ALL.find(a=>a.extId===x.key);
+    if(ex){
+      // 食べログ側で返信済みになったら、アプリでも返信済みにする
+      if(x.replied && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply||ex.reply; ex.log.push(`${now()}　食べログで返信済みを確認`); changed=true; }
+      else if(!x.replied && x.draft && ex.status==='new' && !ex.reply.trim() && !ex.drafting){ ex.reply=x.draft; ex.status='draft'; ex.log.push(`${now()}　AIが返信文を作成（拡張機能）`); changed=true; }
+      return;
     }
-    // タイトルと日付が同じ行にある場合は、日付より前の部分をタイトルとする
-    const inline=L[st.i].slice(0,L[st.i].search(TB_DATE)).trim();
-    const title=inline || ((L[st.t]&&st.t>=0&&!TB_DATE.test(L[st.t])&&st.t!==starts[n-1]?.a)?L[st.t]:'');
-    const text=[title?`【${title}】`:'',...body].filter(Boolean).join('\n');
-    if(!text) return;
-    out.push({media:'tabelog', author:au[1].trim(), rating, lang:guessLang(text), text,
-      date:`${+mm}/${+dd}`, reply:reply.join('\n'), title,
-      extId:'tabelog:'+[au[1].trim(),`20${yy}/${mm}/${dd}`,title||body[0]||''].join('|').slice(0,200)});
+    const r={media:'tabelog', extId:x.key, author:x.author||'食べログユーザー', rating:x.rating??null, date:x.date||'', lang:guessLang(x.text), text:x.text, title:x.title||'',
+      reply:x.replied?(x.reply||'（食べログで返信済み）'):'', logLine:`${now()}　食べログ店舗管理画面から取得（拡張機能）`};
+    if(addFetched(store, r)){
+      added++;
+      const n=ALL.find(a=>a.extId===x.key);
+      if(n && !x.replied && x.draft){ n.reply=x.draft; n.status='draft'; n.log.push(`${now()}　AIが返信文を作成（拡張機能）`); }
+    }
   });
-  return out;
-}
-let tbParsed=[];
-function openTabelogImport(){
-  $('tbStoreNote').innerHTML=`取り込み先：<b>${esc(currentStore)}</b>（取り込む前に、ヘッダーで店舗を選んでください）`;
-  $('tbPaste').value=''; tbParsed=[]; $('tbPreview').hidden=true; $('tbPreview').innerHTML=''; $('tbCount').textContent=''; $('tbAdd').disabled=true;
-  $('tbOverlay').hidden=false; $('tbPaste').focus();
-}
-function closeTabelogImport(){ $('tbOverlay').hidden=true; $('tbImportBtn').focus(); }
-$('tbImportBtn').addEventListener('click',openTabelogImport);
-$('tbClose').addEventListener('click',closeTabelogImport);
-$('tbOverlay').addEventListener('click',e=>{ if(e.target.id==='tbOverlay') closeTabelogImport(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('tbOverlay').hidden) closeTabelogImport(); });
-$('tbParse').addEventListener('click',()=>{
-  tbParsed=parseTabelog($('tbPaste').value);
-  const fresh=tbParsed.filter(x=>!ALL.some(a=>a.extId===x.extId));
-  $('tbCount').textContent = tbParsed.length ? `${tbParsed.length}件を読み取りました（新規 ${fresh.length}件）` : '口コミを読み取れませんでした。「口コミ返信」ページ全体をコピーしたかご確認ください';
-  $('tbPreview').hidden=!tbParsed.length;
-  $('tbPreview').innerHTML=tbParsed.map((x,i)=>{ const dup=ALL.some(a=>a.extId===x.extId);
-    return `<label class="tb-item"><input type="checkbox" data-i="${i}" ${dup?'disabled':'checked'}><span style="display:flex;flex-direction:column;gap:2px;min-width:0">
-      <span class="row">${starsHtml(x.rating!=null?Math.round(x.rating):null)}${x.rating!=null?`<b>${x.rating}</b>`:''}<span class="meta">${esc(x.author)}・${x.date}</span>${dup?'<span class="pill s-sent">取り込み済み</span>':''}${x.reply?'<span class="pill s-sent">返信あり</span>':''}</span>
-      <span class="excerpt">${esc(x.text)}</span></span></label>`; }).join('');
-  $('tbAdd').disabled=!fresh.length;
-});
-$('tbAdd').addEventListener('click',()=>{
-  const picks=[...document.querySelectorAll('#tbPreview input[data-i]:checked')].map(i=>tbParsed[+i.dataset.i]);
-  let added=0;
-  picks.slice().reverse().forEach(x=>{ if(addFetched(currentStore,{...x, logLine:`${now()}　食べログ店舗管理画面から取り込み`})) added++; });
-  reviews=ALL.filter(r=>r.store===currentStore); renderAll();
-  closeTabelogImport();
-  toast(added?`食べログの口コミを${added}件取り込みました`:'新しく取り込む口コミはありませんでした');
+  if(!added && !changed) return;
+  if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); }
+  if(added) toast(`食べログの口コミを${added}件取得しました`);
 });
 /** 承認した返信文をコピーし、食べログの「口コミ返信」ページを開く（送信は担当者が行う） */
 async function copyAndOpenTabelog(r){
+  // 拡張機能があれば、承認した返信文を食べログの返信欄に自動で入れてもらう
+  window.postMessage({source:'kuchikomi-app', type:'setDraft', key:r.extId, reply:r.reply}, '*');
   let copied=false;
   try{ await navigator.clipboard.writeText(r.reply); copied=true; }catch(e){}
   window.open(TB_REPLY_URL,'_blank','noopener');
   if(r.status!=='filled'){ r.status='filled'; r.log.push(`${now()}　返信文をコピーして食べログの管理画面を開く（送信待ち）`); }
-  toast(copied?'返信文をコピーしました。食べログの返信欄に貼り付けて送信し、最後に「返信済みにする」を押してください':'コピーできませんでした。返信文を選択してコピーしてから、食べログで貼り付けてください');
+  toast(tbBridge?'食べログの返信欄に返信文が入ります。内容を確認して返信ボタンを押してください（返信済みは次の確認で自動で反映されます）'
+    :copied?'返信文をコピーしました。食べログの返信欄に貼り付けて送信し、最後に「返信済みにする」を押してください':'コピーできませんでした。返信文を選択してコピーしてから、食べログで貼り付けてください');
   renderAll();
 }
 
@@ -1237,6 +1162,7 @@ function switchStore(store){
   try{ sessionStorage.setItem('rd-store',store); }catch(e){}
   renderBell();
   renderAll(); autoDraft();
+  tabelogHello();
   // デモ：ログインから少しして新着が1件届く（API接続設定済みの店舗では実データのみ扱うため行わない）
   clearTimeout(arrivalTimer);
   if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && r.media!=='tabelog')) fetchNew(true); return; }

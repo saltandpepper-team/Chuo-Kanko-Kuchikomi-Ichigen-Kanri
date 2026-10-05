@@ -1,19 +1,58 @@
 {
   "manifest_version": 3,
   "name": "食べログ 口コミ返信アシスタント",
-  "version": "1.0.0",
-  "description": "食べログ店舗管理画面の新着口コミをAIが確認し、返信欄に返信文を下書きします。送信ボタンは担当者が押します。",
-  "permissions": ["storage", "alarms", "notifications"],
-  "host_permissions": ["https://owner.tabelog.com/*", "https://api.openai.com/*"],
-  "background": { "service_worker": "background.js" },
+  "version": "1.1.0",
+  "description": "食べログ店舗管理画面の新着口コミをAIが確認し、返信欄に返信文を下書きします。口コミは口コミ一元管理アプリにも表示されます。送信ボタンは担当者が押します。",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://owner.tabelog.com/*",
+    "https://api.openai.com/*",
+    "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
+    "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
+    "https://claude.ai/*",
+    "https://*.claudeusercontent.com/*",
+    "file:///*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
   "content_scripts": [
     {
-      "matches": ["https://owner.tabelog.com/*"],
-      "js": ["parser.js", "content.js"],
+      "matches": [
+        "https://owner.tabelog.com/*"
+      ],
+      "js": [
+        "parser.js",
+        "content.js"
+      ],
       "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
+        "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
+        "https://claude.ai/*",
+        "https://*.claudeusercontent.com/*",
+        "file:///*"
+      ],
+      "js": [
+        "app-bridge.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_origin_as_fallback": true
     }
   ],
   "options_page": "options.html",
-  "action": { "default_title": "食べログ 口コミ返信アシスタント", "default_icon": "icon.png" },
-  "icons": { "128": "icon.png" }
+  "action": {
+    "default_title": "食べログ 口コミ返信アシスタント",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
 }

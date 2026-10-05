@@ -65,7 +65,7 @@
     return findCards().map(card => {
       const r = parseTabelog(card.innerText)[0];
       if (!r) return null;
-      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, replied: !!r.reply } };
+      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, replied: !!r.reply, reply: r.reply || '' } };
     }).filter(Boolean);
   }
   function label(textarea, html) {
