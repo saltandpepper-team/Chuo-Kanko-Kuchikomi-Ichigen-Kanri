@@ -1004,7 +1004,7 @@ $('bulkBtn').addEventListener('click',async()=>{
 });
 
 // ---- ログイン（デモ用：IDとパスワードのハッシュで照合。本番はサーバー側で認証） ----
-const ACCOUNT_HASH = '6ab56aa52e16eabdda7801c7f73a656c250447be48ef168ff895d7aaa45ab362';
+const ACCOUNT_HASH = '1d27eaad223ed78d2f245bbdb23cb37ce6340f677429edefbadfcfc3fa3bde57';
 const STORES = ['山麓園','浅間茶屋'];
 const DEFAULT_STORE = '山麓園';
 async function sha256(t){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
