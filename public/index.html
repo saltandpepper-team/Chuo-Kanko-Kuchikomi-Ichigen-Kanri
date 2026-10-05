@@ -191,7 +191,6 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
       <span class="client">中央観光株式会社様</span>
       <h1 class="wordmark">口コミ一元管理_返信文自動生成</h1>
       <p>Google・Instagram・食べログ・トリップアドバイザーの口コミを1か所で管理</p>
-      <span class="demo-flag" style="align-self:start;margin-top:4px">デモ：表示中の口コミはすべて架空のサンプルです</span>
     </div>
     <div class="row">
       <span class="who">ログイン中：<b id="whoStore"></b></span>
@@ -244,69 +243,75 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
         <p class="hint">AIはここにある過去の返信の言葉づかい・長さ・署名に合わせて下書きします。本番では直近3ヶ月分の返信を自動で読み込みます。</p>
         <textarea id="styleBox"></textarea>
       </details>
+      <details class="settings">
+        <summary>連携設定（Google / Instagram）</summary>
+        <p class="hint">GoogleビジネスプロフィールとInstagramはAPI連携により口コミの自動取得・自動返信が行えます。食べログ・トリップアドバイザーは公式APIが無いため、返信文をコピーして管理画面に貼り付ける方式です。</p>
+        <div id="integrationPanel" style="display:flex;flex-direction:column;gap:10px"></div>
+      </details>
+      <details class="settings">
+        <summary>口コミを手動で追加（食べログ・トリップアドバイザー）</summary>
+        <p class="hint">食べログ・トリップアドバイザーは公式APIが無いため、管理画面で確認した口コミをここから登録してください。</p>
+        <form id="manualAddForm" style="display:flex;flex-direction:column;gap:8px;max-width:520px">
+          <label for="manualMedia">媒体</label>
+          <select id="manualMedia" style="padding:8px;border:1px solid var(--line);border-radius:8px">
+            <option value="tabelog">食べログ</option>
+            <option value="tripadvisor">トリップアドバイザー</option>
+          </select>
+          <label for="manualAuthor">投稿者名</label>
+          <input id="manualAuthor" type="text" required style="padding:8px;border:1px solid var(--line);border-radius:8px">
+          <label for="manualRating">評価（任意）</label>
+          <select id="manualRating" style="padding:8px;border:1px solid var(--line);border-radius:8px">
+            <option value="">なし（コメント）</option>
+            <option value="1">★1</option>
+            <option value="2">★2</option>
+            <option value="3">★3</option>
+            <option value="4">★4</option>
+            <option value="5">★5</option>
+          </select>
+          <label for="manualText">口コミ本文</label>
+          <textarea id="manualText" required style="min-height:100px"></textarea>
+          <button class="btn primary" type="submit" style="align-self:start">登録する</button>
+        </form>
+      </details>
     </section>
   </div>
 </div>
 
-<div class="overlay" id="overlay" hidden>
-  <div class="browser" role="dialog" aria-modal="true" aria-labelledby="bTitle">
-    <div class="bar"><div class="dots"><i></i><i></i><i></i></div><div class="url" id="bUrl"></div><button class="btn" id="bClose" type="button" style="padding:2px 10px;font-size:12px">閉じる</button></div>
-    <div class="bbody">
-      <div class="steps" id="bSteps"></div>
-      <div class="page">
-        <span class="mock-label">AIによる入力補助 ― 媒体の店舗管理画面（イメージ）</span>
-        <h3 id="bTitle" style="font-size:15px"></h3>
-        <div class="review-card" style="padding:10px"><p id="bReview" style="font-size:13px"></p></div>
-        <label for="bField" class="meta">返信欄</label>
-        <div class="fake-field" id="bField"></div>
-        <div class="send-zone" id="bSendZone">
-          <button class="btn primary" id="bSend" type="button" disabled>返信を送信する</button>
-          <span class="route" id="bNote">自動入力中…</span>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
 <div class="toast" id="toast" hidden></div>
 <div class="notify-stack" id="notifyStack" aria-live="polite"></div>
 
-<script type="module" src="/firebase-init.js"></script>
-<script>
+<script type="module">
+import { app } from "/firebase-init.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
+import { getFirestore, collection, query, where, onSnapshot, doc, getDoc, updateDoc, addDoc, serverTimestamp, arrayUnion } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
+import { getFunctions, httpsCallable } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-functions.js";
+
+const auth = getAuth(app);
+const db = getFirestore(app);
+const functions = getFunctions(app, 'asia-northeast1');
+
+const draftReplyFn = httpsCallable(functions, 'draftReply');
+const postGoogleReplyFn = httpsCallable(functions, 'postGoogleReply');
+const postInstagramReplyFn = httpsCallable(functions, 'postInstagramReply');
+const syncGoogleReviewsNowFn = httpsCallable(functions, 'syncGoogleReviewsNow');
+const syncInstagramCommentsNowFn = httpsCallable(functions, 'syncInstagramCommentsNow');
+const createGoogleConnectUrlFn = httpsCallable(functions, 'createGoogleConnectUrl');
+const createInstagramConnectUrlFn = httpsCallable(functions, 'createInstagramConnectUrl');
+const listGoogleLocationsFn = httpsCallable(functions, 'listGoogleLocations');
+const listInstagramAccountsFn = httpsCallable(functions, 'listInstagramAccounts');
+const setGoogleLocationFn = httpsCallable(functions, 'setGoogleLocation');
+const setInstagramAccountFn = httpsCallable(functions, 'setInstagramAccount');
+const getIntegrationStatusFn = httpsCallable(functions, 'getIntegrationStatus');
+
 const MEDIA = {
-  google:{label:'Google', auto:true, api:'Google Business Profile API'},
-  instagram:{label:'Instagram', auto:true, api:'Instagram Graph API'},
-  tabelog:{label:'食べログ', auto:false, host:'食べログ 店舗管理画面'},
-  tripadvisor:{label:'トリップアドバイザー', auto:false, host:'トリップアドバイザー 管理センター'}
+  google:{label:'Google', auto:true, api:'Google Business Profile API', consoleUrl:'https://business.google.com/'},
+  instagram:{label:'Instagram', auto:true, api:'Instagram Graph API', consoleUrl:'https://www.instagram.com/'},
+  tabelog:{label:'食べログ', auto:false, consoleUrl:'https://owner.tabelog.com/'},
+  tripadvisor:{label:'トリップアドバイザー', auto:false, consoleUrl:'https://www.tripadvisor.jp/Owners'}
 };
 const STATUS = {new:['未対応','s-new'], draft:['承認待ち','s-draft'], filled:['送信待ち','s-filled'], sent:['返信済み','s-sent']};
-
-const ALL = [
-  {id:1, media:'google', store:'山麓園', author:'山田 T.', rating:5, date:'9/26 10:12', lang:'ja', text:'家族4人で伺いました。ランチの海鮮丼がボリュームたっぷりで、子どもたちも大満足。スタッフの方が子ども用の取り皿をすぐに出してくださって助かりました。また来ます！'},
-  {id:2, media:'tabelog', store:'山麓園', author:'グルメ好き会社員', rating:3, date:'9/25 21:40', lang:'ja', text:'料理の味は良かったのですが、19時頃に入店して料理が出てくるまで40分近くかかりました。混雑していたとはいえ、一言あれば印象が違ったと思います。'},
-  {id:3, media:'tripadvisor', store:'浅間茶屋', author:'Emma R. (UK)', rating:5, date:'9/25 18:05', lang:'en', ja:'偶然見つけたお店でしたが、旅の一番の思い出になりました。日本語が少ししか話せない私たちにも、スタッフの方が一品ずつ丁寧に説明してくれました。焼き魚が絶品でした！', text:'We found this place by chance and it was the highlight of our trip. The staff explained every dish patiently even with our limited Japanese. The grilled fish was incredible!'},
-  {id:4, media:'instagram', store:'浅間茶屋', author:'@hana_trip', rating:null, date:'9/25 12:30', lang:'ja', text:'この前行ったけど夜景と料理どっちも最高だった✨ 予約ってDMでもできますか？'},
-  {id:5, media:'google', store:'浅間茶屋', author:'K. Sato', rating:2, date:'9/24 20:15', lang:'ja', text:'店員さんの対応がそっけなく、注文を2回聞き返されました。料理は普通です。'},
-  {id:6, media:'tabelog', store:'浅間茶屋', author:'旅する胃袋', rating:4, date:'9/24 13:02', lang:'ja', text:'観光の合間にランチで利用。地元の食材を使った定食がどれも丁寧な味付けでした。駐車場がもう少し広いと嬉しいです。'},
-  {id:7, media:'tripadvisor', store:'山麓園', author:'王 小姐 (台湾)', rating:4, date:'9/23 19:48', lang:'zh-TW', ja:'料理がとても美味しく、店員さんも親切でした。英語のメニューはありましたが、中国語もあるともっと便利です。', text:'餐點很好吃，店員也很親切。菜單有英文，但如果有中文就更方便了。'},
-  {id:11, media:'google', store:'山麓園', author:'Michael B. (USA)', rating:4, date:'9/25 09:40', lang:'en', ja:'食事処からの山の景色がきれいでした。天ぷら定食は軽くてサクサク。ランチ時は提供が少し遅めでしたが、スタッフはとても親切でした。', text:'Beautiful mountain views from the dining room. The tempura set was light and crispy. Service was a little slow at lunchtime, but the staff were very kind.'},
-  {id:12, media:'instagram', store:'山麓園', author:'@taipei_foodie', rating:null, date:'9/24 21:10', lang:'zh-TW', ja:'景色がとてもきれい！ベジタリアン向けのメニューはありますか？', text:'風景好美！請問有素食的選擇嗎？'},
-  {id:13, media:'google', store:'浅間茶屋', author:'李先生（上海）', rating:5, date:'9/24 16:30', lang:'zh-CN', ja:'抹茶もお団子もとても美味しく、店内は静かで雰囲気も良かったです。とてもおすすめです。', text:'抹茶和团子都很好吃，店里很安静，氛围很好，非常推荐。'},
-  {id:14, media:'instagram', store:'浅間茶屋', author:'@wanderlust.kyoto', rating:null, date:'9/23 11:05', lang:'en', ja:'とても居心地のいい茶屋！英語のメニューはありますか？', text:'Such a cozy tea house! Do you have an English menu?'},
-  {id:9, media:'instagram', store:'山麓園', author:'@mountain_lunch', rating:null, date:'9/24 18:22', lang:'ja', text:'紅葉の時期に行きたいです！駐車場は何台くらい停められますか？'},
-  {id:10, media:'google', store:'浅間茶屋', author:'N. Kobayashi', rating:5, date:'9/21 15:40', lang:'ja', text:'参拝の帰りに立ち寄りました。お茶とお団子で一息つけて、雰囲気もとても良かったです。', status:'sent', reply:'N. Kobayashi様\n参拝の帰りにお立ち寄りいただき、誠にありがとうございます。ゆっくりお過ごしいただけたとのこと、大変嬉しく思います。季節ごとの甘味もご用意しておりますので、またお越しくださいませ。\n浅間茶屋 スタッフ一同'},
-  {id:8, media:'google', store:'山麓園', author:'M. Ito', rating:5, date:'9/22 11:20', lang:'ja', text:'記念日で利用しました。デザートプレートにメッセージを入れていただき、妻がとても喜んでいました。', status:'sent', reply:'M. Ito様\n記念日という大切な日にご利用いただき、誠にありがとうございます。奥様に喜んでいただけたとのこと、スタッフ一同大変嬉しく思っております。またの節目にもぜひお越しくださいませ。\n山麓園 スタッフ一同'}
-];
-ALL.forEach(r=>{ r.status ??= 'new'; r.reply ??= ''; r.log ??= r.status==='sent'?['9/22 15:03　Google Business Profile API で返信を投稿']:[] });
-
-const INCOMING = [
-  {media:'tripadvisor', store:'山麓園', author:'Sarah J. (Australia)', rating:2, lang:'en', ja:'料理が出るまで30分近く待ち、理由の説明もありませんでした。おそばは美味しかったのですが、待ち時間で台無しになってしまいました。', text:'We waited almost 30 minutes for our food and nobody told us why. The soba was good, but the wait spoiled the experience.'},
-  {media:'tripadvisor', store:'浅間茶屋', author:'林先生 (香港)', rating:4, lang:'zh-TW', ja:'和菓子がとても繊細で、店員さんも丁寧でした。中国語のメニューがないのが残念です。', text:'日式甜點很精緻，店員很有禮貌。可惜沒有中文菜單。'},
-  {media:'google', store:'山麓園', author:'陈女士（北京）', rating:5, lang:'zh-CN', ja:'環境が美しく、サービスも行き届いていました。天ぷらが特に美味しかったです。また来ます！', text:'环境优美，服务很周到。天妇罗特别好吃，下次还会再来！'},
-  {media:'google', store:'山麓園', author:'T. Nakamura', rating:2, lang:'ja', text:'予約して行ったのに席の準備ができておらず、20分ほど入口で待たされました。料理は美味しかっただけに残念です。'},
-  {media:'tabelog', store:'浅間茶屋', author:'甘味めぐり', rating:3, lang:'ja', text:'お団子は美味しかったのですが、休日は注文してから出てくるまでかなり時間がかかりました。'},
-  {media:'instagram', store:'山麓園', author:'@yuki.gourmet', rating:null, lang:'ja', text:'ランチ美味しかったです！次は夜のコースも行ってみたい🍶'},
-  {media:'google', store:'浅間茶屋', author:'David L.', rating:5, lang:'en', text:'Great local food and very friendly staff. Highly recommend the set lunch.'}
-];
+const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）'};
+const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文'};
 
 const DEFAULT_STYLE = `【お手本1】
 山本様
@@ -317,20 +322,25 @@ const DEFAULT_STYLE = `【お手本1】
 ご意見をお寄せいただき、ありがとうございます。お料理の提供にお時間をいただいてしまい、大変申し訳ございませんでした。混雑時のご案内の仕方を見直し、スタッフ全員で共有いたしました。またの機会にお越しいただけましたら幸いです。
 スタッフ一同`;
 
-let reviews = [], incoming = [], currentStore = null;
-let selectedId = null, mf = 'all', sf = 'all', sample = null, busy = false;
+let reviews = [], currentStoreId = null, currentStore = null;
+let selectedId = null, mf = 'all', sf = 'all';
+let reviewsUnsub = null, firstSnapshot = true;
+const draftingIds = new Set();
+const pendingManualSend = new Set();
 const $ = id => document.getElementById(id);
-$('styleBox').value = DEFAULT_STYLE;
 
 function starsHtml(n){ if(n==null) return '<span class="meta">コメント</span>'; let s='<span class="stars" aria-label="評価'+n+'">'; for(let i=1;i<=5;i++) s+= i<=n?'★':'<span class="off">★</span>'; return s+'</span>'; }
 function mediaHtml(m){ return `<span class="media m-${m}">${MEDIA[m].label}</span>`; }
 function statusHtml(s){ const [t,c]=STATUS[s]; return `<span class="pill ${c}">${t}</span>`; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function now(){ const d=new Date(); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）'};
-const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文'};
+function fmtDate(v){
+  if(!v) return '';
+  const d = v instanceof Date ? v : new Date(v);
+  if(isNaN(d.getTime())) return String(v);
+  return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+}
 function langBadge(r){ return r.lang&&r.lang!=='ja' ? `<span class="lang-badge" title="${LANG[r.lang]}の口コミ">${LANG_SHORT[r.lang]||r.lang}</span>` : ''; }
-function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [t.trim(),''] : [p[0].trim(), p.slice(1).join('\n').trim()]; }
 function isLow(r){ return r.rating!=null && r.rating<=3; }
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3200); }
 
@@ -345,7 +355,7 @@ const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',tabelog:'var(--tb-bg)',
 function renderStats(){
   const todo=reviews.filter(r=>r.status!=='sent').length;
   const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
-  tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${reviews.length}<small>件</small></span><span class="todo">対応が必要 ${todo}件</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
+  tc.innerHTML=`<span class="lab">${currentStore||''}の口コミ（全媒体）</span><span class="big">${reviews.length}<small>件</small></span><span class="todo">対応が必要 ${todo}件</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
   $('mediaCards').innerHTML=Object.keys(MEDIA).map(m=>{
     const list=reviews.filter(r=>r.media===m);
     const rated=list.filter(r=>r.rating!=null);
@@ -368,7 +378,7 @@ function renderList(){
       <span class="body">
         <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${langBadge(r)}<span style="flex:1"></span>${statusHtml(r.status)}</span>
         <span class="excerpt">${esc(r.text)}</span>
-        <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
+        <span class="meta">${esc(r.author)}・${r.store}・${fmtDate(r.date)}</span>
       </span>
     </button>`).join('') : '<div class="empty">該当する口コミはありません</div>';
 }
@@ -376,187 +386,198 @@ function renderDetail(){
   const r=reviews.find(x=>x.id===selectedId);
   if(!r){ $('detail').innerHTML='<div class="empty">左の一覧から口コミを選んでください</div>'; return; }
   const m=MEDIA[r.media];
+  const drafting = draftingIds.has(r.id);
   const langNote = r.lang&&r.lang!=='ja' ? `<span class="pill lang-pill">${LANG[r.lang]}の口コミ → ${LANG[r.lang]}で返信</span>` : '';
-  const route = m.auto ? `承認すると ${m.api} で自動送信します` : `承認するとAIが${m.label}の管理画面を操作し、返信欄に入力します。送信ボタンは担当者が押します`;
+  const route = m.auto
+    ? `承認すると ${m.api} で自動送信します`
+    : `承認すると返信文をコピーし、${m.label}の管理画面を新しいタブで開きます。貼り付けて送信したら「送信済みにする」を押してください`;
   let actions='';
-  if(r.status==='sent'){ actions='<span class="pill s-sent">返信済み</span>'; }
-  else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button>`; }
-  else {
-    actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'AIで書き直す':'AIで下書き'}</button>
-      <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>`;
+  if(r.status==='sent'){
+    actions='<span class="pill s-sent">返信済み</span>';
+  } else if(pendingManualSend.has(r.id)){
+    actions=`<button class="btn primary" type="button" id="manualSentBtn">送信済みにする</button>`;
+  } else {
+    actions=`<button class="btn" type="button" id="draftBtn" ${drafting?'disabled':''}>${drafting?'作成中…':(r.reply?'AIで書き直す':'AIで下書き')}</button>
+      <button class="btn primary" type="button" id="approveBtn" ${r.reply&&r.reply.trim()&&!drafting?'':'disabled'}>${m.auto?'承認して送信':'コピーして管理画面を開く'}</button>`;
   }
   $('detail').innerHTML = `
     <div class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${statusHtml(r.status)}${langNote}</div>
     <div class="review-card">
-      <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
+      <span class="meta">${esc(r.author)}・${r.store}・${fmtDate(r.date)}</span>
       <p>${esc(r.text)}</p>
       ${r.ja?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${esc(r.ja)}</div>`:''}
     </div>
     ${isLow(r)&&r.status!=='sent'?'<div class="guard">低評価の口コミです。まとめて承認はできません。内容を1件ずつ確認してください</div>':''}
-    <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
-    <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
-    ${r.replyJa&&!r.drafting?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
+    <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'下書きです。必要なら直してから承認してください':'')}</span></div>
+    <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||drafting?'readonly':''} placeholder="${drafting?'作成中…':'「AIで下書き」を押すと、過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.reply||'')}</textarea>
+    ${r.replyJa?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
     <div class="actions">${actions}</div>
     <p class="route" style="margin:0">${r.status==='sent'?'':route}</p>
-    <div class="log">${r.log.length? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
+    <div class="log">${(r.log&&r.log.length)? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
   const box=$('replyBox');
-  box.addEventListener('input',()=>{ r.reply=box.value; const a=$('approveBtn'); if(a) a.disabled=!box.value.trim(); if(r.status==='new'&&box.value.trim()){ r.status='draft'; renderList(); renderStats(); } });
+  if(box){
+    let saveTimer=null;
+    box.addEventListener('input',()=>{
+      const val=box.value;
+      const a=$('approveBtn'); if(a) a.disabled=!val.trim();
+      clearTimeout(saveTimer);
+      saveTimer=setTimeout(()=>{
+        updateDoc(doc(db,'reviews',r.id), {
+          reply: val,
+          status: r.status==='new' && val.trim() ? 'draft' : r.status,
+          updatedAt: serverTimestamp(),
+        }).catch(err=>console.error('reply autosave failed', err));
+      }, 800);
+    });
+  }
   $('draftBtn')?.addEventListener('click',()=>draft(r));
   $('approveBtn')?.addEventListener('click',()=>approve(r));
-  $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
+  $('manualSentBtn')?.addEventListener('click',()=>confirmManualSent(r));
 }
 function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
 
-function buildPrompt(r){
-  const lang = LANG[r.lang]||'口コミと同じ言語';
-  return `あなたは観光地の飲食店「${r.store}」の口コミ返信担当です。下の「お手本」の言葉づかい・長さ・署名のスタイルに合わせて、口コミへの返信文を1つだけ書いてください。
-
-ルール:
-- ${lang}で書く${r.lang!=='ja'?'。返信の後に「---」だけの行を入れ、その下に日本語訳を付ける':''}
-- 口コミの具体的な内容に1つ以上触れる
-- 低評価の場合は、言い訳をせずにお詫びし、改善の姿勢を示す。できない約束はしない
-- 質問があれば丁寧に答えるか、確認方法を案内する（予約はお電話または公式サイトからと案内）
-- 誇張・絵文字・ハッシュタグは使わない。Instagramのコメントは3〜4文と短めにする
-- 前置きや説明は書かず、返信文だけを出力する
-
-媒体: ${MEDIA[r.media].label}
-投稿者: ${r.author}
-評価: ${r.rating==null?'なし（コメント）':r.rating+' / 5'}
-口コミ:
-${r.text}
-
-お手本:
-${$('styleBox').value.slice(0,4000)}`;
-}
-function fallbackDraft(r){
-  const sign=`${r.store} スタッフ一同`;
-  const nm=r.author.split(/ \(|（/)[0];
-  if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for the long wait and for not letting you know the reason. We have shared your comments with our whole team and will improve how we communicate with guests during busy times. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。長くお待たせしたうえ、理由もお伝えできず、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、混雑時のお客様へのご案内を改善してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
-  if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon.\n---\nコメントありがとうございます！英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
-  if(r.lang==='en') return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed your time with us, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。楽しい時間をお過ごしいただけたこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
-  if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！我們有提供素食餐點，詳情歡迎來電或於官方網站確認。期待您的光臨。\n---\nコメントありがとうございます！ベジタリアン向けのお料理もご用意しております。詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
-  if(r.lang==='zh-TW') return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡我們的餐點。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。お料理を気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`;
-  if(r.lang==='zh-CN') return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢我们的料理和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。お料理とお店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`;
-  if(isLow(r)) return `${r.author}様\nこの度はご来店いただき、またご意見をお寄せいただきありがとうございます。ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`;
-  if(r.media==='instagram') return `コメントありがとうございます！楽しんでいただけて嬉しいです。ご予約はお電話または公式サイトから承っております。またのお越しをお待ちしています。`;
-  return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`;
-}
-
-async function draft(r, silent){
-  if(r.drafting) return;
-  r.drafting=true; r.partial='';
+async function draft(r){
+  if(draftingIds.has(r.id)) return;
+  draftingIds.add(r.id);
   if(r.id===selectedId) renderDetail();
-  let text='';
   try{
-    if(!sample) throw {code:'unavailable'};
-    const res = await sample(buildPrompt(r), {modelTier:'quick', cache:false, onText:({text:t})=>{
-      r.partial=t;
-      if(r.id===selectedId){ const b=$('replyBox'); if(b) b.value=t; }
-    }});
-    text=res.text.trim();
-    r.log.push(`${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
+    await draftReplyFn({ reviewId: r.id });
   }catch(e){
-    text=fallbackDraft(r);
-    r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため）`);
-    if(e.code && e.code!=='unavailable' && !silent) toast('AIに接続できなかったため、定型文で下書きしました');
+    console.error('draftReply failed', e);
+    toast('AIによる下書き作成に失敗しました');
+  }finally{
+    draftingIds.delete(r.id);
+    if(r.id===selectedId) renderDetail();
   }
-  r.drafting=false; r.partial='';
-  const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
-  if(!silent) renderAll(); else if(r.id===selectedId) renderDetail();
-  return text;
 }
-/** 口コミを開いたとき、返信文がまだ無ければ自動で下書きする */
 function autoDraft(){
   const r=reviews.find(x=>x.id===selectedId);
-  if(r && r.status==='new' && !r.reply.trim() && !r.drafting) draft(r);
+  if(r && r.status==='new' && !(r.reply&&r.reply.trim()) && !draftingIds.has(r.id)) draft(r);
 }
 
 async function approve(r){
-  r.reply=$('replyBox').value.trim();
-  if(!r.reply) return;
+  const box=$('replyBox');
+  const reply = box ? box.value.trim() : (r.reply||'').trim();
+  if(!reply) return;
+  if(reply!==r.reply){
+    try{
+      await updateDoc(doc(db,'reviews',r.id), {
+        reply,
+        status: r.status==='new'?'draft':r.status,
+        updatedAt: serverTimestamp(),
+      });
+    }catch(e){ console.error(e); toast('返信文の保存に失敗しました'); return; }
+  }
   if(MEDIA[r.media].auto){
-    const btn=$('approveBtn'); btn.disabled=true; btn.textContent='送信中…';
-    r.log.push(`${now()}　承認（${currentStore}）`);
-    await new Promise(res=>setTimeout(res,900));
-    r.status='sent'; r.log.push(`${now()}　${MEDIA[r.media].api} で返信を投稿`);
-    toast(`${MEDIA[r.media].label}に返信を送信しました`);
-    renderAll();
+    const btn=$('approveBtn');
+    if(btn){ btn.disabled=true; btn.textContent='送信中…'; }
+    try{
+      const fn = r.media==='google' ? postGoogleReplyFn : postInstagramReplyFn;
+      await fn({ reviewId: r.id });
+      toast(`${MEDIA[r.media].label}に返信を送信しました`);
+    }catch(e){
+      console.error('post reply failed', e);
+      toast(e?.message?.includes('failed-precondition') ? `この店舗は${MEDIA[r.media].label}と連携されていません` : `${MEDIA[r.media].label}への送信に失敗しました`);
+      if(btn){ btn.disabled=false; btn.textContent='承認して送信'; }
+    }
   } else {
-    r.log.push(`${now()}　承認（${currentStore}）`);
-    openBrowser(r,false);
+    pendingManualSend.add(r.id);
+    try{ await navigator.clipboard.writeText(reply); }catch(e){ /* クリップボード不可の場合は手動コピーを促す */ }
+    window.open(MEDIA[r.media].consoleUrl, '_blank', 'noopener');
+    toast('返信文をコピーしました。管理画面に貼り付けて送信してください');
+    renderDetail();
   }
 }
-
-// simulated browser autofill
-let typingTimer=null;
-function openBrowser(r, already){
-  const m=MEDIA[r.media];
-  $('overlay').hidden=false;
-  $('bUrl').textContent = m.host+'／口コミ返信（ログイン済みセッション）';
-  $('bTitle').textContent = `${r.author} さんの口コミ（${r.store}）`;
-  $('bReview').textContent = r.text;
-  const field=$('bField'), send=$('bSend'), note=$('bNote'), zone=$('bSendZone');
-  const steps=['AIが管理画面を開いて読み取る','AIが口コミを照合（投稿者・本文）','AIが返信欄を見つけて入力','送信ボタンの手前で停止'];
-  const say=t=>{ note.textContent=t; };
-  const paint=i=>{ $('bSteps').innerHTML = steps.map((s,k)=>`<div class="step ${k<i?'done':k===i?'now':''}"><i>${k<i?'✓':k+1}</i><span>${s}</span></div>`).join('') + '<p class="hint" style="margin-top:8px">AIにできるのは「移動のためのクリック」と「返信欄への入力」だけです。送信・投稿ボタンはAIが押せない仕組みになっていて、最後の送信は担当者が押します</p>'; };
-  send.disabled=true; zone.classList.remove('ready'); field.textContent=''; field.classList.remove('typing');
-  send.onclick = ()=>{
-    r.status='sent'; r.log.push(`${now()}　担当者が${m.label}で送信ボタンを押して返信を投稿`);
-    closeBrowser(); toast(`${m.label}に返信を送信しました`); renderAll();
-  };
-  if(already){ paint(4); field.textContent=r.reply; send.disabled=false; zone.classList.add('ready'); note.textContent='入力済みです。内容を確認して送信してください'; send.focus(); return; }
-  paint(0); say('AIが画面を確認中…（口コミ一覧）');
-  setTimeout(()=>{ paint(1); say(`AIが「${r.author}」さんの口コミを見つけ、「この口コミに返信する」を押しました`);
-    setTimeout(()=>{ paint(2); say('AIが返信欄を見つけて入力しています…'); field.classList.add('typing');
-      const txt=r.reply; let i=0; const step=Math.max(1,Math.ceil(txt.length/90));
-      const reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
-      if(reduce){ field.textContent=txt; finish(); return; }
-      typingTimer=setInterval(()=>{ i+=step; field.textContent=txt.slice(0,i); if(i>=txt.length){ clearInterval(typingTimer); finish(); } },30);
-    },1400);
-  },1400);
-  function finish(){
-    field.classList.remove('typing'); paint(3);
-    setTimeout(()=>{ paint(4); send.disabled=false; zone.classList.add('ready'); note.textContent='AIが入力を終えました。内容を確認して送信ボタンを押してください';
-      if(r.status!=='filled'){ r.status='filled'; r.log.push(`${now()}　${m.label}の返信欄に自動入力（送信待ち）`); renderStats(); renderList(); renderDetail(); }
-      send.focus();
-    },500);
-  }
+async function confirmManualSent(r){
+  pendingManualSend.delete(r.id);
+  try{
+    await updateDoc(doc(db,'reviews',r.id), {
+      status:'sent',
+      log: arrayUnion(`${now()}　担当者が${MEDIA[r.media].label}で送信ボタンを押して返信を投稿`),
+      updatedAt: serverTimestamp(),
+    });
+    toast(`${MEDIA[r.media].label}に返信を送信しました`);
+  }catch(e){ console.error(e); toast('送信済みへの更新に失敗しました'); }
 }
-function closeBrowser(){ clearInterval(typingTimer); $('overlay').hidden=true; renderAll(); }
-$('bClose').onclick=closeBrowser;
-$('overlay').addEventListener('click',e=>{ if(e.target.id==='overlay') closeBrowser(); });
-document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('overlay').hidden) closeBrowser(); });
 
-// events
+// ---- 口コミ一覧・詳細の操作 ----
 $('filters').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; sf=b.dataset.f; renderFilters(); renderList(); });
 $('totalCard').addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('mediaCards').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; mf = mf===b.dataset.f ? 'all' : b.dataset.f; sf='all'; renderFilters(); renderStats(); renderList(); });
-$('list').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(!b) return; selectedId=+b.dataset.id; renderList(); renderDetail(); autoDraft(); });
-const API_NAME={google:'Google Business Profile API',instagram:'Instagram Graph API',tabelog:'エージェント（食べログ）',tripadvisor:'エージェント（トリップアドバイザー）'};
-function arrive(x){
-  const id=Math.max(0,...ALL.map(r=>r.id))+1;
-  const r={...x,id,date:now(),status:'new',reply:'',log:[`${now()}　${API_NAME[x.media]} から取得`]};
-  ALL.unshift(r); reviews.unshift(r);
-  notify(r);
-  return r;
-}
-$('fetchBtn').addEventListener('click',()=>{
-  if(!incoming.length){ toast('新しい口コミはありません'); return; }
-  const n=incoming.splice(0,incoming.length);
-  n.forEach(arrive);
-  toast(`新着の口コミを${n.length}件取得しました`); renderAll();
+$('list').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(!b) return; selectedId=b.dataset.id; renderList(); renderDetail(); autoDraft(); });
+
+$('fetchBtn').addEventListener('click', async ()=>{
+  $('fetchBtn').disabled=true;
+  try{
+    const results = await Promise.allSettled([syncGoogleReviewsNowFn(), syncInstagramCommentsNowFn()]);
+    const failed = results.filter(r=>r.status==='rejected').length;
+    toast(failed===2 ? '新着の取得に失敗しました（連携設定をご確認ください）' : '最新の口コミを確認しました');
+  }finally{
+    $('fetchBtn').disabled=false;
+  }
+});
+
+$('bulkBtn').addEventListener('click',async()=>{
+  const targets=reviews.filter(r=>r.status==='new' && !isLow(r) && r.rating!=null && !(r.reply&&r.reply.trim()));
+  if(!targets.length){ toast('下書きが必要な高評価の口コミはありません'); return; }
+  const b=$('bulkBtn'); b.disabled=true;
+  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i]); }
+  b.disabled=false; b.textContent='高評価の下書きをまとめて作成';
+  toast(`${targets.length}件の下書きを作成しました。内容を確認して承認してください`);
+});
+
+// 文体のお手本：編集するとFirestoreに保存し、次回以降のAI下書きに反映される
+let styleSaveTimer=null;
+$('styleBox').addEventListener('input',()=>{
+  if(!currentStoreId) return;
+  clearTimeout(styleSaveTimer);
+  styleSaveTimer=setTimeout(()=>{
+    updateDoc(doc(db,'stores',currentStoreId), { styleSample: $('styleBox').value }).catch(err=>console.error('styleSample save failed', err));
+  }, 800);
+});
+
+// ---- 口コミの手動登録（食べログ・トリップアドバイザーは公式APIが無いため） ----
+$('manualAddForm')?.addEventListener('submit', async e=>{
+  e.preventDefault();
+  if(!currentStoreId) return;
+  const media=$('manualMedia').value;
+  const author=$('manualAuthor').value.trim();
+  const ratingVal=$('manualRating').value;
+  const text=$('manualText').value.trim();
+  if(!author||!text){ toast('投稿者と本文を入力してください'); return; }
+  try{
+    await addDoc(collection(db,'reviews'), {
+      storeId: currentStoreId,
+      store: currentStore,
+      media,
+      externalId: null,
+      author,
+      rating: ratingVal ? Number(ratingVal) : null,
+      lang: 'ja',
+      text,
+      reply: '',
+      replyJa: '',
+      status: 'new',
+      date: new Date().toISOString(),
+      log: [`${now()}　スタッフが手動で登録`],
+      createdAt: serverTimestamp(),
+      updatedAt: serverTimestamp(),
+    });
+    e.target.reset();
+    toast('口コミを登録しました');
+  }catch(err){ console.error(err); toast('登録に失敗しました'); }
 });
 
 // ---- 通知 ----
-let notices=[], arrivalTimer=null, audioCtx=null;
+let notices=[], audioCtx=null;
 function unread(){ return notices.filter(n=>!n.read).length; }
 function renderBell(){
   const n=unread(), b=$('bellBadge');
   b.hidden=!n; b.textContent=n>99?'99+':n;
   document.title=(n?`(${n}) `:'')+'口コミ一元管理_返信文自動生成';
-  $('bellList').innerHTML = notices.length ? notices.map(x=>{ const r=ALL.find(a=>a.id===x.id); if(!r) return '';
+  $('bellList').innerHTML = notices.length ? notices.map(x=>{ const r=reviews.find(a=>a.id===x.id); if(!r) return '';
     return `<button type="button" class="bell-item ${x.read?'':'unread'}" data-nid="${r.id}">
-      <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${isLow(r)?'<span class="need">要確認</span>':''}<span style="flex:1"></span><span class="meta">${r.date}</span></span>
+      <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${isLow(r)?'<span class="need">要確認</span>':''}<span style="flex:1"></span><span class="meta">${fmtDate(r.date)}</span></span>
       <span class="ex">${esc(r.author)}：${esc(r.text)}</span></button>`; }).join('') : '<div class="bell-empty">新しい通知はありません</div>';
 }
 function beep(low){
@@ -573,7 +594,6 @@ function notify(r){
   renderBell();
   const low=isLow(r);
   const title=`新しい口コミ｜${MEDIA[r.media].label}${r.rating!=null?' ★'+r.rating:''}${r.lang&&r.lang!=='ja'?'（'+LANG[r.lang]+'）':''}`;
-  // 画面内の通知
   const el=document.createElement('button');
   el.type='button'; el.className='notify'+(low?' low':'');
   el.innerHTML=`<span class="icon" aria-hidden="true">口</span>
@@ -584,7 +604,6 @@ function notify(r){
   $('notifyStack').prepend(el);
   setTimeout(()=>el.remove(), low?15000:8000);
   beep(low);
-  // PCの通知（許可されている場合）
   try{
     if('Notification' in window && Notification.permission==='granted'){
       const n=new Notification((low?'【要確認】':'')+title,{body:`${r.store}・${r.author}：${r.text.slice(0,80)}`,tag:'review-'+r.id});
@@ -599,69 +618,180 @@ function openFromNotice(id){
 }
 $('bellBtn').addEventListener('click',()=>{ const p=$('bellPanel'); p.hidden=!p.hidden; $('bellBtn').setAttribute('aria-expanded',String(!p.hidden)); });
 document.addEventListener('click',e=>{ if(!e.target.closest('.bell-wrap')){ $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false'); } });
-$('bellList').addEventListener('click',e=>{ const b=e.target.closest('[data-nid]'); if(b) openFromNotice(+b.dataset.nid); });
+$('bellList').addEventListener('click',e=>{ const b=e.target.closest('[data-nid]'); if(b) openFromNotice(b.dataset.nid); });
 $('readAllBtn').addEventListener('click',()=>{ notices.forEach(n=>n.read=true); renderBell(); });
 function renderPcBtn(){
   const btn=$('pcNotifyBtn'), note=$('pcNotifyNote');
-  const demoNote='このデモ画面ではPCの通知を出せないため、画面内の通知と音でお見せしています。本番のアプリでは、ブラウザを閉じていてもPCに通知が届きます。';
-  if(!('Notification' in window) || Notification.permission==='denied'){ btn.disabled=true; note.textContent=demoNote; return; }
-  if(Notification.permission==='granted'){ btn.disabled=true; btn.textContent='PCの通知はオンです'; }
+  if(!('Notification' in window) || Notification.permission==='denied'){ btn.disabled=true; note.textContent='このブラウザでは通知を利用できません。'; return; }
+  if(Notification.permission==='granted'){ btn.disabled=true; btn.textContent='PCの通知はオンです'; note.textContent='新着の口コミが届くとPCに通知が表示されます。'; return; }
+  btn.disabled=false; btn.textContent='PCの通知もオンにする'; note.textContent='オンにすると、このアプリを見ていない時もPCの画面右上に通知が出ます。';
 }
 $('pcNotifyBtn').addEventListener('click',async()=>{
   try{ await Notification.requestPermission(); }catch(e){}
-  if(!('Notification' in window) || Notification.permission!=='granted'){
-    $('pcNotifyBtn').disabled=true;
-    $('pcNotifyNote').textContent='このデモ画面ではPCの通知を出せないため、画面内の通知でお見せしています。本番のアプリでは、ブラウザを閉じていてもPCに通知が届きます。';
-  }
   renderPcBtn();
 });
-$('bulkBtn').addEventListener('click',async()=>{
-  const targets=reviews.filter(r=>r.status==='new' && !isLow(r) && r.rating!=null);
-  if(!targets.length){ toast('下書きが必要な高評価の口コミはありません'); return; }
-  const b=$('bulkBtn'); b.disabled=true;
-  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i],true); renderFilters(); renderStats(); renderList(); }
-  b.disabled=false; b.textContent='高評価の下書きをまとめて作成';
-  toast(`${targets.length}件の下書きを作成しました。内容を確認して承認してください`); renderAll();
+
+// ---- 連携設定（Google / Instagram） ----
+function openOAuthPopup(url, media){
+  window.open(url, 'kuchikomi-oauth', 'width=520,height=720');
+  function onMsg(ev){
+    if(ev.data && ev.data.type==='kuchikomi-oauth' && ev.data.media===media){
+      window.removeEventListener('message', onMsg);
+      refreshIntegrationPanel();
+    }
+  }
+  window.addEventListener('message', onMsg);
+}
+async function refreshIntegrationPanel(){
+  const panel=$('integrationPanel');
+  if(!panel) return;
+  try{
+    const { data } = await getIntegrationStatusFn();
+    renderIntegrationPanel(data);
+  }catch(e){
+    console.error('getIntegrationStatus failed', e);
+    panel.innerHTML='<p class="hint">連携状況の取得に失敗しました</p>';
+  }
+}
+function renderIntegrationPanel(status){
+  const panel=$('integrationPanel');
+  const row = (media, label, info) => {
+    if(!info.connected){
+      return `<div class="row" style="justify-content:space-between"><span>${label}：未連携</span><button type="button" class="btn" data-connect="${media}">連携する</button></div>`;
+    }
+    const selected = media==='google' ? info.locationSelected : info.accountSelected;
+    if(!selected){
+      return `<div class="row" style="justify-content:space-between"><span>${label}：アカウント連携済み・対象の選択待ち</span><button type="button" class="btn" data-select="${media}">対象を選択</button></div>`;
+    }
+    return `<div class="row" style="justify-content:space-between"><span>${label}：連携済み${media==='instagram'&&info.pageName?`（${esc(info.pageName)}）`:''}</span><span class="pill s-sent">有効</span></div>`;
+  };
+  panel.innerHTML = `
+    ${row('google','Google', status.google)}
+    ${row('instagram','Instagram', status.instagram)}
+    <div id="integrationPicker"></div>`;
+  panel.querySelectorAll('[data-connect]').forEach(btn=>{
+    btn.addEventListener('click', async ()=>{
+      btn.disabled=true;
+      try{
+        const fn = btn.dataset.connect==='google' ? createGoogleConnectUrlFn : createInstagramConnectUrlFn;
+        const { data } = await fn();
+        openOAuthPopup(data.url, btn.dataset.connect);
+      }catch(e){ console.error(e); toast('連携URLの取得に失敗しました'); }
+      finally{ btn.disabled=false; }
+    });
+  });
+  panel.querySelectorAll('[data-select]').forEach(btn=>{
+    btn.addEventListener('click', ()=>showIntegrationPicker(btn.dataset.select));
+  });
+}
+async function showIntegrationPicker(media){
+  const picker=$('integrationPicker');
+  picker.innerHTML='<p class="hint">読み込み中…</p>';
+  try{
+    if(media==='google'){
+      const { data } = await listGoogleLocationsFn();
+      picker.innerHTML = data.locations.length
+        ? `<div class="filters" style="padding:8px 0">${data.locations.map(l=>`<button type="button" class="chip" data-location="${esc(l.name)}">${esc(l.title||l.name)}</button>`).join('')}</div>`
+        : '<p class="hint">選択できるロケーションが見つかりませんでした</p>';
+      picker.querySelectorAll('[data-location]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          btn.disabled=true;
+          try{ await setGoogleLocationFn({ locationName: btn.dataset.location }); toast('Googleロケーションを設定しました'); refreshIntegrationPanel(); }
+          catch(e){ console.error(e); toast('設定に失敗しました'); btn.disabled=false; }
+        });
+      });
+    } else {
+      const { data } = await listInstagramAccountsFn();
+      picker.innerHTML = data.accounts.length
+        ? `<div class="filters" style="padding:8px 0">${data.accounts.map(a=>`<button type="button" class="chip" data-page="${esc(a.pageId)}">${esc(a.pageName)}</button>`).join('')}</div>`
+        : '<p class="hint">連携できるInstagramアカウントが見つかりませんでした</p>';
+      picker.querySelectorAll('[data-page]').forEach(btn=>{
+        btn.addEventListener('click', async ()=>{
+          btn.disabled=true;
+          try{ await setInstagramAccountFn({ pageId: btn.dataset.page }); toast('Instagramアカウントを設定しました'); refreshIntegrationPanel(); }
+          catch(e){ console.error(e); toast('設定に失敗しました'); btn.disabled=false; }
+        });
+      });
+    }
+  }catch(e){ console.error(e); picker.innerHTML='<p class="hint">取得に失敗しました</p>'; }
+}
+
+// ---- ログイン／ログアウト ----
+async function enter(storeId){
+  currentStoreId = storeId;
+  let storeData = {};
+  try{
+    const storeSnap = await getDoc(doc(db,'stores',storeId));
+    storeData = storeSnap.exists() ? storeSnap.data() : {};
+  }catch(e){ console.error('store fetch failed', e); }
+  currentStore = storeData.name || storeId;
+  $('styleBox').value = storeData.styleSample || DEFAULT_STYLE;
+  $('whoStore').textContent = currentStore;
+  $('loginView').hidden=true; $('appView').hidden=false;
+  selectedId=null; mf='all'; sf='all';
+  notices=[]; renderBell(); renderPcBtn();
+
+  firstSnapshot=true;
+  if(reviewsUnsub) reviewsUnsub();
+  const q = query(collection(db,'reviews'), where('storeId','==',storeId));
+  reviewsUnsub = onSnapshot(q, snap=>{
+    reviews = snap.docs.map(d=>({ id:d.id, ...d.data() }));
+    if(selectedId==null && reviews[0]) selectedId=reviews[0].id;
+    if(!firstSnapshot){
+      snap.docChanges().forEach(ch=>{
+        if(ch.type==='added') notify({ id: ch.doc.id, ...ch.doc.data() });
+      });
+    }
+    firstSnapshot=false;
+    renderFilters(); renderStats(); renderList();
+    const editingReply = document.activeElement && document.activeElement.id==='replyBox';
+    if(!editingReply) renderDetail();
+  }, err=>{ console.error('reviews listener failed', err); toast('口コミの取得に失敗しました'); });
+
+  refreshIntegrationPanel();
+}
+function leave(){
+  if(reviewsUnsub){ reviewsUnsub(); reviewsUnsub=null; }
+  currentStoreId=null; currentStore=null; reviews=[]; notices=[];
+  document.title='口コミ一元管理_返信文自動生成';
+  $('notifyStack').innerHTML='';
+  $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
+}
+
+onAuthStateChanged(auth, async (user)=>{
+  if(!user){ leave(); return; }
+  try{
+    const token = await user.getIdTokenResult();
+    const storeId = token.claims.storeId;
+    if(!storeId){
+      toast('店舗アカウントが設定されていません。管理者にご連絡ください');
+      await signOut(auth);
+      return;
+    }
+    await enter(storeId);
+  }catch(e){
+    console.error('auth state handling failed', e);
+    toast('ログイン処理中にエラーが発生しました');
+  }
 });
 
-// ---- ログイン（デモ用：IDとパスワードのハッシュで照合。本番はサーバー側で認証） ----
-const ACCOUNTS = {
-  '28fb1fd0f055527eec8df4dbbf2f10afb53b37f896641b2895837f2fbee476f0':'山麓園',
-  '7b538f6ecf5e384876f82f1490104a0d700d8241e3f9c1598463394fe2fd61ac':'浅間茶屋'
-};
-async function sha256(t){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
-function enter(store){
-  currentStore=store;
-  reviews=ALL.filter(r=>r.store===store);
-  incoming=INCOMING.filter(r=>r.store===store && !ALL.some(a=>a.text===r.text));
-  selectedId=reviews[0]?.id ?? null; mf='all'; sf='all';
-  $('whoStore').textContent=store;
-  $('loginView').hidden=true; $('appView').hidden=false;
-  try{ sessionStorage.setItem('rd-store',store); }catch(e){}
-  notices=[]; renderBell(); renderPcBtn();
-  renderAll(); autoDraft();
-  // デモ：ログインから少しして新着が1件届く
-  clearTimeout(arrivalTimer);
-  arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll();
-    arrivalTimer=setTimeout(()=>{ if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); } }, 30000); } }, 12000);
-}
-$('loginForm').addEventListener('submit',async e=>{
+$('loginForm').addEventListener('submit', async e=>{
   e.preventDefault();
-  const id=$('loginId').value.trim().toLowerCase(), pw=$('loginPw').value, err=$('loginErr');
+  const id=$('loginId').value.trim(), pw=$('loginPw').value, err=$('loginErr');
   if(!id||!pw){ err.textContent='IDとパスワードを入力してください'; err.hidden=false; return; }
   $('loginBtn').disabled=true;
-  let store=null; try{ store=ACCOUNTS[await sha256(id+'\n'+pw)]; }catch(x){}
-  $('loginBtn').disabled=false;
-  if(!store){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
-  err.hidden=true; $('loginPw').value=''; enter(store);
+  try{
+    await signInWithEmailAndPassword(auth, id, pw);
+    err.hidden=true;
+  }catch(e){
+    err.textContent='IDまたはパスワードが違います';
+    err.hidden=false;
+    $('loginPw').value=''; $('loginPw').focus();
+  }finally{
+    $('loginBtn').disabled=false;
+  }
 });
-$('logoutBtn').addEventListener('click',()=>{
-  try{ sessionStorage.removeItem('rd-store'); }catch(e){}
-  clearTimeout(arrivalTimer); notices=[]; document.title='口コミ一元管理_返信文自動生成'; $('notifyStack').innerHTML='';
-  currentStore=null; reviews=[]; $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
-});
-try{ const s=sessionStorage.getItem('rd-store'); if(s && Object.values(ACCOUNTS).includes(s)) enter(s); }catch(e){}
-(async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
+$('logoutBtn').addEventListener('click',()=>{ signOut(auth).catch(e=>console.error(e)); });
 </script>
 
 </body></html>

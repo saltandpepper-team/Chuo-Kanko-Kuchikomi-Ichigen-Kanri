@@ -1,0 +1,16 @@
+{
+  "stores": [
+    {
+      "storeId": "sanrokuen",
+      "name": "山麓園",
+      "email": "sanrokuen@example.com",
+      "password": "置き換えてください（12文字以上を推奨）"
+    },
+    {
+      "storeId": "asama-chaya",
+      "name": "浅間茶屋",
+      "email": "asama-chaya@example.com",
+      "password": "置き換えてください（12文字以上を推奨）"
+    }
+  ]
+}

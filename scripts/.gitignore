@@ -1,0 +1,3 @@
+node_modules/
+store-accounts.json
+*.serviceaccount.json

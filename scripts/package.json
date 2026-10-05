@@ -1,0 +1,11 @@
+{
+  "name": "kuchikomi-admin-scripts",
+  "private": true,
+  "description": "運用用の管理スクリプト（Firebase Authenticationアカウントの発行など）",
+  "scripts": {
+    "provision": "node provision-store-users.js"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}

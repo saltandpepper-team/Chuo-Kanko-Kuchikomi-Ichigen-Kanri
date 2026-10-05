@@ -1,4 +1,6 @@
-// Firebase SDK initialization (Analytics only — this app stores no data in Firebase).
+// Firebase SDK initialization（App本体 + Analytics）。
+// 他のモジュール（index.html内のアプリ本体）はここから app を import して
+// Auth / Firestore / Functions を初期化する。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
 import { getAnalytics, isSupported } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js";
 
@@ -11,7 +13,7 @@ const firebaseConfig = {
   appId: "1:5788029924:web:3d79dc0e9428203e9fedf1",
 };
 
-const app = initializeApp(firebaseConfig);
+export const app = initializeApp(firebaseConfig);
 
 isSupported()
   .then((supported) => {

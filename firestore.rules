@@ -1,0 +1,67 @@
+rules_version = '2';
+
+// データモデル:
+//   stores/{storeId}            店舗マスタ（山麓園・浅間茶屋）。読み取りのみ、書き込みはCloud Functions/コンソールから。
+//   reviews/{reviewId}          口コミ本体。storeId で店舗にひもづく。
+//                               生成（外部SNSからの取得）はCloud Functions(Admin SDK)のみが行う。
+//                               スタッフは reply/replyJa/status/log の更新のみ可能。
+//   integrations/{storeId_media} OAuthトークン等。クライアントからは常に拒否（Cloud Functionsのみ利用）。
+//
+// 認証: Firebase Authenticationのカスタムクレーム storeId で店舗を判定する
+//       （scripts/provision-store-users.js でアカウント作成時に設定）。
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function myStore() {
+      return request.auth.token.storeId;
+    }
+
+    function isOwnStore(storeId) {
+      return signedIn() && storeId == myStore();
+    }
+
+    match /stores/{storeId} {
+      allow read: if isOwnStore(storeId);
+      // 店舗名などの基本情報は管理コンソール/Admin SDKのみが変更する。
+      // 文体のお手本（styleSample）だけはスタッフが画面から編集できる。
+      allow update: if isOwnStore(storeId)
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['styleSample']);
+      allow create, delete: if false;
+    }
+
+    match /reviews/{reviewId} {
+      allow read: if isOwnStore(resource.data.storeId);
+
+      // Google/Instagramは公式APIで自動取得するためCloud Functions(Admin SDK)のみが作成する。
+      // 食べログ／トリップアドバイザーは公式APIが無いため、スタッフが手動で登録できる。
+      allow create: if isOwnStore(request.resource.data.storeId)
+        && request.resource.data.media in ['tabelog', 'tripadvisor']
+        && request.resource.data.status == 'new'
+        && request.resource.data.reply == ''
+        && request.resource.data.replyJa == '';
+
+      // スタッフが変更してよいのは返信関連のフィールドのみ。storeId・media等の付け替えは禁止。
+      allow update: if isOwnStore(resource.data.storeId)
+        && request.resource.data.storeId == resource.data.storeId
+        && request.resource.data.media == resource.data.media
+        && request.resource.data.externalId == resource.data.externalId
+        && request.resource.data.diff(resource.data).affectedKeys()
+             .hasOnly(['reply', 'replyJa', 'status', 'log', 'updatedAt']);
+
+      allow delete: if false;
+    }
+
+    match /integrations/{doc} {
+      allow read, write: if false; // Cloud Functions(Admin SDK)専用。OAuthトークンを保持するため非公開。
+    }
+
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
