@@ -31,6 +31,8 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .login-card input:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 .login-card .btn.primary{justify-content:center;padding:11px;margin-top:12px}
 .login-err{margin:4px 0 0;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
+.store-pick-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
+.store-pick-list .btn{justify-content:center;padding:11px}
 .who{font-size:13px;color:var(--muted)} .who b{color:var(--brand)}
 .bell-wrap{position:relative}
 .bell{position:relative;padding:8px 10px}
@@ -181,6 +183,14 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
     <button class="btn primary" type="submit" id="loginBtn">ログイン</button>
     <p class="hint">対象店舗：山麓園／浅間茶屋</p>
   </form>
+</main>
+
+<main class="login" id="storePickView" hidden>
+  <div class="login-card">
+    <span class="client">中央観光株式会社様</span>
+    <h1 class="wordmark">店舗を選択してください</h1>
+    <div class="store-pick-list" id="storePickList"></div>
+  </div>
 </main>
 
 <div class="wrap" id="appView" hidden>
@@ -777,10 +787,11 @@ $('bulkBtn').addEventListener('click',async()=>{
 });
 
 // ---- ログイン（デモ用：IDとパスワードのハッシュで照合。本番はサーバー側で認証） ----
+// 値が配列の場合は、ログイン後に店舗選択画面を挟む
 const ACCOUNTS = {
-  '28fb1fd0f055527eec8df4dbbf2f10afb53b37f896641b2895837f2fbee476f0':'山麓園',
-  '7b538f6ecf5e384876f82f1490104a0d700d8241e3f9c1598463394fe2fd61ac':'浅間茶屋'
+  '1d27eaad223ed78d2f245bbdb23cb37ce6340f677429edefbadfcfc3fa3bde57':['山麓園','浅間茶屋']
 };
+const ALL_ACCOUNT_STORES = [...new Set(Object.values(ACCOUNTS).flat())];
 async function sha256(t){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
 function enter(store){
   currentStore=store;
@@ -802,22 +813,33 @@ function enter(store){
   };
   if(incoming.length) scheduleNextArrival();
 }
+function showStorePicker(stores){
+  $('loginView').hidden=true; $('appView').hidden=true;
+  $('storePickList').innerHTML = stores.map(s=>`<button class="btn primary" type="button" data-store="${esc(s)}">${esc(s)}</button>`).join('');
+  $('storePickView').hidden=false;
+}
+$('storePickView')?.addEventListener('click',e=>{
+  const b=e.target.closest('[data-store]'); if(!b) return;
+  $('storePickView').hidden=true; enter(b.dataset.store);
+});
 $('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const id=$('loginId').value.trim().toLowerCase(), pw=$('loginPw').value, err=$('loginErr');
   if(!id||!pw){ err.textContent='IDとパスワードを入力してください'; err.hidden=false; return; }
   $('loginBtn').disabled=true;
-  let store=null; try{ store=ACCOUNTS[await sha256(id+'\n'+pw)]; }catch(x){}
+  let match=null; try{ match=ACCOUNTS[await sha256(id+'\n'+pw)]; }catch(x){}
   $('loginBtn').disabled=false;
-  if(!store){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
-  err.hidden=true; $('loginPw').value=''; enter(store);
+  if(!match){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
+  err.hidden=true; $('loginPw').value='';
+  const stores=Array.isArray(match)?match:[match];
+  if(stores.length>1) showStorePicker(stores); else enter(stores[0]);
 });
 $('logoutBtn').addEventListener('click',()=>{
   try{ sessionStorage.removeItem('rd-store'); }catch(e){}
   clearTimeout(arrivalTimer); notices=[]; document.title='口コミ一元管理_返信文自動生成'; $('notifyStack').innerHTML='';
-  currentStore=null; reviews=[]; $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
+  currentStore=null; reviews=[]; $('appView').hidden=true; $('storePickView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
 });
-try{ const s=sessionStorage.getItem('rd-store'); if(s && Object.values(ACCOUNTS).includes(s)) enter(s); }catch(e){}
+try{ const s=sessionStorage.getItem('rd-store'); if(s && ALL_ACCOUNT_STORES.includes(s)) enter(s); }catch(e){}
 (async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
 </script>
 
