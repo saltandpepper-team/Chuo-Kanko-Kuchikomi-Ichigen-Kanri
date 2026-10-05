@@ -10,6 +10,7 @@ Google・Instagram・食べログ・トリップアドバイザーの口コミ�
 
 - `public/index.html` — アプリ本体（単一HTML・ビルド不要の静的サイト）
 - `public/firebase-init.js` — Firebase SDK（Analytics）の初期化
+- `extension/tabelog/` — 食べログ 口コミ返信アシスタント（Chrome拡張機能。新着の確認・AIでの返信文作成・返信欄への下書き入力。使い方は同フォルダの README.md）
 - `firebase.json` / `.firebaserc` — Firebase Hosting の設定
 - `.github/workflows/firebase-hosting-merge.yml` — `main` ブランチへのマージ時に自動デプロイするGitHub Actions
 
