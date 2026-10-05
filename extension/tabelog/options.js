@@ -30,8 +30,7 @@ async function renderStatus() {
     $('status').append(e);
   }
 }
-$('form').addEventListener('submit', async e => {
-  e.preventDefault();
+async function save() {
   const storeInfo = {};
   STORES.forEach(st => { storeInfo[st] = $('info-' + st).value.trim(); });
   await chrome.storage.local.set({
@@ -39,11 +38,16 @@ $('form').addEventListener('submit', async e => {
     openaiKey: $('openaiKey').value.trim(), model: $('model').value.trim() || 'gpt-4o-mini',
     interval: Math.max(10, +$('interval').value || 30), storeInfo, style: $('style').value
   });
+}
+$('form').addEventListener('submit', async e => {
+  e.preventDefault();
+  await save();
   $('saved').textContent = '保存しました';
   setTimeout(() => { $('saved').textContent = ''; }, 2500);
 });
 $('checkNow').addEventListener('click', async () => {
   const b = $('checkNow'); b.disabled = true; b.textContent = '確認中…';
+  await save(); // 入力した内容を保存してから確認する
   await chrome.runtime.sendMessage({ type: 'checkNow' });
   b.disabled = false; b.textContent = '今すぐ確認する';
   renderStatus();
