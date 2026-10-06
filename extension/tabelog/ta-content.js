@@ -22,8 +22,8 @@
     while (w.nextNode()) {
       const el = w.currentNode.parentElement;
       if (!el || el.closest('[data-ta-assist]') || el.closest('textarea')) continue;
-      // 返信の日付（「〜に返信」など）は口コミの区切りに使わない
-      if (DATE.test(w.currentNode.nodeValue) && !/返信|回答|respon/i.test(el.textContent)) els.push(el);
+      // 返信の日付（「〜に返信」など）や、画面に表示されていない日付は口コミの区切りに使わない
+      if (DATE.test(w.currentNode.nodeValue) && !/返信|回答|respon/i.test(el.textContent) && el.getClientRects().length && DATE.test(el.innerText || '')) els.push(el);
     }
     // 同じ口コミの中に投稿日が2回出る（閉じた表示と開いた表示）場合に備え、同じ日付・同じ投稿者の枠をまとめる
     const anchors = els.filter((el, i) => !els.some((o, k) => k !== i && o !== el && el.contains(o)));
@@ -78,7 +78,9 @@
   /** 閉じている口コミを開く（全文と返信欄を表示するため。送信はしない） */
   function expand(card) {
     if (card.querySelector('textarea')) return false;
-    const btn = card.querySelector('[aria-expanded="false"]');
+    let btn = card.querySelector('[aria-expanded="false"]');
+    // 右上の ∨ （文字のないアイコンだけのボタン）
+    if (!btn) btn = [...card.querySelectorAll('button,[role="button"]')].reverse().find(b => !b.innerText.trim() && b.querySelector('svg,img,i,span'));
     if (btn) { btn.click(); return true; }
     return false;
   }
