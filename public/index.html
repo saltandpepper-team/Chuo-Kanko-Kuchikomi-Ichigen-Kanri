@@ -885,6 +885,7 @@ window.addEventListener('message',e=>{
     const store=STORES.includes(x.store)?x.store:null;
     if(!store || !x.key || !x.text) return;
     const ex=ALL.find(a=>a.extId===x.key);
+    if(ex && x.rating!=null && ex.rating==null){ ex.rating=x.rating; changed=true; } // あとから読み取れた評価を反映
     if(ex){
       // 食べログ側で返信済みになったら、アプリでも返信済みにする
       if(x.replied && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply||ex.reply; ex.log.push(`${now()}　${MEDIA[ex.media].label}で返信済みを確認`); changed=true; }

@@ -251,6 +251,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'pageMode') return sendResponse({ mode: isCheck ? 'check' : 'assist' });
     if (msg.type === 'checkNow') return sendResponse(await runCheck());
     if (msg.type === 'appPage') {
+      if (msg.frames) await setStatus({ claudeFrames: { at: Date.now(), url: String(msg.url || '').slice(0, 200), frames: msg.frames.slice(0, 20) } });
       if (msg.isApp || /kuchikomi|%E5%8F%A3%E3%82%B3%E3%83%9F|口コミ/i.test(msg.url || '')) await setStatus({ appSeenAt: Date.now(), appUrl: String(msg.url || ''), appOk: !!msg.isApp });
       return sendResponse({ ok: true });
     }
