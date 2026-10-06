@@ -1,0 +1,78 @@
+{
+  "manifest_version": 3,
+  "name": "口コミ返信アシスタント（食べログ・トリップアドバイザー）",
+  "version": "1.2.4",
+  "description": "食べログ・トリップアドバイザーの新着口コミをAIが確認し、返信欄に返信文を下書きします。口コミは口コミ一元管理アプリにも表示されます。送信ボタンは担当者が押します。",
+  "permissions": [
+    "storage",
+    "alarms",
+    "notifications"
+  ],
+  "host_permissions": [
+    "https://owner.tabelog.com/*",
+    "https://api.openai.com/*",
+    "https://www.tripadvisor.jp/*",
+    "https://www.tripadvisor.com/*",
+    "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
+    "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
+    "https://claude.ai/*",
+    "https://*.claudeusercontent.com/*",
+    "file:///*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://owner.tabelog.com/*"
+      ],
+      "js": [
+        "parser.js",
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.tripadvisor.jp/reviews*",
+        "https://www.tripadvisor.com/reviews*"
+      ],
+      "js": [
+        "ta-content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
+        "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
+        "https://claude.ai/*",
+        "https://*.claudeusercontent.com/*"
+      ],
+      "js": [
+        "app-bridge.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": true,
+      "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "file:///*"
+      ],
+      "js": [
+        "app-bridge.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ],
+  "options_page": "options.html",
+  "action": {
+    "default_title": "口コミ返信アシスタント",
+    "default_icon": "icon.png"
+  },
+  "icons": {
+    "128": "icon.png"
+  }
+}

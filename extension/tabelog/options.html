@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<title>口コミ返信アシスタント 設定</title>
+<style>
+  :root{--brand:#372822;--bg:#F6F4F1;--surface:#fff;--ink:#2B211C;--muted:#6F635C;--line:#E5DFD9;--warn:#C5221F;--warn-soft:#FCE8E6;--ok:#137333;--ok-soft:#E6F4EA;--note:#FEF3D6;--note-ink:#8C5A00}
+  body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;padding:24px 16px}
+  main{max-width:720px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+  h1{font-size:20px;color:var(--brand);margin:0}
+  section{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px 18px;display:flex;flex-direction:column;gap:10px}
+  h2{font-size:15px;margin:0;color:var(--brand)}
+  label{font-size:12px;font-weight:700;color:var(--muted);display:flex;flex-direction:column;gap:4px}
+  input,textarea{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;color:var(--ink);background:#fff}
+  textarea{min-height:90px;resize:vertical}
+  .row{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+  .row label{flex:1;min-width:200px}
+  .note{background:var(--note);color:var(--note-ink);border-radius:8px;padding:8px 12px;font-size:12px;margin:0}
+  .hint{font-size:12px;color:var(--muted);margin:0}
+  button{font:inherit;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--ink);padding:8px 14px;border-radius:8px}
+  button.primary{background:var(--brand);border-color:var(--brand);color:#fff;font-weight:700}
+  button:disabled{opacity:.5;cursor:not-allowed}
+  #status{font-size:13px;white-space:pre-wrap}
+  .err{background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
+  .ok{color:var(--ok)}
+</style>
+</head>
+<body>
+<main>
+  <h1>口コミ返信アシスタント（食べログ・トリップアドバイザー）</h1>
+  <p class="note">入力した内容は、このPCのChromeの中にだけ保存されます（他のPCや他の人とは共有されません）。この拡張機能は返信欄への入力までを行い、返信（送信）ボタンは押しません。</p>
+
+  <form id="form">
+    <section>
+      <h2>食べログ店舗管理画面のログイン情報（自動ログイン用）</h2>
+      <div class="row">
+        <label>ログインID<input id="tbId" autocomplete="off" spellcheck="false"></label>
+        <label>パスワード<input id="tbPw" type="password" autocomplete="off"></label>
+      </div>
+      <p class="hint">ログインが切れているときに自動でログインします。画像認証などで止まった場合は通知が出るので、手動でログインしてください。</p>
+    </section>
+
+    <section style="margin-top:16px">
+      <h2>トリップアドバイザー</h2>
+      <div class="row">
+        <label>山麓園の場所ID<input id="ta-山麓園" inputmode="numeric" spellcheck="false"></label>
+        <label>浅間茶屋の場所ID<input id="ta-浅間茶屋" inputmode="numeric" spellcheck="false"></label>
+      </div>
+      <p class="hint">トリップアドバイザーの口コミ画面のURL（…/reviews?locationId=<b>この数字</b>&amp;…）です。空欄の店舗は確認しません。トリップアドバイザーは自動ログインしないので、このChromeで一度「ログイン状態を保持」にしてログインしておいてください。</p>
+    </section>
+
+    <section style="margin-top:16px">
+      <h2>AI（返信文の作成）</h2>
+      <div class="row">
+        <label>OpenAI APIキー<input id="openaiKey" type="password" autocomplete="off" spellcheck="false"></label>
+        <label style="max-width:200px">モデル<input id="model" spellcheck="false"></label>
+      </div>
+      <label>山麓園の店舗情報（AIが返信で使ってよい事実）<textarea id="info-山麓園"></textarea></label>
+      <label>浅間茶屋の店舗情報（AIが返信で使ってよい事実）<textarea id="info-浅間茶屋"></textarea></label>
+      <label>文体のお手本（過去の返信を貼り付け・任意）<textarea id="style" style="min-height:140px"></textarea></label>
+    </section>
+
+    <section style="margin-top:16px">
+      <h2>新着の確認</h2>
+      <label style="max-width:240px">確認する間隔（分・10分以上）<input id="interval" type="number" min="10" step="5"></label>
+      <div class="row"><button class="primary" type="submit">保存する</button><button type="button" id="checkNow">今すぐ確認する</button><span id="saved" class="ok"></span></div>
+    </section>
+  </form>
+
+  <section>
+    <h2>状態</h2>
+    <div id="status">まだ確認していません</div>
+    <div class="row"><button type="button" id="copyDiag">診断情報をコピー</button><span id="diagMsg" class="ok"></span></div>
+    <p class="hint">うまく読み取れないときに、このボタンでコピーした内容を担当者に送ってください（口コミの本文などが含まれます。パスワードやAPIキーは含まれません）。</p>
+  </section>
+</main>
+<script src="options.js"></script>
+</body>
+</html>

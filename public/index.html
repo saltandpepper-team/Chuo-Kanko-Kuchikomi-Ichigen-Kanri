@@ -31,9 +31,9 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .login-card input:focus-visible{outline:2px solid var(--brand);outline-offset:1px}
 .login-card .btn.primary{justify-content:center;padding:11px;margin-top:12px}
 .login-err{margin:4px 0 0;background:var(--warn-soft);color:var(--warn);border-radius:8px;padding:8px 12px;font-size:13px}
-.store-pick-list{display:flex;flex-direction:column;gap:10px;margin-top:12px}
-.store-pick-list .btn{justify-content:center;padding:11px}
-.who{font-size:13px;color:var(--muted)} .who b{color:var(--brand)}
+.who{font-size:13px;color:var(--muted);display:inline-flex;align-items:center;gap:6px} .who b{color:var(--brand)}
+.store-select{font:inherit;font-size:13px;font-weight:700;color:var(--brand);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;cursor:pointer}
+.store-select:hover{border-color:var(--accent)}
 .bell-wrap{position:relative}
 .bell{position:relative;padding:8px 10px}
 .badge{position:absolute;top:-6px;right:-6px;min-width:20px;height:20px;border-radius:999px;background:var(--warn);color:#fff;font-size:11px;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 5px;font-variant-numeric:tabular-nums}
@@ -131,6 +131,11 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .editor-head h3{font-size:15px}
 textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:10px;padding:12px;font:inherit;line-height:1.7;background:var(--surface);color:var(--ink);resize:vertical}
 .actions{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.instr{display:flex;flex-direction:column;gap:4px}
+.instr label{font-size:12px;font-weight:700;color:var(--muted)}
+.instr input{width:100%;font:inherit;font-size:13px;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)}
+.instr input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.instr input::placeholder{color:var(--muted);opacity:.8}
 .route{font-size:12px;color:var(--muted)}
 .ai-state{color:var(--brand)}
 .log{border-top:1px solid var(--line);padding-top:12px;display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted)}
@@ -158,6 +163,22 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
 .send-zone{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .send-zone .btn.primary{animation:none}
 .send-zone.ready .btn.primary{outline:4px solid #F39800;outline-offset:4px}
+.api-modal{background:var(--surface);border-radius:12px;width:min(720px,100%);box-shadow:var(--shadow);display:flex;flex-direction:column;max-height:calc(100% - 32px);overflow:hidden}
+.api-head{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:14px 18px;border-bottom:1px solid var(--line)}
+.api-head h2{font-size:16px;color:var(--brand)}
+.api-body{padding:16px 18px;overflow:auto;display:flex;flex-direction:column;gap:14px}
+.api-tabs{display:flex;gap:6px}
+.api-store{display:flex;flex-direction:column;gap:12px}
+.api-group{border:1px solid var(--line);border-radius:10px;padding:12px 14px;display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.api-group legend{font-weight:700;font-size:13px;padding:0 6px;display:flex;align-items:center;gap:6px}
+.api-field{display:flex;flex-direction:column;gap:4px;min-width:0}
+.api-field.wide{grid-column:1/-1}
+.api-field label{font-size:12px;font-weight:700;color:var(--muted)}
+.api-field input{font:inherit;font-size:13px;padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);min-width:0}
+.api-field input:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+.api-note{background:var(--wait-soft);color:var(--wait);border-radius:8px;padding:8px 12px;font-size:12px;margin:0}
+.api-foot{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;padding:12px 18px;border-top:1px solid var(--line)}
+@media (max-width:600px){.api-group{grid-template-columns:1fr}}
 .toast{position:fixed;left:50%;bottom:calc(24px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--surface);padding:10px 16px;border-radius:8px;font-size:13px;z-index:20;max-width:calc(100% - 32px)}
 @media (max-width:1100px){.summary{grid-template-columns:1fr}.total{flex-direction:row;align-items:center;flex-wrap:wrap;gap:12px}}
 @media (max-width:900px){.main{grid-template-columns:1fr}.total:hover{border-color:var(--brand)}
@@ -185,15 +206,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
   </form>
 </main>
 
-<main class="login" id="storePickView" hidden>
-  <div class="login-card">
-    <span class="client">中央観光株式会社様</span>
-    <h1 class="wordmark">店舗を選択してください</h1>
-    <div class="store-pick-list" id="storePickList"></div>
-  </div>
-</main>
-
-<div class="wrap" id="appView" hidden>
+<div class="wrap" id="appView" data-kuchikomi-app hidden>
   <header class="top">
     <div class="brand">
       <span class="client">中央観光株式会社様</span>
@@ -201,7 +214,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
       <p>Google・Instagram・食べログ・トリップアドバイザーの口コミを1か所で管理</p>
     </div>
     <div class="row">
-      <span class="who">ログイン中：<b id="whoStore"></b></span>
+      <span class="who"><label for="storeSelect">ログイン中：</label><select id="storeSelect" class="store-select" aria-label="表示する店舗"><option value="山麓園">山麓園</option><option value="浅間茶屋">浅間茶屋</option></select></span>
       <div class="bell-wrap">
         <button class="btn bell" id="bellBtn" type="button" aria-haspopup="true" aria-expanded="false" aria-label="通知">
           <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>
@@ -217,6 +230,9 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
         </div>
       </div>
       <button class="btn" id="logoutBtn" type="button">ログアウト</button>
+      <button class="btn bell" id="apiBtn" type="button" aria-haspopup="dialog" aria-label="API接続設定" title="API接続設定">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12.22 2h-.44a2 2 0 0 0-2 2v.18a2 2 0 0 1-1 1.73l-.43.25a2 2 0 0 1-2 0l-.15-.08a2 2 0 0 0-2.73.73l-.22.38a2 2 0 0 0 .73 2.73l.15.1a2 2 0 0 1 1 1.72v.51a2 2 0 0 1-1 1.74l-.15.09a2 2 0 0 0-.73 2.73l.22.38a2 2 0 0 0 2.73.73l.15-.08a2 2 0 0 1 2 0l.43.25a2 2 0 0 1 1 1.73V20a2 2 0 0 0 2 2h.44a2 2 0 0 0 2-2v-.18a2 2 0 0 1 1-1.73l.43-.25a2 2 0 0 1 2 0l.15.08a2 2 0 0 0 2.73-.73l.22-.39a2 2 0 0 0-.73-2.73l-.15-.08a2 2 0 0 1-1-1.74v-.5a2 2 0 0 1 1-1.74l.15-.09a2 2 0 0 0 .73-2.73l-.22-.38a2 2 0 0 0-2.73-.73l-.15.08a2 2 0 0 1-2 0l-.43-.25a2 2 0 0 1-1-1.73V4a2 2 0 0 0-2-2z"/><circle cx="12" cy="12" r="3"/></svg>
+      </button>
       <button class="btn" id="fetchBtn" type="button">新着を取得</button>
     </div>
   </header>
@@ -227,6 +243,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
     <a class="ql m-instagram" href="https://www.instagram.com/" target="_blank" rel="noopener noreferrer">Instagram<span aria-hidden="true">↗</span></a>
     <a class="ql m-tabelog" href="https://owner.tabelog.com/" target="_blank" rel="noopener noreferrer">食べログ<span aria-hidden="true">↗</span></a>
     <a class="ql m-tripadvisor" href="https://www.tripadvisor.jp/Owners" target="_blank" rel="noopener noreferrer">トリップアドバイザー<span aria-hidden="true">↗</span></a>
+    <span class="meta" id="tbLink" style="margin-left:auto">口コミ返信アシスタント（拡張機能）：未接続</span>
   </nav>
 
   <section class="summary" aria-label="媒体ごとの件数">
@@ -274,11 +291,30 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
     </div>
   </div>
 </div>
+<div class="overlay" id="apiOverlay" hidden>
+  <form class="api-modal" id="apiForm" role="dialog" aria-modal="true" aria-labelledby="apiTitle" autocomplete="off" novalidate>
+    <div class="api-head"><h2 id="apiTitle">API接続設定</h2><button class="btn" id="apiClose" type="button" style="padding:2px 10px;font-size:12px">閉じる</button></div>
+    <div class="api-body">
+      <p class="api-note">入力した認証情報は、このブラウザ（このPC）の中にだけ保存され、他のPCや他の人には共有されません。Client Secretやトークンをブラウザに置く方式は接続確認用です。本番運用ではサーバー（バックエンド）側で保管・通信してください。</p>
+      <div class="api-tabs" role="group" aria-label="設定する店舗" id="apiTabs"></div>
+      <div id="apiStores"></div>
+    </div>
+    <div class="api-foot">
+      <button class="btn" id="apiClear" type="button">この店舗の設定を削除</button>
+      <button class="btn primary" id="apiSave" type="submit">保存する</button>
+    </div>
+  </form>
+</div>
 <div class="toast" id="toast" hidden></div>
 <div class="notify-stack" id="notifyStack" aria-live="polite"></div>
 
 <script type="module" src="/firebase-init.js"></script>
 <script>
+// 本番（Firebase Hosting 上）ではサーバー経由で連携し、デモ用のサンプル口コミは表示しない
+const BACKEND_HOSTS = ['chuo-kanko-kuchikomi-ichigen-kanri.web.app','chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com'];
+// サーバー（docs/SETUP.md）の準備ができるまでは false のまま。true にすると本番URLでFirebaseログイン・サーバー連携になる
+const BACKEND_ENABLED = false;
+const BACKEND = BACKEND_ENABLED && BACKEND_HOSTS.includes(location.hostname);
 const MEDIA = {
   google:{label:'Google', auto:true, api:'Google Business Profile API'},
   instagram:{label:'Instagram', auto:true, api:'Instagram Graph API'},
@@ -331,14 +367,38 @@ const INCOMING = [
   {media:'tabelog', store:'浅間茶屋', author:'山歩き好き', rating:4, lang:'ja', text:'ハイキングの帰りに立ち寄りました。地元の食材を使った定食は優しい味で、山の景色を見ながらゆっくりできました。'}
 ];
 
-const DEFAULT_STYLE = `【お手本1】
-山本様
-この度はご来店いただき、誠にありがとうございます。ほうとう鍋や単品の囲炉裏焼きを存分にお楽しみいただけたご様子で、私共も大変嬉しく思います。築150年の古民家を活かした店内で、炭火の遠赤外線でじっくりと焼き上げるのが当店のこだわりです。河口湖駅からもアクセスしやすい場所にございますので、またのお越しを心よりお待ちしております。
-スタッフ一同
+if(BACKEND){ ALL.length=0; INCOMING.length=0; }
 
-【お手本2】
-ご意見をお寄せいただき、誠にありがとうございます。囲炉裏の炭火は高温になりやすく、ご案内が行き届かず申し訳ございませんでした。お客様に快適にお過ごしいただけるよう、配慮やご案内方法をスタッフ間で見直してまいります。またの機会にお越しいただけましたら幸いです。
-スタッフ一同`;
+const DEFAULT_STYLE = `【お手本1】山麓園・高評価の口コミへの返信
+ご投稿いただき、誠にありがとうございます。
+
+お店の雰囲気や名物のほうとう、単品のイカやカニの囲炉裏焼き、食後の焼きマシュマロまで存分にお楽しみいただけたご様子で、大変嬉しく拝読いたしました。
+
+当店のほうとう鍋は締めにしっかりお腹を満たしていただけるよう、大きめの鍋でたっぷりとご用意しております。セットの量感や追加注文に関するアドバイスも分かりやすく記載していただき、これからご来店されるお客様にとっても大変参考になります。
+
+また、囲炉裏の炭火による熱さにつきまして、貴重なご意見をありがとうございます。築150年の古民家の空間で炭火の強い遠赤外線を使って焼き上げるため、目の前はどうしても高温になります。お客様により快適にお食事を楽しんでいただけるよう、配慮やご案内方法を工夫してまいります。当店ではニジマスではなく旨味の詰まった岩魚（イワナ）をはじめ、串焼きの焼き方や食べ頃をスタッフから丁寧にお伝えすることを大切にしておりますので、楽しんでいただけて何よりです。
+
+当店は河口湖駅からお車やバスでアクセスしやすい場所にあり、日本の伝統的な食事の体験価値を感じていただける空間づくりを心がけております。
+
+また河口湖や富士山エリアへお越しの際は、ぜひお立ち寄りください。スタッフ一同、心よりお待ちしております。
+
+【お手本2】低評価・ご指摘のある口コミへの返信
+この度はご来店いただき、また貴重なご意見をお寄せいただき、誠にありがとうございます。
+
+せっかくお越しいただいたにもかかわらず、お料理のご提供までに長くお時間をいただき、その間のご案内も十分にできておりませんでしたこと、心よりお詫び申し上げます。お料理そのものはお気に召していただけたとのお言葉をいただいただけに、待ち時間で印象を損ねてしまいましたことを大変残念に思っております。
+
+当日は多くのお客様にお越しいただいておりましたが、それを理由にお客様へのご説明を欠いてよいものではございません。いただいたご意見はスタッフ全員で共有し、混雑時にはご注文の際におおよそのお待ち時間をお伝えするなど、ご案内の方法を見直してまいります。
+
+次にお越しいただく際には、ゆったりとお食事を楽しんでいただけるよう努めてまいります。またの機会をいただけましたら幸いです。
+
+【お手本3】質問を含む口コミ・コメントへの返信
+ご投稿いただき、誠にありがとうございます。
+
+お料理だけでなく、お店からの景色までお楽しみいただけたとのこと、スタッフ一同大変嬉しく拝読いたしました。季節ごとに表情を変える景色も、当店で過ごしていただく時間の一部として大切にしております。
+
+お問い合わせいただきましたご予約につきましては、お電話にて承っております。混み合う時期はお席が埋まりやすくなりますので、お早めのご予約をおすすめいたします。
+
+またお近くへお越しの際は、ぜひお立ち寄りください。スタッフ一同、心よりお待ちしております。`;
 
 let reviews = [], incoming = [], currentStore = null;
 let selectedId = null, mf = 'all', sf = 'all', sample = null, busy = false;
@@ -401,11 +461,13 @@ function renderDetail(){
   const m=MEDIA[r.media];
   const langNote = r.lang&&r.lang!=='ja' ? `<span class="pill lang-pill">${LANG[r.lang]}の口コミ → ${LANG[r.lang]}で返信</span>` : '';
   const route = m.auto ? `承認すると ${m.api} で自動送信します` : `承認するとAIが${m.label}の管理画面を操作し、返信欄に入力します。送信ボタンは担当者が押します`;
-  let actions='';
+  let actions='', instr='';
   if(r.status==='sent'){ actions='<span class="pill s-sent">返信済み</span>'; }
+  else if(r.status==='filled' && EXT_MEDIA.includes(r.media) && r.extId){ actions=`<button class="btn" type="button" id="tbCopyBtn">もう一度コピーして管理画面を開く</button><button class="btn primary" type="button" id="tbDoneBtn">${m.label}で送信した（返信済みにする）</button>`; }
   else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button>`; }
   else {
-    actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'AIで書き直す':'AIで下書き'}</button>
+    instr=`<div class="instr"><label for="instrBox">修正指示・希望のニュアンス（任意）</label><input type="text" id="instrBox" value="${esc(r.instr||'')}" placeholder="例：もっと短く / 感謝を強調 / 駐車場の案内を補足" ${r.drafting?'disabled':''}></div>`;
+    actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'指示を入れて書き直す':'AIで下書き'}</button>
       <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>`;
   }
   $('detail').innerHTML = `
@@ -418,6 +480,7 @@ function renderDetail(){
     <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
     <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
     ${r.replyJa&&!r.drafting?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
+    ${instr}
     <div class="actions">${actions}</div>
     <p class="route" style="margin:0">${r.status==='sent'?'':route}</p>
     <div class="log">${r.log.length? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
@@ -435,23 +498,50 @@ function renderDetail(){
       const ai=$('aiState'); if(ai) ai.textContent = r.reply&&r.status==='draft' ? 'AIの下書きです。必要なら直してから承認してください' : '';
     }
   });
-  $('draftBtn')?.addEventListener('click',()=>draft(r));
+  const ib=$('instrBox');
+  ib?.addEventListener('input',()=>{ r.instr=ib.value; });
+  ib?.addEventListener('keydown',e=>{ if(e.key==='Enter' && !e.isComposing){ e.preventDefault(); r.instr=ib.value; draft(r,false,ib.value); } });
+  $('draftBtn')?.addEventListener('click',()=>{ const v=$('instrBox')?.value ?? ''; r.instr=v; draft(r,false,v); });
   $('approveBtn')?.addEventListener('click',()=>approve(r));
   $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
+  $('tbCopyBtn')?.addEventListener('click',()=>copyAndOpenOwner(r));
+  $('tbDoneBtn')?.addEventListener('click',()=>{ r.status='sent'; r.log.push(`${now()}　担当者が${m.label}で返信を送信（返信済みに変更）`); toast('返信済みにしました'); renderAll(); });
 }
 function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
 
-function buildPrompt(r){
+/** 修正指示欄の入力値（表示中の口コミのときだけ画面から読む） */
+function readInstr(r){ const b=$('instrBox'); return (r && r.id===selectedId && b) ? b.value.trim() : (r?.instr||'').trim(); }
+function buildPrompt(r, instr){
+  instr = (instr ?? readInstr(r)).trim();
   const lang = LANG[r.lang]||'口コミと同じ言語';
-  return `あなたは観光地の飲食店「${r.store}」の口コミ返信担当です。下の「お手本」の言葉づかい・長さ・署名のスタイルに合わせて、口コミへの返信文を1つだけ書いてください。
+  const top = instr ? `【最重要の修正指示】ユーザーから以下の指定がありました。この指示を最優先して返信文を作成・書き直してください：『${instr.slice(0,500)}』
+この指示は、下の「構成」「ルール」「お手本」（長さ・段落構成・言葉づかいを含む）よりも優先します。食い違う場合は必ずこの指示に従ってください（ただし、返信する言語と、返信文だけを出力する形式は守る）。
+${r.reply.trim()?`
+現在の返信文（これを上の指示に沿って書き直す）:
+${r.reply.trim()}
+`:''}
+` : '';
+  const ig = r.media==='instagram';
+  const len = ig
+    ? (r.lang==='ja' ? '150〜250文字程度' : '日本語に換算して150〜250文字程度（英語なら60〜100語程度）')
+    : (r.lang==='ja' ? '300〜500文字程度' : '日本語に換算して300〜500文字程度（英語なら120〜200語程度）');
+  return `${top}あなたは観光地の飲食店「${r.store}」のオーナーとして口コミに返信する担当です。下の「お手本」の言葉づかい・丁寧さ・段落構成に合わせて、口コミへの返信文を1つだけ書いてください。短い定型文ではなく、読み応えのある丁寧な返信にしてください。
+
+構成（段落ごとに空行を1行入れて区切る）:
+1. 挨拶：投稿へのお礼
+2. 料理やサービスへの感想への感謝と補足：口コミで触れられている料理名・メニュー名（ほうとう、炭火の囲炉裏焼き、岩魚（イワナ）など）や設備・雰囲気を具体的に挙げ、お店のこだわりや背景を補足する
+3. 指摘点・ご意見への対応：ご指摘があれば、言い訳をせずにお詫びとお礼を述べ、理由の丁寧な説明と改善の姿勢を示す。質問があれば丁寧に答えるか、確認方法を案内する（予約はお電話で承っている旨を案内。公式サイトは予約不可、情報確認のみ）。ご指摘も質問もなければ、口コミの内容をもう一歩掘り下げて感謝を伝える
+4. アクセスや今後の抱負：お店として大切にしていること、これからの取り組み
+5. 結びの言葉：再来店のお誘いとスタッフ一同からの言葉
 
 ルール:
-- ${lang}で書く${r.lang!=='ja'?'。返信の後に「---」だけの行を入れ、その下に日本語訳を付ける':''}
-- 口コミの具体的な内容に1つ以上触れる
-- 低評価の場合は、言い訳をせずにお詫びし、改善の姿勢を示す。できない約束はしない
+- ${lang}で書く${r.lang!=='ja'?'。返信の後に「---」だけの行を入れ、その下に日本語訳を付ける（日本語訳も同じ段落構成にする）':''}
+- 長さは${len}${instr?'（【最重要の修正指示】に長さ・構成の指定があればそちらを優先）':''}${ig?'（Instagramのコメントへの返信のため、上の構成を3段落ほどにまとめる）':''}
+- 口コミで触れられている具体的な内容・メニュー名・設備には必ず詳しく言及する
+- お店の事実（メニュー・設備・建物・アクセスなど）は、口コミに書かれていることと、「${r.store}」のお手本に書かれていることだけを使う。どちらにもない事実や、他店舗のお手本にしかない事実は書かない
+- できない約束はしない
 - 質問があれば丁寧に答えるか、確認方法を案内する（予約はお電話で承っている旨を案内。公式サイトは予約不可、情報確認のみ）
-- 誇張・ハッシュタグは使わない。Google・食べログ・トリップアドバイザーは絵文字を使わず丁寧な文体にする
-- Instagramのコメントは3〜4文と短めにし、お店の雰囲気に合う絵文字を1〜2個ほど添えて親しみやすい文体にする
+- 誇張・絵文字・ハッシュタグは使わない
 - 前置きや説明は書かず、返信文だけを出力する
 
 媒体: ${MEDIA[r.media].label}
@@ -461,7 +551,9 @@ function buildPrompt(r){
 ${r.text}
 
 お手本:
-${$('styleBox').value.slice(0,4000)}`;
+${$('styleBox').value.slice(0,4000)}${instr?`
+
+【再確認】上の【最重要の修正指示】『${instr.slice(0,500)}』を必ず反映した返信文だけを出力してください。`:''}`;
 }
 // 口コミ本文を日本語で読み取るための文字列（外国語の場合はAI翻訳済みのr.jaを使う）
 function jaText(r){ return r.lang==='ja' ? r.text : (r.ja||r.text); }
@@ -546,81 +638,156 @@ function fallbackDraft(r){
   const sign=`${r.store} スタッフ一同`;
   const nm=r.author.split(/ \(|（/)[0];
   if(CUSTOM_REPLIES[r.id]) return CUSTOM_REPLIES[r.id];
-  if(r.lang==='en' && isLow(r)) return `Dear ${nm},\nThank you for your feedback, and we sincerely apologize for serving the wrong dish and for the confusion it caused. We have shared your comments with our whole team and will double-check orders more carefully before they reach the table. We hope to have the chance to welcome you again.\n${r.store} Staff\n---\n${nm}様\nご意見をお寄せいただきありがとうございます。ご注文と異なる料理をお出ししてしまい、ご迷惑をおかけし大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、提供前の確認を徹底してまいります。またお迎えできる機会をいただけましたら幸いです。\n${sign}`;
-  if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your comment! 😊 Yes, we have an English menu available, so please feel free to ask our staff. We look forward to seeing you soon!\n---\nコメントありがとうございます！😊 英語のメニューをご用意していますので、お気軽にスタッフへお声がけください。お会いできるのを楽しみにしております。`;
-  if(r.lang==='en'){
-    const hi=posHighlight(r); const enjoy=hi?hi.en:'your time with us';
-    if(r.media==='google'){
-      const blurb=STORE_BLURB_EN[r.store]||STORE_BLURB_EN_DEFAULT;
-      const blurbJa=STORE_BLURB_JA[r.store]||STORE_BLURB_JA_DEFAULT;
-      const enBody=`Dear ${nm},\n\nThank you so much for taking the time to share your experience with us.\n\nWe are delighted that you enjoyed ${enjoy} during your visit. ${blurb}\n\nWe hope to welcome you back again on your next visit to Japan.\n\n${r.store} Staff`;
-      const jaBody=`${nm}様\n\nこの度は、ご感想をお寄せいただき誠にありがとうございます。\n\nご滞在中に${hi?hi.ja:'お食事'}をお楽しみいただけたとのこと、大変嬉しく思います。${blurbJa}\n\n次回日本にお越しの際も、ぜひまたお立ち寄りください。\n\n${sign}`;
-      return `${enBody}\n---\n${jaBody}`;
-    }
-    return `Dear ${nm},\nThank you so much for your kind review. We are delighted that you enjoyed ${enjoy}, and we hope to welcome you again on your next visit to Japan.\n${r.store} Staff\n---\n${nm}様\n温かいレビューをありがとうございます。${hi?hi.ja+'を':''}楽しんでいただけたとのこと、大変嬉しく思います。また日本にお越しの際はぜひお立ち寄りください。\n${sign}`;
-  }
-  if(r.lang==='zh-TW' && r.media==='instagram' && /窗邊|富士山/.test(r.text) && /预约|預約/.test(r.text)) return `謝謝您的留言！😊 能看到富士山的窗邊座位很受歡迎，建議提前致電預約，我們會盡量為您安排。期待您的光臨！\n---\nコメントありがとうございます！😊 富士山が見える窓際のお席は人気がございますので、お電話から早めのご予約をおすすめしております。お越しをお待ちしております。`;
-  if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！😊 詳情歡迎來電或於官方網站確認。期待您的光臨！\n---\nコメントありがとうございます！😊 詳しくはお電話または公式サイトでご確認ください。お越しをお待ちしております。`;
-  if(r.lang==='zh-TW'){
-    const hi=posHighlight(r);
-    if(r.media==='google'){
-      const blurb=STORE_BLURB_ZH[r.store]||STORE_BLURB_ZH_DEFAULT;
-      const blurbJa=STORE_BLURB_JA[r.store]||STORE_BLURB_JA_DEFAULT;
-      const zhBody=`${nm}您好，\n\n非常感謝您撥冗分享這次的用餐體驗。\n\n很高興您喜歡${hi?hi.zh:'我們的餐點'}。${blurb}\n\n期待您再次光臨。\n\n${r.store} 全體員工`;
-      const jaBody=`${nm}様\n\nこの度は、お食事のご感想をお寄せいただき誠にありがとうございます。\n\n${hi?hi.ja:'お料理'}をお楽しみいただけたとのこと、大変嬉しく思います。${blurbJa}\n\nまたのご来店を心よりお待ちしております。\n\n${sign}`;
-      return `${zhBody}\n---\n${jaBody}`;
-    }
-    return `${nm}您好，\n感謝您的評價與寶貴意見。很高興您喜歡${hi?hi.zh:'我們的餐點'}。關於中文菜單，我們會積極研究改進。期待您再次光臨。\n${r.store} 全體員工\n---\n${nm}様\nご評価と貴重なご意見をありがとうございます。${hi?hi.ja+'を':'お料理を'}気に入っていただけて嬉しく思います。中国語のメニューについては前向きに検討いたします。またのご来店をお待ちしております。\n${sign}`;
-  }
-  if(r.lang==='zh-CN'){
-    const hi=posHighlight(r);
-    if(r.media==='google'){
-      const blurb=STORE_BLURB_ZH[r.store]||STORE_BLURB_ZH_DEFAULT;
-      const blurbJa=STORE_BLURB_JA[r.store]||STORE_BLURB_JA_DEFAULT;
-      const zhBody=`${nm}您好，\n\n非常感谢您抽空分享这次的用餐体验。\n\n很高兴您喜欢${hi?hi.zh:'我们的料理'}。${blurb}\n\n期待您下次再来，我们会用心为您服务。\n\n${r.store} 全体员工`;
-      const jaBody=`${nm}様\n\nこの度は、お食事のご感想をお寄せいただき誠にありがとうございます。\n\n${hi?hi.ja:'お料理'}をお楽しみいただけたとのこと、大変嬉しく思います。${blurbJa}\n\nまたのご来店を心よりお待ちしております。\n\n${sign}`;
-      return `${zhBody}\n---\n${jaBody}`;
-    }
-    return `${nm}您好，\n非常感谢您的好评！很高兴您喜欢${hi?hi.zh:'我们的料理'}和店里的氛围。期待您下次再来，我们会用心为您服务。\n${r.store} 全体员工\n---\n${nm}様\n温かいご評価をありがとうございます。${hi?hi.ja+'と':'お料理と'}お店の雰囲気を気に入っていただけて大変嬉しく思います。またのお越しを心よりお待ちしております。\n${sign}`;
-  }
-  if(isLow(r)){
-    const neg=negHighlight(r);
-    if(r.media==='google') return googleLongApology(r, neg);
-    return `${r.author}様\nこの度はご来店、また貴重なご意見をお寄せいただき誠にありがとうございます。${neg?neg.ja+'につきまして、':''}ご不快な思いをおかけし、大変申し訳ございませんでした。いただいた内容はスタッフ全員で共有し、改善に努めてまいります。またの機会にお越しいただけましたら幸いです。\n${sign}`;
-  }
-  if(r.media==='instagram' && /駐車場/.test(r.text)) return `コメントありがとうございます🍁 紅葉の時期は山麓園からの景色も一段ときれいで、私たちもおすすめのシーズンです。駐車場は普通車20台分ご用意しておりますが、紅葉シーズンの土日祝は満車になることがございますので、少し早めのご来店がおすすめです。またのお越しをお待ちしております😊`;
-  if(r.media==='instagram' && /予約/.test(r.text) && /DM|ＤＭ/i.test(r.text)) return `コメントありがとうございます😊 恐れ入りますが、確実にご案内できるよう、ご予約はお電話にて承っております。DMですと確認のお時間をいただいたり、行き違いが生じる場合がございますので、ご了承くださいませ🙏 またのお越しをお待ちしております。`;
-  if(r.media==='instagram' && /囲炉裏.?焼き|囲炉裏焼/.test(r.text)) return `コメントありがとうございます🙇 ほうとう鍋をお楽しみいただけて何よりです。単品の囲炉裏焼きもイカやカニなど種類がございますので、次回はぜひご賞味ください。ご予約はお電話からお気軽にどうぞ。またのお越しをお待ちしております！`;
-  if(r.media==='instagram' && /[？?]/.test(r.text)) return `コメントありがとうございます😊 ご質問の件は、恐れ入りますがお電話または公式サイトからご確認いただけますと幸いです。またのお越しをお待ちしております。`;
-  if(r.media==='instagram') return `コメントありがとうございます！楽しんでいただけて嬉しいです😊 ご予約はお電話にて承っております。またのお越しをお待ちしています！`;
-  if(/ほうとう/.test(r.text) && /子ども/.test(r.text)){
-    if(r.media==='google') return googleLongPositive(r, posHighlight(r), 'また、囲炉裏焼きや焼きマシュマロもお子様に大変喜んでいただけたご様子で、私共も嬉しく拝見いたしました。');
-    return `${r.author}様\nご家族でのご来店、誠にありがとうございます。ほうとう鍋や囲炉裏焼きを皆様で楽しんでいただけたご様子で、焼きマシュマロもお子様に喜んでいただけて何よりです。またのご家族でのお越しを心よりお待ちしております。\n${sign}`;
-  }
-  {
-    const hi=posHighlight(r);
-    if(r.media==='google') return googleLongPositive(r, hi);
-    return `${r.author}様\nこの度はご来店いただき、誠にありがとうございます。${hi?hi.ja+'を':''}お楽しみいただけたとのこと、スタッフ一同大変嬉しく思っております。またのお越しを心よりお待ちしております。\n${sign}`;
-  }
+  if(r.lang==='en' && isLow(r)) return `Dear ${nm},
+
+Thank you very much for taking the time to visit ${r.store} and to share your honest feedback with us.
+
+We sincerely apologize for the long wait for your meal, and for not letting you know the reason while you were waiting. We are glad to hear that you enjoyed the food itself, which makes it all the more regrettable that the wait spoiled your experience. Even on busy days, keeping our guests informed is something we should never neglect.
+
+We have shared your comments with our whole team, and we will review how we communicate with guests during busy times, such as letting you know the expected waiting time when you order. We hope to have another chance to welcome you, and to make your next visit a truly relaxing one.
+
+${r.store} Staff
+---
+${nm}様
+
+この度は${r.store}にお越しいただき、また率直なご意見をお寄せいただき、誠にありがとうございます。
+
+お料理のご提供までに長くお待たせしたうえ、その理由もお伝えできず、大変申し訳ございませんでした。お料理そのものはお楽しみいただけたとのことで、それだけに待ち時間でお食事の印象を損ねてしまいましたことを大変残念に思っております。混雑している日であっても、お客様へのご案内を欠かすことがあってはならないと考えております。
+
+いただいた内容はスタッフ全員で共有し、ご注文の際にお待ち時間の目安をお伝えするなど、混雑時のご案内の方法を見直してまいります。またお迎えできる機会をいただけましたら、ゆったりとお過ごしいただけるよう努めてまいります。
+
+${sign}`;
+  if(r.lang==='en' && r.media==='instagram') return `Thank you so much for your lovely comment! We are very happy to hear that you felt at home with us.
+
+Yes, we have an English menu available, so please feel free to ask our staff when you visit. We will be glad to explain each dish and help you choose.
+
+We look forward to welcoming you soon.
+---
+温かいコメントをありがとうございます！居心地よく感じていただけたとのこと、大変嬉しく思います。
+
+英語のメニューをご用意しておりますので、ご来店の際はお気軽にスタッフへお声がけください。お料理の内容もひとつずつご説明いたします。
+
+お会いできるのを楽しみにしております。`;
+  if(r.lang==='en') return `Dear ${nm},
+
+Thank you very much for visiting ${r.store} and for taking the time to write such a kind review.
+
+We are truly delighted to hear that you enjoyed your meal and the time you spent with us. Our staff take great care in explaining each dish so that guests from abroad can enjoy Japanese cuisine with confidence, and your words are a great encouragement to the whole team. We will keep working to make every visit a comfortable and memorable one.
+
+We hope you will stop by again on your next trip to Japan. All of our staff look forward to welcoming you back.
+
+${r.store} Staff
+---
+${nm}様
+
+この度は${r.store}にお越しいただき、また温かいレビューをお寄せいただき、誠にありがとうございます。
+
+お食事と当店でのひとときをお楽しみいただけたとのこと、大変嬉しく拝読いたしました。海外からお越しのお客様にも安心して日本の食事を楽しんでいただけるよう、スタッフがお料理をひとつずつご説明することを大切にしておりますので、いただいたお言葉はスタッフ一同の大きな励みになります。これからも、快適で思い出に残るひとときをお過ごしいただけるよう努めてまいります。
+
+また日本へお越しの際は、ぜひお立ち寄りください。スタッフ一同、心よりお待ちしております。
+
+${sign}`;
+  if(r.lang==='zh-TW' && r.media==='instagram') return `謝謝您的留言！很高興您喜歡這裡。
+
+關於您的詢問，詳情歡迎來電確認，我們會盡力為您安排。
+
+期待您的光臨。
+---
+コメントありがとうございます！気に入っていただけて大変嬉しく思います。
+
+お問い合わせの件は、詳しくはお電話でご確認ください。できる限りご希望に沿えるようご案内いたします。
+
+お越しをお待ちしております。`;
+  if(r.lang==='zh-TW') return `${nm}您好，
+
+非常感謝您光臨${r.store}，並在百忙之中留下寶貴的評價。
+
+很高興您喜歡我們的餐點，也感謝您對店員服務的肯定。我們每天都用心準備每一道料理，您的鼓勵是全體員工最大的動力。
+
+關於中文菜單的建議，我們非常感謝。為了讓來自各地的客人都能更安心地點餐，我們會積極研究改進。期待您再次光臨，我們會以更好的服務迎接您。
+
+${r.store} 全體員工
+---
+${nm}様
+
+この度は${r.store}にお越しいただき、また貴重なご評価をお寄せいただき、誠にありがとうございます。
+
+お料理を気に入っていただけたこと、またスタッフの対応にもお褒めの言葉をいただき、大変嬉しく思います。毎日一品一品心を込めてご用意しておりますので、いただいたお言葉はスタッフ一同の大きな励みになります。
+
+中国語のメニューについてのご提案もありがとうございます。さまざまな国からお越しのお客様に安心してご注文いただけるよう、前向きに検討してまいります。またのご来店を、より良いおもてなしでお待ちしております。
+
+${sign}`;
+  if(r.lang==='zh-CN') return `${nm}您好，
+
+非常感谢您光临${r.store}，并留下如此温暖的好评。
+
+很高兴您喜欢我们的料理和店里的氛围。我们希望每一位客人都能在这里静下心来，慢慢享受日本的饮食与时光，您的认可是全体员工最大的鼓励。
+
+今后我们也会继续用心准备每一道料理，努力让您的每一次到访都留下美好的回忆。期待您下次再来，我们会用心为您服务。
+
+${r.store} 全体员工
+---
+${nm}様
+
+この度は${r.store}にお越しいただき、また温かいご評価をお寄せいただき、誠にありがとうございます。
+
+お料理とお店の雰囲気を気に入っていただけて、大変嬉しく拝読いたしました。お客様一人ひとりに落ち着いた空間で日本の食事とひとときをゆっくりお楽しみいただくことを大切にしておりますので、いただいたお言葉はスタッフ一同の大きな励みになります。
+
+これからも一品一品を心を込めてご用意し、ご来店のたびに良い思い出を持ち帰っていただけるよう努めてまいります。またのお越しを心よりお待ちしております。
+
+${sign}`;
+  if(isLow(r)) return `${r.author}様
+
+この度は${r.store}にご来店いただき、また貴重なご意見をお寄せいただき、誠にありがとうございます。
+
+せっかくお越しいただいたにもかかわらず、ご不快な思いをおかけしてしまいましたこと、心よりお詫び申し上げます。お客様に気持ちよくお食事をお楽しみいただくことを何より大切にしている当店にとって、いただいたご指摘は真摯に受け止めるべきものと考えております。
+
+いただいた内容はスタッフ全員で共有し、お料理のご提供やお客様へのご案内・接客の一つひとつを見直して、改善に努めてまいります。次にお越しいただく際には、ゆったりとお過ごしいただけるよう努めてまいりますので、またの機会をいただけましたら幸いです。
+
+${sign}`;
+  if(r.media==='instagram') return `コメントいただき、ありがとうございます！当店でのひとときを楽しんでいただけたとのこと、スタッフ一同大変嬉しく思っております。
+
+ご予約はお電話にて承っております。季節ごとに景色やお料理の楽しみ方も変わりますので、ぜひまたゆっくりお過ごしください。
+
+またのお越しを心よりお待ちしております。`;
+  return `${r.author}様
+
+この度は${r.store}にご来店いただき、またご投稿いただき、誠にありがとうございます。
+
+お料理やお店の雰囲気をお楽しみいただけたとのこと、スタッフ一同大変嬉しく拝読いたしました。一品一品を心を込めてご用意し、お客様に日本の食事のひとときをゆっくり味わっていただける空間づくりを大切にしておりますので、いただいたお言葉は大きな励みになります。具体的にご感想をお寄せいただき、これからご来店されるお客様にとっても大変参考になります。
+
+これからも季節ごとの味わいをお楽しみいただけるよう、スタッフ一同努めてまいります。またお近くへお越しの際は、ぜひお立ち寄りください。心よりお待ちしております。
+
+${sign}`;
 }
 
-async function draft(r, silent){
+async function draft(r, silent, instr){
   if(r.drafting) return;
+  instr=(instr ?? readInstr(r)).trim();
+  r.instr=instr;
   r.drafting=true; r.partial='';
   if(r.id===selectedId) renderDetail();
+  const before=r.reply;
   let text='';
   try{
     if(!sample) throw {code:'unavailable'};
-    const res = await sample(buildPrompt(r), {modelTier:'quick', cache:false, onText:({text:t})=>{
+    const res = await sample(buildPrompt(r, instr), {modelTier:instr?'default':'quick', cache:false, onText:({text:t})=>{
       r.partial=t;
       if(r.id===selectedId){ const b=$('replyBox'); if(b) b.value=t; }
     }});
     text=res.text.trim();
-    r.log.push(`${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
+    r.log.push(instr ? `${now()}　AIが修正指示「${instr}」を反映して再生成` : `${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
   }catch(e){
-    text=fallbackDraft(r);
-    r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため）`);
-    if(e.code && e.code!=='unavailable' && !silent) toast('AIに接続できなかったため、定型文で下書きしました');
+    if(instr && before.trim()){
+      // AIに接続できないと修正指示は反映できないため、今の返信文を定型文で上書きしない
+      text=before+(r.replyJa?`\n---\n${r.replyJa}`:'');
+      r.log.push(`${now()}　AIに接続できないため、修正指示「${instr}」を反映できませんでした（返信文は変更なし）`);
+      if(!silent) toast('AIに接続できないため、修正指示を反映できませんでした。返信文は変更していません');
+    } else {
+      text=fallbackDraft(r);
+      r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため${instr?'、修正指示は未反映':''}）`);
+      if(!silent && (instr || (e.code && e.code!=='unavailable'))) toast(instr?'AIに接続できないため、修正指示を反映できず定型文で下書きしました':'AIに接続できなかったため、定型文で下書きしました');
+    }
   }
   r.drafting=false; r.partial='';
   const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
@@ -637,12 +804,22 @@ async function approve(r){
   r.reply=$('replyBox').value.trim();
   if(!r.reply) return;
   if(MEDIA[r.media].auto){
+    if(!apiReady(r.store, r.media)){ toast(NO_KEY_MSG); return; }
+    if(!r.extId){ toast('この口コミはデモ用のサンプルのため、実際には送信できません。「新着を取得」で取得した口コミから送信してください'); return; }
     const btn=$('approveBtn'); btn.disabled=true; btn.textContent='送信中…';
     r.log.push(`${now()}　承認（${currentStore}）`);
-    await new Promise(res=>setTimeout(res,900));
-    r.status='sent'; r.log.push(`${now()}　${MEDIA[r.media].api} で返信を投稿`);
-    toast(`${MEDIA[r.media].label}に返信を送信しました`);
+    try{
+      await API.reply(r);
+      r.status='sent'; r.log.push(`${now()}　${MEDIA[r.media].api} で返信を投稿`);
+      toast(`${MEDIA[r.media].label}に返信を送信しました`);
+    }catch(e){
+      r.log.push(`${now()}　送信に失敗：${e.message}`);
+      toast(`送信に失敗しました：${e.message}`);
+    }
     renderAll();
+  } else if(EXT_MEDIA.includes(r.media) && r.extId){
+    r.log.push(`${now()}　承認（${currentStore}）`);
+    copyAndOpenOwner(r);
   } else {
     r.log.push(`${now()}　承認（${currentStore}）`);
     openBrowser(r,false);
@@ -702,21 +879,322 @@ function arrive(x){
   notify(r);
   return r;
 }
-$('fetchBtn').addEventListener('click',()=>{
-  if(!incoming.length){ toast('新しい口コミはありません'); return; }
-  const n=incoming.splice(0,incoming.length);
-  n.forEach(arrive);
-  toast(`新着の口コミを${n.length}件取得しました`); renderAll();
+$('fetchBtn').addEventListener('click',()=>fetchNew());
+async function fetchNew(silent){
+  const store=currentStore, kinds=['google','instagram'].filter(m=>apiReady(store,m));
+  if(!kinds.length){ if(!silent) toast(NO_KEY_MSG); return; }
+  const btn=$('fetchBtn'); btn.disabled=true; btn.textContent='取得中…';
+  let added=0; const fails=[];
+  for(const m of kinds){
+    try{ const items=await (m==='google'?API.fetchGoogle(store):API.fetchInstagram(store)); items.slice().reverse().forEach(x=>{ if(addFetched(store,x)) added++; }); }
+    catch(e){ fails.push(`${MEDIA[m].label}：${e.message}`); }
+  }
+  btn.disabled=false; btn.textContent='新着を取得';
+  if(currentStore===store){ reviews=ALL.filter(r=>r.store===store); if(!reviews.some(r=>r.id===selectedId)){ selectedId=reviews[0]?.id ?? null; } renderAll(); autoDraft(); }
+  const skipped=['google','instagram'].filter(m=>!kinds.includes(m)).map(m=>MEDIA[m].label);
+  if(silent && !added && !fails.length) return;
+  toast([fails.length?`取得に失敗しました（${fails.join(' / ')}）`:'', added?`新着の口コミを${added}件取得しました`:(fails.length?'':'新しい口コミはありません'), skipped.length?`${skipped.join('・')}は未設定のため取得していません`:''].filter(Boolean).join('。'));
+}
+/** APIから取得した口コミを一覧に追加（同じ口コミは二重に追加しない） */
+function addFetched(store, x){
+  if(ALL.some(a=>a.extId===x.extId)) return false;
+  const id=Math.max(0,...ALL.map(r=>r.id))+1;
+  const r={...x,id,store,reply:x.reply||'',status:x.reply?'sent':'new',log:[x.logLine||`${now()}　${API_NAME[x.media]} から取得`]};
+  delete r.logLine;
+  ALL.unshift(r);
+  if(r.status==='new' && store===currentStore) notify(r);
+  return true;
+}
+
+// ---- 食べログ連携（Chrome拡張機能「食べログ 口コミ返信アシスタント」から受け取る） ----
+// 拡張機能が食べログ店舗管理画面で読み取った口コミと、AIが作った返信文がこのページに届く
+const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top';
+const EXT_MEDIA=['tabelog','tripadvisor']; // 拡張機能で連携する媒体
+let tbBridge=false;
+function tabelogHello(){ window.postMessage({source:'kuchikomi-app', type:'hello'}, '*'); }
+/** 拡張機能とつながったら実データで使うため、デモ用のサンプル口コミと自動の新着デモを消す */
+function useRealData(){
+  if(tbBridge) return;
+  tbBridge=true;
+  $('tbLink').textContent='口コミ返信アシスタント（拡張機能）：接続済み';
+  if(BACKEND) return;
+  for(let i=ALL.length-1;i>=0;i--) if(!ALL[i].extId) ALL.splice(i,1);
+  INCOMING.length=0; incoming=[]; clearTimeout(arrivalTimer);
+  notices=notices.filter(n=>ALL.some(a=>a.id===n.id));
+  if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); renderBell(); }
+}
+window.addEventListener('message',e=>{
+  if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
+  if(e.data.type==='ready'){ useRealData(); return; }
+  if(e.data.type!=='reviews' || !Array.isArray(e.data.reviews)) return;
+  useRealData();
+  $('tbLink').textContent=`口コミ返信アシスタント（拡張機能）：接続済み（口コミ ${e.data.reviews.length}件）`;
+  let added=0, changed=false;
+  e.data.reviews.slice().sort((a,b)=>(a.firstSeenAt||0)-(b.firstSeenAt||0)).forEach(x=>{
+    const store=STORES.includes(x.store)?x.store:null;
+    if(!store || !x.key || !x.text) return;
+    const ex=ALL.find(a=>a.extId===x.key);
+    if(ex){
+      // 食べログ側で返信済みになったら、アプリでも返信済みにする
+      if(x.replied && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply||ex.reply; ex.log.push(`${now()}　${MEDIA[ex.media].label}で返信済みを確認`); changed=true; }
+      else if(!x.replied && x.draft && ex.status==='new' && !ex.reply.trim() && !ex.drafting){ ex.reply=x.draft; ex.status='draft'; ex.log.push(`${now()}　AIが返信文を作成（拡張機能）`); changed=true; }
+      return;
+    }
+    const media=EXT_MEDIA.includes(x.media)?x.media:'tabelog', label=MEDIA[media].label;
+    const r={media, extId:x.key, author:x.author||`${label}のユーザー`, rating:x.rating??null, date:x.date||'', lang:guessLang(x.text), text:x.text, title:x.title||'', pageUrl:x.pageUrl||'',
+      reply:x.replied?(x.reply||`（${label}で返信済み）`):'', logLine:`${now()}　${label}の管理画面から取得（拡張機能）`};
+    if(addFetched(store, r)){
+      added++;
+      const n=ALL.find(a=>a.extId===x.key);
+      if(n && !x.replied && x.draft){ n.reply=x.draft; n.status='draft'; n.log.push(`${now()}　AIが返信文を作成（拡張機能）`); }
+    }
+  });
+  if(!added && !changed) return;
+  if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); }
+  if(added) toast(`拡張機能から口コミを${added}件取得しました`);
 });
+/** 承認した返信文をコピーし、食べログの「口コミ返信」ページを開く（送信は担当者が行う） */
+async function copyAndOpenOwner(r){
+  const label=MEDIA[r.media].label;
+  // 拡張機能があれば、承認した返信文を各媒体の返信欄に自動で入れてもらう
+  window.postMessage({source:'kuchikomi-app', type:'setDraft', key:r.extId, reply:r.reply}, '*');
+  let copied=false;
+  try{ await navigator.clipboard.writeText(r.reply); copied=true; }catch(e){}
+  window.open(r.media==='tabelog'?TB_REPLY_URL:(r.pageUrl||'https://www.tripadvisor.jp/Owners'),'_blank','noopener');
+  if(r.status!=='filled'){ r.status='filled'; r.log.push(`${now()}　返信文をコピーして${label}の管理画面を開く（送信待ち）`); }
+  toast(tbBridge?`${label}の返信欄に返信文が入ります。内容を確認して送信（返信）ボタンを押してください（返信済みは次の確認で自動で反映されます）`
+    :copied?`返信文をコピーしました。${label}の返信欄に貼り付けて送信し、最後に「返信済みにする」を押してください`:`コピーできませんでした。返信文を選択してコピーしてから、${label}で貼り付けてください`);
+  renderAll();
+}
+
+// ---- API連携（Google Business Profile API / Instagram Graph API） ----
+// 通信処理はこの API オブジェクトにまとめています。本番でバックエンド経由にする場合は、
+// 各関数の中身を自社サーバーのエンドポイント呼び出しに置き換えてください。
+const NO_KEY_MSG='APIキーが設定されていません。API設定画面からキーを入力してください';
+const API_STORE_KEY='rd-api-v1';
+const GRAPH='https://graph.facebook.com/v23.0';
+const API_FIELDS={
+  google:{label:'Google Business Profile', fields:[
+    ['clientId','Client ID',false],['clientSecret','Client Secret',true],['refreshToken','Refresh Token',true],
+    ['locationId','Location ID（数字のみ、または accounts/…/locations/… 形式）',false,true]]},
+  instagram:{label:'Instagram Graph API', fields:[
+    ['appId','Facebook App ID',false],['igUserId','Instagram Business Account ID',false],['accessToken','Access Token',true,true]]}
+};
+let apiConf={};
+try{ apiConf=JSON.parse(localStorage.getItem(API_STORE_KEY)||'{}')||{}; }catch(e){ apiConf={}; }
+function saveApiConf(){ try{ localStorage.setItem(API_STORE_KEY, JSON.stringify(apiConf)); return true; }catch(e){ return false; } }
+function apiCfg(store, media){ return apiConf[store]?.[media]||{}; }
+/** 必要な項目がすべて入っているか（Facebook App ID は通信には使わないため必須にしない） */
+function apiReady(store, media){
+  if(BACKEND) return !!beStatus[store]?.[media]?.connected;
+  const c=apiCfg(store,media);
+  if(media==='google') return !!(c.clientId&&c.clientSecret&&c.refreshToken&&c.locationId);
+  if(media==='instagram') return !!(c.accessToken&&c.igUserId);
+  return false;
+}
+async function apiJson(res){
+  let body=null; try{ body=await res.json(); }catch(e){}
+  if(!res.ok || body?.error){
+    const msg=body?.error?.message || body?.error_description || (typeof body?.error==='string'?body.error:'') || `HTTP ${res.status}`;
+    throw new Error(msg);
+  }
+  return body||{};
+}
+function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?now():`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function guessLang(t){
+  t=String(t||'');
+  if(/[぀-ヿ]/.test(t)) return 'ja';
+  if(/[一-鿿]/.test(t)) return /[們個這說時會來為對問點華灣鐘體]/.test(t)?'zh-TW':'zh-CN';
+  return /[a-z]/i.test(t)?'en':'ja';
+}
+const googleTokens={};
+const STAR={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5};
+const API={
+  /** Refresh Token からアクセストークンを取得（有効期限内はキャッシュを使う） */
+  async googleToken(store){
+    const c=apiCfg(store,'google'), t=googleTokens[store];
+    if(t && t.exp>Date.now()+60000) return t.token;
+    const res=await fetch('https://oauth2.googleapis.com/token',{method:'POST',headers:{'Content-Type':'application/x-www-form-urlencoded'},
+      body:new URLSearchParams({client_id:c.clientId,client_secret:c.clientSecret,refresh_token:c.refreshToken,grant_type:'refresh_token'})});
+    const j=await apiJson(res);
+    googleTokens[store]={token:j.access_token, exp:Date.now()+(j.expires_in||3600)*1000};
+    return j.access_token;
+  },
+  /** Location ID を accounts/{accountId}/locations/{locationId} 形式にそろえる */
+  async googleLocation(store, token){
+    const c=apiCfg(store,'google'), loc=String(c.locationId).trim().replace(/^\/+|\/+$/g,'');
+    if(/^accounts\/[^/]+\/locations\/[^/]+$/.test(loc)) return loc;
+    const id=loc.replace(/^locations\//,'');
+    if(c.accountName) return `${c.accountName}/locations/${id}`;
+    const j=await apiJson(await fetch('https://mybusinessaccountmanagement.googleapis.com/v1/accounts',{headers:{Authorization:`Bearer ${token}`}}));
+    const acc=j.accounts?.[0]?.name;
+    if(!acc) throw new Error('Googleビジネスプロフィールのアカウントが見つかりません');
+    c.accountName=acc; saveApiConf();
+    return `${acc}/locations/${id}`;
+  },
+  async fetchGoogle(store){
+    const token=await API.googleToken(store);
+    const loc=await API.googleLocation(store, token);
+    const j=await apiJson(await fetch(`https://mybusiness.googleapis.com/v4/${loc}/reviews?pageSize=50&orderBy=${encodeURIComponent('updateTime desc')}`,{headers:{Authorization:`Bearer ${token}`}}));
+    return (j.reviews||[]).map(v=>({
+      media:'google', extId:'google:'+v.name, extName:v.name,
+      author:v.reviewer?.displayName||'Googleユーザー', rating:STAR[v.starRating]??null,
+      date:fmtDate(v.createTime), lang:guessLang(v.comment), text:v.comment||'（コメントなし・評価のみ）',
+      reply:v.reviewReply?.comment||''
+    }));
+  },
+  async fetchInstagram(store){
+    const c=apiCfg(store,'instagram'), tk=encodeURIComponent(c.accessToken), uid=encodeURIComponent(c.igUserId);
+    const me=await apiJson(await fetch(`${GRAPH}/${uid}?fields=username&access_token=${tk}`));
+    const media=await apiJson(await fetch(`${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=10&access_token=${tk}`));
+    const out=[];
+    for(const p of media.data||[]){
+      const cm=await apiJson(await fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
+      for(const k of cm.data||[]){
+        if(k.username===me.username) continue;
+        const mine=(k.replies?.data||[]).find(x=>x.username===me.username);
+        out.push({media:'instagram', extId:'instagram:'+k.id, extName:k.id, permalink:p.permalink,
+          author:'@'+(k.username||'instagram'), rating:null, date:fmtDate(k.timestamp), lang:guessLang(k.text), text:k.text||'', reply:mine?.text||''});
+      }
+    }
+    return out;
+  },
+  /** 返信の投稿：Google は reviews/{id}/reply へ PUT、Instagram は comments/{id}/replies へ POST */
+  async reply(r){
+    if(r.media==='google'){
+      const token=await API.googleToken(r.store);
+      await apiJson(await fetch(`https://mybusiness.googleapis.com/v4/${r.extName}/reply`,{method:'PUT',headers:{Authorization:`Bearer ${token}`,'Content-Type':'application/json'},body:JSON.stringify({comment:r.reply})}));
+    } else if(r.media==='instagram'){
+      const c=apiCfg(r.store,'instagram');
+      await apiJson(await fetch(`${GRAPH}/${encodeURIComponent(r.extName)}/replies`,{method:'POST',body:new URLSearchParams({message:r.reply,access_token:c.accessToken})}));
+    } else throw new Error('この媒体はAPI送信に対応していません');
+  }
+};
+
+// API接続設定のモーダル
+let apiTab=null;
+function renderApiModal(){
+  if(BACKEND) return renderApiModalBackend();
+  $('apiTabs').innerHTML=STORES.map(st=>{
+    const n=['google','instagram'].filter(m=>apiReady(st,m)).length;
+    return `<button type="button" class="chip" data-st="${st}" aria-pressed="${st===apiTab}">${st}（${n?`${n}/2 設定済み`:'未設定'}）</button>`;
+  }).join('');
+  $('apiStores').innerHTML=`<div class="api-store">${Object.entries(API_FIELDS).map(([m,g])=>`
+    <fieldset class="api-group"><legend>${mediaHtml(m)}${g.label}<span class="pill ${apiReady(apiTab,m)?'s-sent':'s-new'}">${apiReady(apiTab,m)?'設定済み':'未設定'}</span></legend>
+      ${g.fields.map(([k,l,secret,wide])=>`<div class="api-field${wide?' wide':''}"><label for="api-${m}-${k}">${l}</label><input id="api-${m}-${k}" data-m="${m}" data-k="${k}" type="${secret?'password':'text'}" autocomplete="off" spellcheck="false" value="${esc(apiCfg(apiTab,m)[k]||'')}"></div>`).join('')}
+    </fieldset>`).join('')}</div>`;
+}
+function readApiInputs(){
+  if(BACKEND) return;
+  const st=apiConf[apiTab]||(apiConf[apiTab]={});
+  document.querySelectorAll('#apiStores input[data-m]').forEach(i=>{
+    const m=i.dataset.m, k=i.dataset.k, v=i.value.trim();
+    st[m] ??= {};
+    if(k==='locationId' && st[m][k]!==v) delete st[m].accountName;
+    if(st[m][k]!==v) delete googleTokens[apiTab];
+    st[m][k]=v;
+  });
+}
+function openApi(){ apiTab=currentStore||STORES[0]; renderApiModal(); $('apiOverlay').hidden=false; $('apiStores').querySelector('input')?.focus(); }
+function closeApi(){ $('apiOverlay').hidden=true; $('apiBtn').focus(); }
+$('apiBtn').addEventListener('click',openApi);
+$('apiClose').addEventListener('click',closeApi);
+$('apiOverlay').addEventListener('click',e=>{ if(e.target.id==='apiOverlay') closeApi(); });
+document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('apiOverlay').hidden) closeApi(); });
+$('apiTabs').addEventListener('click',e=>{ const b=e.target.closest('[data-st]'); if(!b) return; readApiInputs(); apiTab=b.dataset.st; renderApiModal(); });
+$('apiForm').addEventListener('submit',e=>{
+  e.preventDefault(); readApiInputs();
+  toast(saveApiConf()?`${apiTab}のAPI接続設定を保存しました`:'このブラウザでは設定を保存できませんでした（このタブを閉じるまでは有効です）');
+  renderApiModal();
+});
+$('apiClear').addEventListener('click',()=>{
+  if(!confirm(`${apiTab}のAPI接続設定を削除しますか？`)) return;
+  delete apiConf[apiTab]; delete googleTokens[apiTab]; saveApiConf(); renderApiModal(); toast(`${apiTab}のAPI接続設定を削除しました`);
+});
+
+// ---- 本番：サーバー（Cloud Functions）経由の連携 ----
+// Google・Instagram は各社の画面で「許可」を押して連携（パスワード不要）。トークンはサーバーにだけ保存される
+let beStatus={}, beLoggedIn=false;
+function backend(){ return window.appBackend ? Promise.resolve(window.appBackend) : new Promise(r=>window.addEventListener('app-backend-ready',()=>r(window.appBackend),{once:true})); }
+async function call(path, body){
+  const be=await backend(); const token=await be.token();
+  if(!token){ const e=new Error('ログインの有効期限が切れました。もう一度ログインしてください'); e.code='backend'; e.status=401; throw e; }
+  const res=await fetch(path,{method:body?'POST':'GET',headers:{Authorization:'Bearer '+token,...(body?{'Content-Type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});
+  let j=null; try{ j=await res.json(); }catch(e){}
+  if(!res.ok){ const e=new Error(j?.error||`サーバーとの通信に失敗しました（HTTP ${res.status}）`); e.code='backend'; e.status=res.status; throw e; }
+  return j||{};
+}
+async function refreshStatus(){ beStatus=(await call('/api/status')).stores||{}; }
+if(BACKEND){
+  const map=x=>({...x, date:fmtDate(x.createTime), lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
+  const q=(m,st)=>`/api/reviews?media=${m}&store=${encodeURIComponent(st)}`;
+  API.fetchGoogle=async store=>(await call(q('google',store))).items.map(map);
+  API.fetchInstagram=async store=>(await call(q('instagram',store))).items.map(map);
+  API.reply=async r=>{ await call('/api/reply',{store:r.store, media:r.media, extName:r.extName, comment:r.reply}); };
+  $('apiSave').hidden=true; $('apiClear').hidden=true;
+  document.querySelector('#apiOverlay .api-note').textContent='パスワードの入力は不要です。「連携する」を押し、Google／Meta（Facebook）の画面で許可するだけで連携できます。連携情報はサーバーで安全に保管され、このブラウザには保存されません。';
+}
+const BE_LABEL={google:'Googleビジネスプロフィール', instagram:'Instagram（Facebookページ経由）'};
+function renderApiModalBackend(){
+  $('apiTabs').innerHTML=STORES.map(st=>{
+    const n=['google','instagram'].filter(m=>apiReady(st,m)).length;
+    return `<button type="button" class="chip" data-st="${st}" aria-pressed="${st===apiTab}">${st}（${n?`${n}/2 連携済み`:'未連携'}）</button>`;
+  }).join('');
+  $('apiStores').innerHTML=`<div class="api-store">${['google','instagram'].map(m=>{
+    const c=beStatus[apiTab]?.[m]||{};
+    const pill=c.connected?'<span class="pill s-sent">連携済み</span>':c.needsPick?'<span class="pill s-filled">店舗の選択が必要</span>':'<span class="pill s-new">未連携</span>';
+    const body=c.connected
+      ? `<p class="hint wide" style="grid-column:1/-1">連携先：<b>${esc(c.label)}</b></p><div class="actions" style="grid-column:1/-1"><button type="button" class="btn" data-act="connect" data-m="${m}">連携し直す</button><button type="button" class="btn" data-act="disconnect" data-m="${m}">連携を解除</button></div>`
+      : c.needsPick
+        ? `<div class="api-field wide"><label for="pick-${m}">${apiTab}として使う${m==='google'?'ロケーション':'アカウント'}を選んでください</label><select id="pick-${m}" class="store-select" style="font-weight:400">${(c.candidates||[]).map(x=>`<option value="${esc(x.id)}">${esc(x.label)}</option>`).join('')}</select></div><div class="actions" style="grid-column:1/-1"><button type="button" class="btn primary" data-act="pick" data-m="${m}">この${m==='google'?'ロケーション':'アカウント'}にする</button><button type="button" class="btn" data-act="disconnect" data-m="${m}">やめる</button></div>`
+        : `<p class="hint" style="grid-column:1/-1">${m==='google'?'Googleビジネスプロフィールを管理しているGoogleアカウントでログインし、許可してください。':'Instagramのビジネスアカウントにつながっている Facebook ページを管理するアカウントでログインし、許可してください。'}</p><div class="actions" style="grid-column:1/-1"><button type="button" class="btn primary" data-act="connect" data-m="${m}">${m==='google'?'Google':'Instagram'}と連携する</button></div>`;
+    return `<fieldset class="api-group"><legend>${mediaHtml(m)}${BE_LABEL[m]}${pill}</legend>${body}</fieldset>`;
+  }).join('')}</div>`;
+}
+$('apiStores').addEventListener('click',async e=>{
+  if(!BACKEND) return;
+  const b=e.target.closest('[data-act]'); if(!b) return;
+  const m=b.dataset.m, store=apiTab;
+  b.disabled=true;
+  try{
+    if(b.dataset.act==='connect'){ const {url}=await call(`/api/${m}/auth-url?store=${encodeURIComponent(store)}`); location.href=url; return; }
+    if(b.dataset.act==='pick'){ await call(`/api/${m}/select`,{store, id:$('pick-'+m).value}); toast(`${store}の${MEDIA[m].label}連携が完了しました`); }
+    if(b.dataset.act==='disconnect'){ if(!confirm(`${store}の${MEDIA[m].label}連携を解除しますか？`)){ b.disabled=false; return; } await call(`/api/${m}/disconnect`,{store}); toast(`${store}の${MEDIA[m].label}連携を解除しました`); }
+    await refreshStatus(); renderApiModal();
+    if(store===currentStore) fetchNew(true);
+  }catch(err){ toast(err.message); b.disabled=false; }
+});
+/** 本番：ログイン後の処理（連携状態の取得 → 画面表示 → 連携直後の案内 → 新着の自動取得） */
+async function afterBackendLogin(){
+  if(beLoggedIn) return; beLoggedIn=true;
+  try{ await refreshStatus(); }
+  catch(e){
+    beLoggedIn=false;
+    if(e.status===401||e.status===403){ (await backend()).signOut(); $('loginErr').textContent=e.message; $('loginErr').hidden=false; return; }
+    toast(e.message);
+  }
+  const qp=new URLSearchParams(location.search), qStore=qp.get('store');
+  let saved=null; try{ saved=sessionStorage.getItem('rd-store'); }catch(e){}
+  login(STORES.includes(qStore)?qStore:(STORES.includes(saved)?saved:DEFAULT_STORE));
+  if(qp.has('connected')||qp.has('connectError')){
+    history.replaceState(null,'',location.pathname);
+    if(qp.has('connectError')) toast(`${MEDIA[qp.get('connectError')]?.label||''}の連携に失敗しました：${qp.get('message')||''}`);
+    else toast(qp.get('pick')?`${MEDIA[qp.get('connected')]?.label}の連携先を選んでください`:`${MEDIA[qp.get('connected')]?.label}と連携しました`);
+    if(qp.get('pick')||qp.has('connectError')) openApi();
+  }
+  // 新着の自動取得は switchStore（login）の中で行う
+}
 
 // ---- 通知 ----
 let notices=[], arrivalTimer=null, audioCtx=null;
-function unread(){ return notices.filter(n=>!n.read).length; }
+/** 表示中の店舗の通知だけを対象にする */
+function storeNotices(){ return notices.filter(n=>ALL.find(a=>a.id===n.id)?.store===currentStore); }
+function unread(){ return storeNotices().filter(n=>!n.read).length; }
 function renderBell(){
-  const n=unread(), b=$('bellBadge');
+  const n=unread(), b=$('bellBadge'), list=storeNotices();
   b.hidden=!n; b.textContent=n>99?'99+':n;
   document.title=(n?`(${n}) `:'')+'口コミ一元管理_返信文自動生成';
-  $('bellList').innerHTML = notices.length ? notices.map(x=>{ const r=ALL.find(a=>a.id===x.id); if(!r) return '';
+  $('bellList').innerHTML = list.length ? list.map(x=>{ const r=ALL.find(a=>a.id===x.id); if(!r) return '';
     return `<button type="button" class="bell-item ${x.read?'':'unread'}" data-nid="${r.id}">
       <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${isLow(r)?'<span class="need">要確認</span>':''}<span style="flex:1"></span><span class="meta">${r.date}</span></span>
       <span class="ex">${esc(r.author)}：${esc(r.text)}</span></button>`; }).join('') : '<div class="bell-empty">新しい通知はありません</div>';
@@ -762,7 +1240,7 @@ function openFromNotice(id){
 $('bellBtn').addEventListener('click',()=>{ const p=$('bellPanel'); p.hidden=!p.hidden; $('bellBtn').setAttribute('aria-expanded',String(!p.hidden)); });
 document.addEventListener('click',e=>{ if(!e.target.closest('.bell-wrap')){ $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false'); } });
 $('bellList').addEventListener('click',e=>{ const b=e.target.closest('[data-nid]'); if(b) openFromNotice(+b.dataset.nid); });
-$('readAllBtn').addEventListener('click',()=>{ notices.forEach(n=>n.read=true); renderBell(); });
+$('readAllBtn').addEventListener('click',()=>{ storeNotices().forEach(n=>n.read=true); renderBell(); });
 function renderPcBtn(){
   const btn=$('pcNotifyBtn'), note=$('pcNotifyNote');
   const demoNote='このデモ画面ではPCの通知を出せないため、画面内の通知と音でお見せしています。本番のアプリでは、ブラウザを閉じていてもPCに通知が届きます。';
@@ -781,30 +1259,40 @@ $('bulkBtn').addEventListener('click',async()=>{
   const targets=reviews.filter(r=>r.status==='new' && !isLow(r) && r.rating!=null);
   if(!targets.length){ toast('下書きが必要な高評価の口コミはありません'); return; }
   const b=$('bulkBtn'); b.disabled=true;
-  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i],true); renderFilters(); renderStats(); renderList(); }
+  for(let i=0;i<targets.length;i++){ b.textContent=`作成中 ${i+1}/${targets.length}`; await draft(targets[i],true,''); renderFilters(); renderStats(); renderList(); }
   b.disabled=false; b.textContent='高評価の下書きをまとめて作成';
   toast(`${targets.length}件の下書きを作成しました。内容を確認して承認してください`); renderAll();
 });
 
 // ---- ログイン（デモ用：IDとパスワードのハッシュで照合。本番はサーバー側で認証） ----
-// 値が配列の場合は、ログイン後に店舗選択画面を挟む
-const ACCOUNTS = {
-  '1d27eaad223ed78d2f245bbdb23cb37ce6340f677429edefbadfcfc3fa3bde57':['山麓園','浅間茶屋']
-};
-const ALL_ACCOUNT_STORES = [...new Set(Object.values(ACCOUNTS).flat())];
+const ACCOUNT_HASH = '1d27eaad223ed78d2f245bbdb23cb37ce6340f677429edefbadfcfc3fa3bde57';
+const STORES = ['山麓園','浅間茶屋'];
+const DEFAULT_STORE = '山麓園';
 async function sha256(t){ const b=await crypto.subtle.digest('SHA-256',new TextEncoder().encode(t)); return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,'0')).join(''); }
-function enter(store){
+/** ログイン直後：通知をリセットして既定の店舗（山麓園）を表示 */
+function login(store){
+  notices=[];
+  $('loginView').hidden=true; $('appView').hidden=false;
+  renderPcBtn();
+  switchStore(STORES.includes(store)?store:DEFAULT_STORE);
+}
+/** 店舗の切り替え：口コミ一覧・集計・通知を選択した店舗の内容に入れ替える */
+function switchStore(store){
   currentStore=store;
   reviews=ALL.filter(r=>r.store===store);
   incoming=INCOMING.filter(r=>r.store===store && !ALL.some(a=>a.text===r.text));
   selectedId=reviews[0]?.id ?? null; mf='all'; sf='all';
-  $('whoStore').textContent=store;
-  $('loginView').hidden=true; $('appView').hidden=false;
+  $('storeSelect').value=store;
+  $('notifyStack').innerHTML=''; $('bellPanel').hidden=true; $('bellBtn').setAttribute('aria-expanded','false');
   try{ sessionStorage.setItem('rd-store',store); }catch(e){}
-  notices=[]; renderBell(); renderPcBtn();
+  renderBell();
   renderAll(); autoDraft();
-  // デモ：ログイン後、3分おきに新着が1件ずつ届く
+  tabelogHello();
+  // 拡張機能・API連携で実データを扱う店舗ではデモの新着は出さない
   clearTimeout(arrivalTimer);
+  if(tbBridge && !BACKEND) return;
+  if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && r.media!=='tabelog')) fetchNew(true); return; }
+  // デモ：ログイン後、3分おきに新着が1件ずつ届く
   const scheduleNextArrival=()=>{
     arrivalTimer=setTimeout(()=>{
       if(currentStore===store && incoming.length){ arrive(incoming.shift()); renderAll(); }
@@ -813,34 +1301,40 @@ function enter(store){
   };
   if(incoming.length) scheduleNextArrival();
 }
-function showStorePicker(stores){
-  $('loginView').hidden=true; $('appView').hidden=true;
-  $('storePickList').innerHTML = stores.map(s=>`<button class="btn primary" type="button" data-store="${esc(s)}">${esc(s)}</button>`).join('');
-  $('storePickView').hidden=false;
-}
-$('storePickView')?.addEventListener('click',e=>{
-  const b=e.target.closest('[data-store]'); if(!b) return;
-  $('storePickView').hidden=true; enter(b.dataset.store);
-});
 $('loginForm').addEventListener('submit',async e=>{
   e.preventDefault();
   const id=$('loginId').value.trim().toLowerCase(), pw=$('loginPw').value, err=$('loginErr');
   if(!id||!pw){ err.textContent='IDとパスワードを入力してください'; err.hidden=false; return; }
   $('loginBtn').disabled=true;
-  let match=null; try{ match=ACCOUNTS[await sha256(id+'\n'+pw)]; }catch(x){}
+  if(BACKEND){
+    try{ await (await backend()).signIn(id,pw); err.hidden=true; $('loginPw').value=''; await afterBackendLogin(); }
+    catch(x){
+      const c=x.code||'';
+      err.textContent=/too-many-requests/.test(c)?'ログインの試行回数が多すぎます。しばらくしてからお試しください':/network/.test(c)?'通信できませんでした。ネットワークをご確認ください':'IDまたはパスワードが違います';
+      err.hidden=false; $('loginPw').value=''; $('loginPw').focus();
+    }
+    $('loginBtn').disabled=false; return;
+  }
+  let ok=false; try{ ok=(await sha256(id+'\n'+pw))===ACCOUNT_HASH; }catch(x){}
   $('loginBtn').disabled=false;
-  if(!match){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
-  err.hidden=true; $('loginPw').value='';
-  const stores=Array.isArray(match)?match:[match];
-  if(stores.length>1) showStorePicker(stores); else enter(stores[0]);
+  if(!ok){ err.textContent='IDまたはパスワードが違います'; err.hidden=false; $('loginPw').value=''; $('loginPw').focus(); return; }
+  err.hidden=true; $('loginPw').value=''; login(DEFAULT_STORE);
 });
+$('storeSelect').addEventListener('change',e=>{ if(STORES.includes(e.target.value)) switchStore(e.target.value); });
 $('logoutBtn').addEventListener('click',()=>{
   try{ sessionStorage.removeItem('rd-store'); }catch(e){}
+  if(BACKEND){ beLoggedIn=false; ALL.length=0; backend().then(be=>be.signOut()); }
   clearTimeout(arrivalTimer); notices=[]; document.title='口コミ一元管理_返信文自動生成'; $('notifyStack').innerHTML='';
-  currentStore=null; reviews=[]; $('appView').hidden=true; $('storePickView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
+  currentStore=null; reviews=[]; $('appView').hidden=true; $('loginView').hidden=false; $('loginId').focus();
 });
-try{ const s=sessionStorage.getItem('rd-store'); if(s && ALL_ACCOUNT_STORES.includes(s)) enter(s); }catch(e){}
-(async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
+if(BACKEND){
+  // 本番：ログイン状態はFirebase Authenticationが保持。AIの返信文はサーバー経由で作成
+  sample = async (prompt, opts={}) => ({ text:(await call('/api/ai/generate',{prompt, tier:opts.modelTier})).text });
+  backend().then(be=>be.onUser(u=>{ if(u) afterBackendLogin(); }));
+} else {
+  try{ const s=sessionStorage.getItem('rd-store'); if(s && STORES.includes(s)) login(s); }catch(e){}
+  (async()=>{ try{ sample = await window.claude?.use?.('sample'); }catch(e){ sample=null; } })();
+}
 </script>
 
 </body></html>

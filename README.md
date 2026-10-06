@@ -2,15 +2,18 @@
 
 Google・Instagram・食べログ・トリップアドバイザーの口コミを1か所で確認し、AIが過去の返信の文体に合わせて返信文を下書きするデモアプリです。対象店舗：山麓園／浅間茶屋。
 
-- 表示されている口コミ・返信内容はすべて架空のサンプルです。
-- ログインはデモ用の簡易認証（ID／パスワードのハッシュ照合）で、本番運用にはサーバー側の認証基盤への置き換えが必要です。
+- デモ環境で表示される口コミ・返信内容はすべて架空のサンプルです。
+- 本番URL（Firebase Hosting）では Firebase Authentication でログインし、Google・Instagram はサーバー経由で連携します（`docs/SETUP.md`）。それ以外の環境では、デモ用の簡易ログインとサンプル口コミで動きます。
 - AIによる返信下書きは、AI連携が利用できない環境では定型文にフォールバックします。
 
 ## 構成
 
 - `public/index.html` — アプリ本体（単一HTML・ビルド不要の静的サイト）
-- `public/firebase-init.js` — Firebase SDK（Analytics）の初期化
-- `firebase.json` / `.firebaserc` — Firebase Hosting の設定
+- `public/firebase-init.js` — Firebase SDK（Analytics・本番ログイン用の Authentication）の初期化
+- `extension/tabelog/` — 食べログ 口コミ返信アシスタント（Chrome拡張機能。新着の確認・AIでの返信文作成・返信欄への下書き入力。使い方は同フォルダの README.md）
+- `functions/` — 本番用バックエンド（Cloud Functions。ログイン確認・Google／Instagram の OAuth 連携・口コミ取得と返信・AI返信文）
+- `docs/SETUP.md` — **本番環境のセットアップ手順**（Google・Meta・Firebase の設定とデプロイ）
+- `firebase.json` / `.firebaserc` / `firestore.rules` — Firebase（Hosting・Functions・Firestore）の設定
 - `.github/workflows/firebase-hosting-merge.yml` — `main` ブランチへのマージ時に自動デプロイするGitHub Actions
 
 ## Firebase Hosting へのデプロイ（初回セットアップ）
