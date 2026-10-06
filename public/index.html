@@ -979,7 +979,7 @@ async function runAI(){
         aiQueue.shift(); retried=false;
       }catch(e){
         const msg=String(e?.message||e);
-        if(/429|quota|rate|RESOURCE_EXHAUSTED/i.test(msg) && !retried){ retried=true; setAiLink('AI：混み合っているため1分待っています'); await new Promise(f=>setTimeout(f,60000)); continue; }
+        if(/429|quota|rate|RESOURCE_EXHAUSTED|high demand|overloaded|UNAVAILABLE|try again later/i.test(msg) && !retried){ retried=true; setAiLink('AI：混み合っているため1分待っています'); await new Promise(f=>setTimeout(f,60000)); continue; }
         aiQueue.length=0;
         const off=/has not been used|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|is disabled/i.test(msg);
         setAiLink(off?'AI：未設定（Firebase の AI Logic を有効にしてください）':'AI：返信文を作成できませんでした', true);
