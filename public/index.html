@@ -738,6 +738,19 @@ async function draft(r, silent, instr, auto){
     r.log.push(instr ? `${now()}　AIが修正指示「${instr}」を反映して再生成` : `${now()}　AIが下書きを作成（過去の返信の文体を参照）`);
   }catch(e){
     if(auto){ r.drafting=false; r.partial=''; if(r.id===selectedId) renderDetail(); throw e; } // 自動作成では定型文にしない
+    if(AI_BUSY.test(String(e?.message||e))){
+      // 回数制限・混雑のときは定型文にせず、順番待ちに入れて自動で作り直す
+      r.drafting=false; r.partial='';
+      if(instr){ if(!silent) toast('AIが混み合っています。1分ほど待ってから、もう一度「指示を入れて書き直す」を押してください'); }
+      else {
+        r.log.push(`${now()}　AIが混み合っているため、順番に作成します`);
+        if(!silent) toast('AIが混み合っています。少し待つと自動で返信文が入ります');
+        if(!aiQueue.includes(r)) aiQueue.unshift(r);
+        runAI();
+      }
+      if(r.id===selectedId) renderDetail();
+      return before;
+    }
     if(instr && before.trim()){
       // AIに接続できないと修正指示は反映できないため、今の返信文を定型文で上書きしない
       text=before+(r.replyJa?`\n---\n${r.replyJa}`:'');
@@ -972,10 +985,15 @@ ${r.text}`, {});
   if(r.extId){ aiCache[r.extId]={...(aiCache[r.extId]||{}), ja:r.ja}; saveAiCache(); }
   renderList(); if(r.id===selectedId) renderDetail();
 }
+const AI_BUSY=/429|quota|rate.?limit|RESOURCE_EXHAUSTED|high demand|overloaded|UNAVAILABLE|try again later/i;
+const AI_OFF=/has not been used|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|is disabled|PERMISSION_DENIED|API key not valid/i;
+let aiRetryTimer=null;
+const sleep=ms=>new Promise(f=>setTimeout(f,ms));
+/** 自動作成：1件ずつ順番に作る。混雑・回数制限のときは待って続きから作り、1件だけの失敗はその口コミを飛ばして続ける */
 async function runAI(){
   if(aiRunning || !sample) return;
-  aiRunning=true; aiFailed=false;
-  let done=0, retried=false;
+  aiRunning=true; aiFailed=false; clearTimeout(aiRetryTimer);
+  let done=0, waits=0, fails=0;
   try{
     while(aiQueue.length){
       aiQueue.sort((a,b)=>(b.store===currentStore)-(a.store===currentStore)); // 表示中の店舗を先に
@@ -984,20 +1002,38 @@ async function runAI(){
       try{
         if(r.lang!=='ja' && !r.ja) await translateReview(r);
         if(needsDraft(r) && !r.drafting){ await draft(r, true, '', true); done++; renderStats(); renderList(); }
-        aiQueue.shift(); retried=false;
+        aiQueue.shift(); waits=0; fails=0;
       }catch(e){
         const msg=String(e?.message||e);
-        if(/429|quota|rate|RESOURCE_EXHAUSTED|high demand|overloaded|UNAVAILABLE|try again later/i.test(msg) && !retried){ retried=true; setAiLink('AI：混み合っているため1分待っています'); await new Promise(f=>setTimeout(f,60000)); continue; }
-        aiQueue.length=0; aiFailed=true; if(selectedId!=null) renderDetail();
-        const off=/has not been used|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|is disabled/i.test(msg);
-        setAiLink(off?'AI：未設定（Firebase の AI Logic を有効にしてください）':'AI：返信文を作成できませんでした', true);
         $('aiLink').title=msg;
-        toast(off?'AIの設定がまだ済んでいません。Firebase コンソールの「AI Logic」で Gemini Developer API を有効にしてください':`AIで返信文を作成できませんでした：${msg.slice(0,120)}`);
-        return;
+        if(AI_OFF.test(msg)){
+          aiQueue.length=0; aiFailed=true; if(selectedId!=null) renderDetail();
+          setAiLink('AI：未設定（Firebase の AI Logic を有効にしてください）', true);
+          toast('AIの設定がまだ済んでいません。Firebase コンソールの「AI Logic」で Gemini Developer API を有効にしてください');
+          return;
+        }
+        if(AI_BUSY.test(msg)){
+          // 無料枠の回数制限・混雑：少しずつ長く待って、同じ口コミから続ける
+          const sec=Math.min(300, 30*2**Math.min(waits++,3));
+          setAiLink(`AI：回数制限のため${sec}秒待っています（残り${aiQueue.length}件）`);
+          await sleep(sec*1000);
+          continue;
+        }
+        aiQueue.shift();
+        r.log.push(`${now()}　AIで返信文を作成できませんでした（${msg.slice(0,80)}）`);
+        if(++fails>=3){
+          // 続けて失敗するときは、5分後にもう一度試す
+          aiQueue.length=0; aiFailed=true; if(selectedId!=null) renderDetail();
+          setAiLink('AI：返信文を作成できませんでした（5分後にもう一度試します）', true);
+          toast(`AIで返信文を作成できませんでした：${msg.slice(0,120)}`);
+          aiRetryTimer=setTimeout(kickAI, 5*60*1000);
+          return;
+        }
       }
-      await new Promise(f=>setTimeout(f,1500));
+      await sleep(4000); // 無料枠の回数制限にかからないよう間を空ける
     }
     setAiLink(done?`AI：返信文を${done}件作成しました`:'AI：利用できます');
+    $('aiLink').title='';
   } finally { aiRunning=false; }
 }
 // ---- API連携（Google Business Profile API / Instagram Graph API） ----
