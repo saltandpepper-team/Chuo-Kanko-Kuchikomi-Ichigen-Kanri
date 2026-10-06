@@ -902,7 +902,7 @@ function useRealData(){
   if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); renderBell(); }
 }
 /** 管理画面のボタン・リンク（[ 編集 ] など）や「167？」のような数字だけの行を取り除く（古い拡張機能が読み取った分にも効くように） */
-const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?])$/;
+const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?]|価格|サービス|食事|雰囲気|料理|立地|客室|清潔さ|睡眠の質|コストパフォーマンス|Value|Service|Food|Atmosphere|Location|Rooms|Cleanliness|Sleep Quality)$/;
 function cleanExtText(t){ return String(t||'').split('\n').filter(l=>!EXT_NOISE.test(l.trim())).join('\n').trim(); }
 window.addEventListener('message',e=>{
   if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
@@ -1077,6 +1077,9 @@ async function apiJson(res){
 function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?now():`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function guessLang(t){
   t=String(t||'');
+  // 外国語の口コミに画面の日本語（「サービス」など）が少し混ざっていても日本語と判定しないよう、文字数で比べる
+  const cjk=(t.match(/[぀-ヿ一-鿿가-힣ก-๙]/g)||[]).length, latin=(t.match(/[a-zà-öø-ÿ]/gi)||[]).length;
+  if(latin>=20 && latin>cjk*4) t=t.replace(/[぀-ヿ一-鿿]/g,'');
   if(/[぀-ヿ]/.test(t)) return 'ja';
   if(/[一-鿿]/.test(t)) return /[們個這說時會來為對問點華灣鐘體]/.test(t)?'zh-TW':'zh-CN';
   if(/[가-힣]/.test(t)) return 'ko';

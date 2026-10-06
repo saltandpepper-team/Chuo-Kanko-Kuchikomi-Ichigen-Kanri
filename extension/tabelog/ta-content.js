@@ -4,7 +4,7 @@
 (() => {
   const DATE = /(\d{4})年(\d{1,2})月(\d{1,2})日/;
   const UI = /^(AIが作成した返信文です|返信文を確認しています|返信文がまだありません|書き直すときは|AIが返信文を作成しています|AIで作成できませんでした|AIで作り直す|公開された返信|口コミを翻訳|原文を表示|翻訳を表示|お気に入りとして設定|お気に入りから削除|口コミを報告する|口コミへの返信方法|返信を削除する|返信を編集|表示される名前|送信|返信する|もっと見る|続きを読む|一部を表示|Your response|訪問日|旅行のタイプ|Date of visit)/;
-  const META = /(投稿\d[\d,]*件|役に立った|^[•・]$|^[●○◐◑◒◓◯⬤\s]+$)/;
+  const META = /(投稿\d[\d,]*件|役に立った|^[•・]$|^[●○◐◑◒◓◯⬤\s]+$|^(価格|サービス|食事|雰囲気|料理|立地|客室|清潔さ|睡眠の質|コストパフォーマンス|Value|Service|Food|Atmosphere|Location|Rooms|Cleanliness|Sleep Quality)$)/; // 最後は項目別評価の見出し
   const send = msg => new Promise(res => { try { chrome.runtime.sendMessage(msg, r => res(r || {})); } catch (e) { res({}); } });
   const sleep = ms => new Promise(r => setTimeout(r, ms));
   const locationId = new URLSearchParams(location.search).get('locationId') || '';
