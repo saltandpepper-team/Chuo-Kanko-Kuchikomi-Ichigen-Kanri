@@ -56,7 +56,11 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
 1. Firebase コンソール（プロジェクト `chuo-kanko`）→ 左メニュー「AI Logic」→「始める」を押します。
 2. API の提供元は **「Gemini Developer API」** を選びます（無料枠あり。Spark プランのままでも使えます）。
 3. 画面の案内どおりに進めると、必要な API が有効になります。アプリ側のコードの変更は不要です。
-4. （推奨）第三者にAIを使われないよう、**App Check**（reCAPTCHA Enterprise）を設定します。
+4. **App Check を設定します（2026年11月2日から必須）。** AI Logic を有効にすると App Check が自動で「適用」になり、未登録のアプリからの呼び出しは拒否されます（`Firebase App Check token is invalid`）。11月1日までは App Check の「API」タブで AI Logic を「モニタリング」に戻せますが、11月2日以降は戻せません。
+   1. https://www.google.com/recaptcha/admin/create で reCAPTCHA v3（スコアベース）のキーを作ります。ドメインは `chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com` と `chuo-kanko-kuchikomi-ichigen-kanri.web.app`。
+   2. Firebase コンソール → App Check →「アプリ」タブで、Webアプリ（アプリIDの末尾 `3d79dc0e9428203e9fedf1`）に reCAPTCHA のシークレットキーを登録します。
+   3. `public/ai.js` の `RECAPTCHA_SITE_KEY` にサイトキーを入れて公開します。
+   4. 動作を確認したら、App Check の「API」タブで AI Logic を「適用」に戻します。
 
 - 使うモデルは `public/ai.js` の `MODELS` です（先頭から順に試し、提供終了などで使えないモデルは飛ばします）。
 - 無料枠の上限を超えると、作成が一時的に止まります（アプリは1分待って再試行します）。件数が多い場合は、AI Logic の設定で従量課金（Blaze）にします。
