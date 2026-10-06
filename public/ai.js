@@ -3,6 +3,11 @@
 // index.html からは window.appAI.generate(prompt, {onText}) で使う。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
+import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
+
+// Firebase App Check（第三者にAIを使われないための仕組み）で使う reCAPTCHA v3 のサイトキー。
+// Firebase コンソールの App Check でこのアプリを登録したときのサイトキーを入れる（空なら App Check を使わない）
+const RECAPTCHA_SITE_KEY = "";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_MPoBkHVdPDD2jz67iK-BGGsY93g4YuI",
@@ -14,7 +19,9 @@ const firebaseConfig = {
 };
 
 // firebase-init.js（別バージョンのSDK）と干渉しないよう、名前付きの別アプリとして初期化する
-const ai = getAI(initializeApp(firebaseConfig, "ai"), { backend: new GoogleAIBackend() });
+const app = initializeApp(firebaseConfig, "ai");
+if (RECAPTCHA_SITE_KEY) initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
+const ai = getAI(app, { backend: new GoogleAIBackend() });
 
 // 先頭から順に試す。提供終了などで使えないモデルは以後使わず、混雑で失敗したときはその回だけ次のモデルで試す
 const MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash"];
