@@ -179,7 +179,7 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
 async function rememberReviews(list, store, media, pageUrl) {
   const { reviews = {} } = await chrome.storage.local.get('reviews');
   const t = Date.now();
-  list.forEach(r => { reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: r.text, title: r.title || '', date: r.date || '', replied: !!r.replied, reply: r.reply || '', pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
+  list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', replied: !!r.replied, reply: r.reply || '', pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
   // 古いものから削除して最大400件に保つ
   const keys = Object.keys(reviews).sort((a, b) => reviews[b].seenAt - reviews[a].seenAt);
   keys.slice(400).forEach(k => delete reviews[k]);
@@ -248,6 +248,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const { status } = await getState();
       return sendResponse({ drafts: out, error: Object.keys(out).length < msg.reviews.filter(r => !r.replied).length ? status.lastError : '' });
     }
+    if (msg.type === 'pageMode') return sendResponse({ mode: isCheck ? 'check' : 'assist' });
     if (msg.type === 'checkNow') return sendResponse(await runCheck());
     if (msg.type === 'appPage') {
       if (msg.isApp || /kuchikomi|%E5%8F%A3%E3%82%B3%E3%83%9F|口コミ/i.test(msg.url || '')) await setStatus({ appSeenAt: Date.now(), appUrl: String(msg.url || ''), appOk: !!msg.isApp });

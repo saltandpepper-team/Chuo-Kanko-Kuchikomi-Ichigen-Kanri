@@ -3,7 +3,7 @@
 //   ※送信ボタンは押さない。担当者が内容を確認して押す
 (() => {
   const DATE = /(\d{4})年(\d{1,2})月(\d{1,2})日/;
-  const UI = /^(公開された返信|口コミを翻訳|原文を表示|翻訳を表示|お気に入りとして設定|お気に入りから削除|口コミを報告する|口コミへの返信方法|返信を削除する|返信を編集|表示される名前|送信|返信する|もっと見る|続きを読む|一部を表示|Your response|訪問日|旅行のタイプ|Date of visit)/;
+  const UI = /^(AIが作成した返信文です|AIが返信文を作成しています|AIで作成できませんでした|AIで作り直す|公開された返信|口コミを翻訳|原文を表示|翻訳を表示|お気に入りとして設定|お気に入りから削除|口コミを報告する|口コミへの返信方法|返信を削除する|返信を編集|表示される名前|送信|返信する|もっと見る|続きを読む|一部を表示|Your response|訪問日|旅行のタイプ|Date of visit)/;
   const META = /(投稿\d[\d,]*件|役に立った|^[•・]$|^[●○◐◑◒◓◯⬤\s]+$)/;
   const send = msg => new Promise(res => { try { chrome.runtime.sendMessage(msg, r => res(r || {})); } catch (e) { res({}); } });
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -99,7 +99,7 @@
     el.innerHTML = html;
     return el;
   }
-  let items = [], drafts = {}, store = '';
+  let items = [], drafts = {}, store = '', mode = null;
   function fill(card, key, reply) {
     const ta = card.querySelector('textarea');
     if (!ta || !reply) return false;
@@ -144,33 +144,49 @@
       send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: [], note: '口コミが見つかりませんでした' });
       return;
     }
-    // 未返信の口コミを開いて全文と返信欄を出す
-    let opened = 0;
-    for (const x of read()) if (!x.review.replied && expand(x.card)) { opened++; await sleep(400); }
-    if (opened) await sleep(800);
+    mode = (await send({ type: 'pageMode' })).mode;
+    if (mode === 'check') {
+      // 裏での定期確認：未返信の口コミを1件ずつ開いて全文を読む（トリップアドバイザーは1件開くと他が閉じるため）
+      const full = {};
+      const keys = read().filter(x => !x.review.replied).map(x => x.review.key).slice(0, 40);
+      for (const key of keys) {
+        const x = read().find(i => i.review.key === key);
+        if (!x || x.card.querySelector('textarea')) { if (x) full[key] = x.review.text; continue; }
+        if (!expand(x.card)) continue;
+        for (let k = 0; k < 10; k++) { await sleep(300); const y = read().find(i => i.review.key === key); if (y && y.card.querySelector('textarea')) { full[key] = y.review.text; break; } }
+      }
+      items = read().map(x => ({ ...x, review: { ...x.review, text: full[x.review.key] || x.review.text } }));
+      await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: items.map(x => x.review), diag: diag() });
+      return;
+    }
+    // 担当者が見ているとき：勝手に開閉せず、口コミを開いて返信欄が出たときに入力する
     items = read();
     const res = await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: items.map(x => x.review), diag: diag() });
-    if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     store = res.store || '';
-    const pending = items.filter(x => !x.review.replied);
-    if (!pending.length) return;
-    pending.forEach(x => { const ta = x.card.querySelector('textarea'); if (ta && !ta.value.trim()) label(ta, 'AIが返信文を作成しています…'); });
-    const r = await send({ type: 'getDrafts', media: 'tripadvisor', locationId, store, reviews: pending.map(x => x.review) });
-    drafts = r.drafts || {};
-    pending.forEach(x => {
-      const ta = x.card.querySelector('textarea');
-      if (!fill(x.card, x.review.key, drafts[x.review.key]) && ta && !drafts[x.review.key] && !ta.value.trim()) label(ta, `AIで作成できませんでした：${(r.error || '不明なエラー').replace(/[<>&]/g, '')}`);
-    });
+    document.querySelectorAll('textarea').forEach(onTextarea);
   }
-  // 担当者が口コミを開いて返信欄が出てきたときにも入力する
+  /** 返信欄が現れたら、その口コミのAI返信文を入れる（なければその場で作成） */
+  const busy = new Set();
+  async function onTextarea(ta) {
+    if (mode !== 'assist') return; // 裏での定期確認のときは入力しない
+    const x = read().find(i => i.card.contains(ta));
+    if (!x || x.review.replied || busy.has(x.review.key)) return;
+    if (ta.value.trim() && ta.dataset.taAssistFilled !== '1') return;
+    if (!items.some(i => i.review.key === x.review.key)) items.push(x); else items = items.map(i => i.review.key === x.review.key ? x : i);
+    if (drafts[x.review.key]) { fill(x.card, x.review.key, drafts[x.review.key]); return; }
+    busy.add(x.review.key);
+    label(ta, 'AIが返信文を作成しています…');
+    const r = await send({ type: 'getDrafts', media: 'tripadvisor', locationId, store, reviews: [x.review] });
+    busy.delete(x.review.key);
+    const y = read().find(i => i.review.key === x.review.key) || x;
+    if (r.drafts?.[x.review.key]) { drafts[x.review.key] = r.drafts[x.review.key]; fill(y.card, x.review.key, drafts[x.review.key]); }
+    else { const t2 = y.card.querySelector('textarea'); if (t2) label(t2, `AIで作成できませんでした：${(r.error || '不明なエラー').replace(/[<>&]/g, '')}`); }
+  }
+  // 担当者が口コミを開いて返信欄が出てきたときに入力する
   new MutationObserver(muts => {
     for (const m of muts) for (const n of m.addedNodes) {
       if (!(n instanceof HTMLElement)) continue;
-      const tas = n.matches('textarea') ? [n] : [...n.querySelectorAll('textarea')];
-      tas.forEach(ta => {
-        const x = read().find(i => i.card.contains(ta));
-        if (x && !x.review.replied && drafts[x.review.key]) fill(x.card, x.review.key, drafts[x.review.key]);
-      });
+      (n.matches('textarea') ? [n] : [...n.querySelectorAll('textarea')]).forEach(onTextarea);
     }
   }).observe(document.body, { childList: true, subtree: true });
 
