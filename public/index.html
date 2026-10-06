@@ -375,8 +375,8 @@ function mediaHtml(m){ return `<span class="media m-${m}">${MEDIA[m].label}</spa
 function statusHtml(s){ const [t,c]=STATUS[s]; return `<span class="pill ${c}">${t}</span>`; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function now(){ const d=new Date(); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）'};
-const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文'};
+const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）',ko:'韓国語',th:'タイ語',fr:'フランス語',it:'イタリア語',es:'スペイン語',de:'ドイツ語'};
+const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文',ko:'한국어',th:'TH',fr:'FR',it:'IT',es:'ES',de:'DE'};
 function langBadge(r){ return r.lang&&r.lang!=='ja' ? `<span class="lang-badge" title="${LANG[r.lang]}の口コミ">${LANG_SHORT[r.lang]||r.lang}</span>` : ''; }
 function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [t.trim(),''] : [p[0].trim(), p.slice(1).join('\n').trim()]; }
 function isLow(r){ return r.rating!=null && r.rating<=3; }
@@ -589,6 +589,7 @@ function googleLongApology(r, neg){
 }
 // 食べログ・トリップアドバイザー（日本語）は他媒体よりも口コミ単位で内容に触れた、定型文に見えない返信にする
 function fallbackDraft(r){
+  if(!['ja','en','zh-TW','zh-CN'].includes(r.lang)) r={...r, lang:'en'}; // 定型文がない言語は英語の定型文にする
   const sign=`${r.store} スタッフ一同`;
   const nm=r.author.split(/ \(|（/)[0];
   if(r.lang==='en' && isLow(r)) return `Dear ${nm},
@@ -747,6 +748,7 @@ async function draft(r, silent, instr, auto){
   }
   r.drafting=false; r.partial='';
   const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
+  r.fallback = fromAI ? '' : (r.fallback || (instr ? '' : body)); // 定型文のままなら、AIが使えるようになったときに作り直す
   if(fromAI) rememberAI(r);
   if(!silent) renderAll(); else if(r.id===selectedId) renderDetail();
   return text;
@@ -754,7 +756,8 @@ async function draft(r, silent, instr, auto){
 /** 口コミを開いたとき、返信文がまだ無ければ自動で下書きする */
 function autoDraft(){
   const r=reviews.find(x=>x.id===selectedId);
-  if(r && r.status==='new' && !r.reply.trim() && !r.drafting) draft(r);
+  // AIの読み込み中は待つ（読み込めたら自動作成のキューが作る）。読み込めなかったときだけ定型文にする
+  if(r && r.status==='new' && !r.reply.trim() && !r.drafting && (sample || aiGaveUp)) draft(r);
 }
 
 async function approve(r){
@@ -947,8 +950,10 @@ function restoreAI(r){
   if(c.ja && r.lang!=='ja') r.ja=c.ja;
   if(r.status==='new' && !r.reply && c.reply){ r.reply=c.reply; r.replyJa=c.replyJa||''; r.status='draft'; r.log.push(`${now()}　以前AIが作成した返信文を復元`); }
 }
-const aiQueue=[]; let aiRunning=false;
-const needsAI = r => (r.status==='new' && !r.reply.trim()) || (r.lang!=='ja' && !r.ja);
+const aiQueue=[]; let aiRunning=false, aiGaveUp=false;
+const isFallback = r => r.status==='draft' && !!r.fallback && r.reply===r.fallback;
+const needsDraft = r => (r.status==='new' && !r.reply.trim()) || isFallback(r);
+const needsAI = r => needsDraft(r) || (r.lang!=='ja' && !r.ja);
 function kickAI(){
   if(!sample) return;
   ALL.forEach(r=>{ if(needsAI(r) && !aiQueue.includes(r)) aiQueue.push(r); });
@@ -975,7 +980,7 @@ async function runAI(){
       setAiLink(`AI：返信文を作成中（残り${aiQueue.length}件）`);
       try{
         if(r.lang!=='ja' && !r.ja) await translateReview(r);
-        if(r.status==='new' && !r.reply.trim() && !r.drafting){ await draft(r, true, '', true); done++; renderStats(); renderList(); }
+        if(needsDraft(r) && !r.drafting){ await draft(r, true, '', true); done++; renderStats(); renderList(); }
         aiQueue.shift(); retried=false;
       }catch(e){
         const msg=String(e?.message||e);
@@ -1030,7 +1035,19 @@ function guessLang(t){
   t=String(t||'');
   if(/[぀-ヿ]/.test(t)) return 'ja';
   if(/[一-鿿]/.test(t)) return /[們個這說時會來為對問點華灣鐘體]/.test(t)?'zh-TW':'zh-CN';
-  return /[a-z]/i.test(t)?'en':'ja';
+  if(/[가-힣]/.test(t)) return 'ko';
+  if(/[ก-๙]/.test(t)) return 'th';
+  if(!/[a-z]/i.test(t)) return 'ja';
+  // ラテン文字の口コミは、よく使う単語の数でヨーロッパの主な言語を見分ける（決め手がなければ英語）
+  const words=t.toLowerCase().match(/[a-zà-öø-ÿ']+/g)||[];
+  const W={en:'the and was is very we with food great staff for it to of were our had this',
+    fr:'le les et était très des une est nous pour avec un du au été vraiment nourriture personnel',
+    it:'il lo gli e è molto di che per con sono stato stata locale cena personale anche',
+    es:'el los las y muy que es con para comida fue una personal estaba todo',
+    de:'der die das und ist sehr mit war essen wir ein eine nicht auch personal'};
+  let best='en', top=0;
+  for(const [k,v] of Object.entries(W)){ const set=new Set(v.split(' ')); const n=words.filter(w=>set.has(w)).length; if(n>top){ top=n; best=k; } }
+  return best;
 }
 const googleTokens={};
 const STAR={ONE:1,TWO:2,THREE:3,FOUR:4,FIVE:5};
@@ -1366,7 +1383,7 @@ function useAppAI(){
   kickAI();
 }
 if(window.appAI) useAppAI(); else window.addEventListener('app-ai-ready', useAppAI, {once:true});
-setTimeout(()=>{ if(!sample) setAiLink('AI：読み込めませんでした（定型文で下書きします）', true); }, 15000);
+setTimeout(()=>{ if(!sample){ aiGaveUp=true; setAiLink('AI：読み込めませんでした（定型文で下書きします）', true); autoDraft(); } }, 15000);
 </script>
 
 </body></html>
