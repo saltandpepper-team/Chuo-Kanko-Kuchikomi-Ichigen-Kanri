@@ -39,11 +39,17 @@
     return [...new Set(cards)];
   }
   function ratingOf(card) {
-    for (const el of card.querySelectorAll('[aria-label],[title]')) {
-      const t = el.getAttribute('aria-label') || el.getAttribute('title') || '';
-      let m = t.match(/5\s*段階中\s*(\d(?:\.\d)?)/) || t.match(/(\d(?:\.\d)?)\s*(?:\/\s*5|of\s*5|段階中)/i) || t.match(/バブル評価\s*(\d(?:\.\d)?)/);
+    const texts = [];
+    card.querySelectorAll('[aria-label],[title]').forEach(el => texts.push(el.getAttribute('aria-label') || el.getAttribute('title') || ''));
+    card.querySelectorAll('svg title, title').forEach(el => texts.push(el.textContent || '')); // SVGの中の<title>（例：5段階中5.0）
+    for (const t of texts) {
+      const m = t.match(/5\s*段階中\s*(\d(?:\.\d)?)/) || t.match(/(\d(?:\.\d)?)\s*(?:\/\s*5|of\s*5|段階中)/i) || t.match(/バブル評価\s*(\d(?:\.\d)?)/);
       if (m) return +m[1];
     }
+    // 旧形式：class="ui_bubble_rating bubble_45"
+    const b = card.querySelector('[class*="bubble_"]');
+    const m = b && String(b.className).match(/bubble_(\d)(\d)/);
+    if (m) return +(m[1] + '.' + m[2]);
     return null;
   }
   function parseCard(card) {
@@ -129,7 +135,9 @@
       samples: findCards().slice(0, 3).map(c => ({
         text: c.innerText.slice(0, 700), toggles: c.querySelectorAll('[aria-expanded]').length,
         textareas: [...c.querySelectorAll('textarea')].map(t => t.value.slice(0, 40)),
-        tag: c.tagName + (c.className && typeof c.className === 'string' ? '.' + c.className.split(/\s+/).slice(0, 3).join('.') : '')
+        tag: c.tagName + (c.className && typeof c.className === 'string' ? '.' + c.className.split(/\s+/).slice(0, 3).join('.') : ''),
+        rating: ratingOf(c),
+        ratingHint: (c.querySelector('svg') ? c.querySelector('svg').outerHTML : '').replace(/<path[^>]*>/g, '<path/>').slice(0, 400)
       }))
     };
   }
