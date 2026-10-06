@@ -51,13 +51,7 @@
 
     <section style="margin-top:16px">
       <h2>AI（返信文の作成）</h2>
-      <div class="row">
-        <label>OpenAI APIキー<input id="openaiKey" type="password" autocomplete="off" spellcheck="false"></label>
-        <label style="max-width:200px">モデル<input id="model" spellcheck="false"></label>
-      </div>
-      <label>山麓園の店舗情報（AIが返信で使ってよい事実）<textarea id="info-山麓園"></textarea></label>
-      <label>浅間茶屋の店舗情報（AIが返信で使ってよい事実）<textarea id="info-浅間茶屋"></textarea></label>
-      <label>文体のお手本（過去の返信を貼り付け・任意）<textarea id="style" style="min-height:140px"></textarea></label>
+      <p class="hint">返信文は、アプリ（口コミ一元管理）の中でAIが作成します。APIキーの入力は不要です（OpenAIは使いません）。アプリをこのChromeで開くと、作成された返信文がこの拡張機能に届き、各媒体の返信欄に入力されます。</p>
     </section>
 
     <section style="margin-top:16px">
@@ -71,7 +65,7 @@
     <h2>状態</h2>
     <div id="status">まだ確認していません</div>
     <div class="row"><button type="button" id="copyDiag">診断情報をコピー</button><span id="diagMsg" class="ok"></span></div>
-    <p class="hint">うまく読み取れないときに、このボタンでコピーした内容を担当者に送ってください（口コミの本文などが含まれます。パスワードやAPIキーは含まれません）。</p>
+    <p class="hint">うまく読み取れないときに、このボタンでコピーした内容を担当者に送ってください（口コミの本文などが含まれます。パスワードは含まれません）。</p>
   </section>
 </main>
 <script src="options.js"></script>

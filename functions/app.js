@@ -2,7 +2,7 @@
 // ・ログイン確認：Firebase Authentication のIDトークン＋許可したメールアドレスのみ
 // ・Google Business Profile / Instagram（Facebookログイン）とOAuthで連携し、トークンはFirestoreにだけ保存
 //   （パスワードは扱わない。ブラウザにトークンを渡さない）
-// ・口コミ・コメントの取得、返信の投稿、AIでの返信文作成（OpenAI）
+// ・口コミ・コメントの取得、返信の投稿（AIの返信文はアプリ内の Firebase AI Logic で作成）
 const express = require('express');
 
 const STORES = ['山麓園', '浅間茶屋'];
@@ -231,26 +231,6 @@ function createApp(d) {
       await json(await d.fetch(`${GRAPH}/${name}/replies`, { method: 'POST', body: new URLSearchParams({ message: comment, access_token: c.selected.pageToken }) }));
     }
     res.json({ ok: true });
-  }));
-
-  // ---- AIで返信文を作成（プロンプトはアプリ側の buildPrompt で作成） ----
-  app.post('/api/ai/generate', auth, wrap(async (req, res) => {
-    const prompt = String(req.body.prompt || '');
-    if (!prompt.trim()) throw new HttpError(400, 'プロンプトが空です');
-    if (prompt.length > 20000) throw new HttpError(400, 'プロンプトが長すぎます');
-    const c = cfg();
-    if (!c.openaiApiKey) throw new HttpError(503, 'AIのAPIキーが設定されていません');
-    const model = req.body.tier === 'default' ? (c.openaiModelHigh || c.openaiModel || 'gpt-4o') : (c.openaiModel || 'gpt-4o-mini');
-    const j = await json(await d.fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${c.openaiApiKey}` },
-      body: JSON.stringify({ model, temperature: 0.7, messages: [
-        { role: 'system', content: 'あなたは飲食店の口コミ返信担当です。ユーザーの指示に従い、返信文だけを出力してください。' },
-        { role: 'user', content: prompt }
-      ] })
-    }));
-    const text = j.choices?.[0]?.message?.content?.trim();
-    if (!text) throw new HttpError(502, 'AIからの応答が空でした');
-    res.json({ text });
   }));
 
   app.use('/api', (req, res) => res.status(404).json({ error: '見つかりません' }));

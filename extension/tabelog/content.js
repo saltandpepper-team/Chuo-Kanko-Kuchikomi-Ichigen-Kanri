@@ -86,15 +86,7 @@
     setValue(ta, reply);
     ta.dataset.tbAssistFilled = '1';
     ta.style.outline = '2px solid #372822';
-    const el = label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、返信ボタンを押してください（この拡張機能は送信しません）。 <button type="button" data-tb-redo style="margin-left:6px;font-size:12px">AIで作り直す</button>');
-    el.querySelector('[data-tb-redo]').onclick = async e => {
-      e.preventDefault();
-      e.target.disabled = true; e.target.textContent = '作成中…';
-      const item = items.find(x => x.review.key === key);
-      const r = await send({ type: 'getDrafts', media: 'tabelog', store: storeName(), reviews: [item.review], force: true });
-      if (r.drafts?.[key]) { ta.dataset.tbAssistFilled = '1'; fill(card, key, r.drafts[key]); }
-      else label(ta, `AIで作成できませんでした：${(r.error || '').replace(/[<>&]/g, '')}`);
-    };
+    label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、返信ボタンを押してください（この拡張機能は送信しません）。（書き直すときはアプリの「指示を入れて書き直す」を使ってください）');
     return true;
   }
 
@@ -108,12 +100,12 @@
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     const pending = items.filter(x => !x.review.replied);
     if (!pending.length) return;
-    pending.forEach(x => { const ta = x.card.querySelector('textarea'); if (ta && !ta.value.trim()) label(ta, 'AIが返信文を作成しています…'); });
+    pending.forEach(x => { const ta = x.card.querySelector('textarea'); if (ta && !ta.value.trim()) label(ta, '返信文を確認しています…'); });
     const r = await send({ type: 'getDrafts', media: 'tabelog', store, reviews: pending.map(x => x.review) });
     drafts = r.drafts || {};
     pending.forEach(x => {
       const ta = x.card.querySelector('textarea');
-      if (!fill(x.card, x.review.key, drafts[x.review.key]) && ta && !drafts[x.review.key] && !ta.value.trim()) label(ta, `AIで作成できませんでした：${(r.error || '不明なエラー').replace(/[<>&]/g, '')}`);
+      if (!fill(x.card, x.review.key, drafts[x.review.key]) && ta && !drafts[x.review.key] && !ta.value.trim()) label(ta, (r.error || '返信文がまだありません').replace(/[<>&]/g, ''));
     });
   }
   // 「返信する」を押してから返信欄が出てくる画面にも対応

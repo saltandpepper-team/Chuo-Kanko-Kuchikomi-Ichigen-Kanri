@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
   "name": "口コミ返信アシスタント（食べログ・トリップアドバイザー）",
-  "version": "1.2.6",
-  "description": "食べログ・トリップアドバイザーの新着口コミをAIが確認し、返信欄に返信文を下書きします。口コミは口コミ一元管理アプリにも表示されます。送信ボタンは担当者が押します。",
+  "version": "1.3.0",
+  "description": "食べログ・トリップアドバイザーの新着口コミを確認して口コミ一元管理アプリに表示し、アプリのAIが作った返信文を返信欄に入力します。送信ボタンは担当者が押します。",
   "permissions": [
     "storage",
     "alarms",
@@ -10,7 +10,6 @@
   ],
   "host_permissions": [
     "https://owner.tabelog.com/*",
-    "https://api.openai.com/*",
     "https://www.tripadvisor.jp/*",
     "https://www.tripadvisor.com/*",
     "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",

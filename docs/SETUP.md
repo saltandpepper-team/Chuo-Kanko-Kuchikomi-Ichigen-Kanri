@@ -5,9 +5,9 @@
 - ログインは **Firebase Authentication**（メールアドレス＋パスワード）。許可したメールアドレスだけが使えます。
 - Google・Instagram は、萱沼様が各社の画面で **「許可」を押すだけ** で連携します（OAuth）。**各媒体のパスワードはアプリに入力しません。**
 - 連携トークン・APIキーは **サーバー（Cloud Functions）と Firestore にだけ** 保存され、ブラウザには渡りません。
-- AIの返信文はサーバー経由で作成します（OpenAI）。
+- AIの返信文・口コミの翻訳は、アプリの中で **Firebase AI Logic（Gemini）** が作成します（`public/ai.js`）。OpenAIは使いません。APIキーの入力も不要です。
 - 本番ではデモ用のサンプル口コミは表示されません。
-- 食べログは Chrome 拡張機能（`extension/tabelog/`）またはアプリの「食べログの口コミを取り込む」で扱います。
+- 食べログ・トリップアドバイザーは Chrome 拡張機能（`extension/tabelog/`）で扱います。
 
 > この本番モードは、上記のURL（`*.web.app` / `*.firebaseapp.com`）で開いたときだけ有効です。それ以外（ファイルを直接開く・claude.ai の公開版）では、これまでどおりのデモとして動きます。
 
@@ -34,7 +34,7 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
    - スコープ：`https://www.googleapis.com/auth/business.manage`
    - **公開ステータスを「本番環境」にしてください。**「テスト」のままだと、連携が7日ごとに切れます。
 4. **OAuth クライアント ID**（種類：ウェブアプリケーション）を作成します。
-   - 承認済みのリダイレクト URI：`https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/api/google/callback`
+   - 承認済みのリダイレクト URI：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/google/callback`
    - 作成後の「クライアント ID」と「クライアント シークレット」を控えます。
 
 ## 3. Instagram（Meta for Developers）
@@ -43,15 +43,24 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
 
 1. [Meta for Developers](https://developers.facebook.com/) でアプリを作成します（種類：ビジネス）。
 2. 「Facebookログイン」を追加し、有効な OAuth リダイレクト URI に次を登録します。
-   `https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/api/instagram/callback`
+   `https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/instagram/callback`
 3. 使う権限：`instagram_basic`、`instagram_manage_comments`、`pages_show_list`、`pages_read_engagement`、`business_management`
    - アプリが「開発モード」の間は、アプリの **管理者・テスター** に登録したアカウントだけが連携できます。萱沼様のFacebookアカウントを管理者かテスターに追加してください。
    - 他のアカウントでも使う場合は、アプリレビュー（権限の審査）とビジネス認証が必要です。
 4. 「アプリID」と「app secret」を控えます。
 
-## 4. OpenAI
+## 4. AI（Firebase AI Logic／Gemini）
 
-[OpenAI のダッシュボード](https://platform.openai.com/) で API キーを発行します。利用上限（月額）も設定しておくと安心です。
+返信文の作成と口コミの翻訳に使います。**本番で使う前に、次の設定が必要です（Google・Instagram の連携とは関係なく、今すぐ必要です）。**
+
+1. Firebase コンソール（プロジェクト `chuo-kanko`）→ 左メニュー「AI Logic」→「始める」を押します。
+2. API の提供元は **「Gemini Developer API」** を選びます（無料枠あり。Spark プランのままでも使えます）。
+3. 画面の案内どおりに進めると、必要な API が有効になります。アプリ側のコードの変更は不要です。
+4. （推奨）第三者にAIを使われないよう、**App Check**（reCAPTCHA Enterprise）を設定します。
+
+- 使うモデルは `public/ai.js` の `MODELS` です（先頭から順に試し、提供終了などで使えないモデルは飛ばします）。
+- 無料枠の上限を超えると、作成が一時的に止まります（アプリは1分待って再試行します）。件数が多い場合は、AI Logic の設定で従量課金（Blaze）にします。
+- 無料枠では、送った内容（公開済みの口コミ本文）が Google のサービス改善に使われる場合があります。気になる場合は従量課金にしてください。
 
 ## 5. 設定値の登録とデプロイ
 
@@ -76,7 +85,6 @@ cp functions/.env.example functions/.env
 # 秘密の値（Secret Manager に保存。コマンド実行後に値を貼り付け）
 firebase functions:secrets:set GOOGLE_CLIENT_SECRET
 firebase functions:secrets:set META_APP_SECRET
-firebase functions:secrets:set OPENAI_API_KEY
 
 # デプロイ
 (cd functions && npm ci)
@@ -98,7 +106,8 @@ firebase deploy --only functions,firestore:rules,hosting --project chuo-kanko
 
 - **作業状態の保存**：AIの下書き・承認待ちなどの状態はサーバーに保存していません。ページを再読み込みすると、Google・Instagram の口コミは取得し直します（返信済みかどうかは各媒体から取得します）。食べログの取り込み分は再読み込みで消えます。
 - **Instagram の取得範囲**：直近10投稿のコメントが対象です。
-- **トリップアドバイザー**：まだ連携していません（予定）。
+- **食べログ・トリップアドバイザー**：Chrome 拡張機能で連携しています（`extension/tabelog/README.md`）。
+- サーバーの `/api/ai/generate`（OpenAI）は使っていません（AIはアプリ内の Firebase AI Logic を使います）。
 
 ## 開発者向け
 
