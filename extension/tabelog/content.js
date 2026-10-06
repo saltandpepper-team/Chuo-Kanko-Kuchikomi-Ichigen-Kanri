@@ -102,7 +102,9 @@
   async function run() {
     items = readCards();
     const store = storeName();
-    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href, reviews: items.map(x => x.review) });
+    const diag = { url: location.href, cards: items.length,
+      samples: items.slice(0, 3).map(x => ({ text: x.card.innerText.slice(0, 700), textareas: x.card.querySelectorAll('textarea').length, replied: x.review.replied })) };
+    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href, reviews: items.map(x => x.review), diag });
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     const pending = items.filter(x => !x.review.replied);
     if (!pending.length) return;

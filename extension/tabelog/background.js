@@ -118,14 +118,25 @@ chrome.notifications.onClicked.addListener(id => { chrome.tabs.create({ url: not
 // ---- 裏で各媒体の口コミページを開いて確認 ----
 let check = null;   // 確認中の1ページ { tabId, kind, store, url, loginTried, done, timer }
 let running = false;
+/** 前回の確認で閉じ損ねたタブ（拡張機能の再起動などで残ったもの）を閉じる */
+async function closeLeftoverTabs() {
+  const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
+  for (const id of checkTabs) { try { await chrome.tabs.remove(id); } catch (e) {} }
+  await chrome.storage.local.set({ checkTabs: [] });
+}
+chrome.runtime.onStartup.addListener(closeLeftoverTabs);
 function checkTarget(t) {
   return new Promise(async resolve => {
     const tab = await chrome.tabs.create({ url: t.url, active: false });
+    const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
+    await chrome.storage.local.set({ checkTabs: [...checkTabs, tab.id] });
     const done = async result => {
       if (!check || check.tabId !== tab.id) return;
       clearTimeout(check.timer);
       check = null;
       try { await chrome.tabs.remove(tab.id); } catch (e) {}
+      const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
+      await chrome.storage.local.set({ checkTabs: checkTabs.filter(x => x !== tab.id) });
       resolve(result);
     };
     check = { tabId: tab.id, ...t, loginTried: false, done,
@@ -136,6 +147,7 @@ async function runCheck() {
   if (running) return { ok: false, error: '確認中です' };
   running = true;
   try {
+    await closeLeftoverTabs();
     const s = await getSettings();
     const targets = [{ kind: 'tabelog', url: TB_REPLY_URL, label: '食べログ' }];
     for (const [store, id] of Object.entries(s.taLocations)) {
@@ -206,6 +218,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         return sendResponse({ mode: 'none' });
       }
       await rememberReviews(msg.reviews, store, media, msg.pageUrl);
+      if (msg.diag) { const { status } = await getState(); await setStatus({ diag: { ...(status.diag || {}), [media]: { ...msg.diag, at: Date.now(), unreplied: msg.reviews.filter(r => !r.replied).length } } }); }
       if (isCheck) {
         const { notified } = await getState();
         const { drafts, made, error: aiError } = await ensureDrafts(msg.reviews, store, media, false);

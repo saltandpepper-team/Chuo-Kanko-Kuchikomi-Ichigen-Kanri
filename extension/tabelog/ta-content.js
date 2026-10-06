@@ -112,6 +112,21 @@
     };
     return true;
   }
+  /** 診断情報（設定画面の「診断情報をコピー」用）：画面の作りが想定と違うときの調査に使う */
+  function diag() {
+    const body = document.body.innerText;
+    return {
+      url: location.href, cards: findCards().length,
+      pageReplyLabels: (body.match(/公開された返信/g) || []).length,
+      pageTextareas: document.querySelectorAll('textarea').length,
+      pageToggles: document.querySelectorAll('[aria-expanded]').length,
+      samples: findCards().slice(0, 3).map(c => ({
+        text: c.innerText.slice(0, 700), toggles: c.querySelectorAll('[aria-expanded]').length,
+        textareas: [...c.querySelectorAll('textarea')].map(t => t.value.slice(0, 40)),
+        tag: c.tagName + (c.className && typeof c.className === 'string' ? '.' + c.className.split(/\s+/).slice(0, 3).join('.') : '')
+      }))
+    };
+  }
   const isLoginPage = () => !!document.querySelector('input[type="password"]') || /RegistrationController|\/login/i.test(location.pathname);
 
   async function run() {
@@ -128,7 +143,7 @@
     for (const x of read()) if (!x.review.replied && expand(x.card)) { opened++; await sleep(400); }
     if (opened) await sleep(800);
     items = read();
-    const res = await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: items.map(x => x.review) });
+    const res = await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: items.map(x => x.review), diag: diag() });
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     store = res.store || '';
     const pending = items.filter(x => !x.review.replied);

@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "口コミ返信アシスタント（食べログ・トリップアドバイザー）",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "食べログ・トリップアドバイザーの新着口コミをAIが確認し、返信欄に返信文を下書きします。口コミは口コミ一元管理アプリにも表示されます。送信ボタンは担当者が押します。",
   "permissions": [
     "storage",
@@ -48,8 +48,7 @@
         "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
         "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
         "https://claude.ai/*",
-        "https://*.claudeusercontent.com/*",
-        "file:///*"
+        "https://*.claudeusercontent.com/*"
       ],
       "js": [
         "app-bridge.js"
@@ -57,6 +56,15 @@
       "run_at": "document_idle",
       "all_frames": true,
       "match_origin_as_fallback": true
+    },
+    {
+      "matches": [
+        "file:///*"
+      ],
+      "js": [
+        "app-bridge.js"
+      ],
+      "run_at": "document_idle"
     }
   ],
   "options_page": "options.html",

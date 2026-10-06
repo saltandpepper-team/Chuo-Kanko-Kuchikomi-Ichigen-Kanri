@@ -55,4 +55,10 @@ $('checkNow').addEventListener('click', async () => {
   renderStatus();
 });
 chrome.storage.onChanged.addListener((c, area) => { if (area === 'local' && (c.status || c.drafts)) renderStatus(); });
+$('copyDiag').addEventListener('click', async () => {
+  const { status = {} } = await chrome.storage.local.get('status');
+  const text = '【口コミ返信アシスタント 診断情報】\n' + JSON.stringify({ version: chrome.runtime.getManifest().version, lastResult: status.lastResult, appSeenAt: status.appSeenAt, appUrl: status.appUrl, diag: status.diag || null }, null, 1);
+  try { await navigator.clipboard.writeText(text); $('diagMsg').textContent = 'コピーしました。チャットに貼り付けてください'; }
+  catch (e) { $('diagMsg').textContent = 'コピーできませんでした'; }
+});
 load();
