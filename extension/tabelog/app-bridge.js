@@ -26,7 +26,12 @@
     push();
   }
   // 拡張機能の設定画面に「アプリの画面とつながったか」を表示するための報告
-  const report = () => { try { chrome.runtime.sendMessage({ type: 'appPage', url: location.href.slice(0, 300), isApp: isApp() }); } catch (e) {} };
+  const report = () => {
+    // claude.ai の画面では、アプリが入っている枠（iframe）の住所を調べて報告する（拡張機能の対象に加えるため）
+    const frames = window === window.top && /claude\.ai$/.test(location.hostname)
+      ? [...document.querySelectorAll('iframe')].map(f => (f.getAttribute('src') || '(srcなし)').slice(0, 200)) : undefined;
+    try { chrome.runtime.sendMessage({ type: 'appPage', url: location.href.slice(0, 300), isApp: isApp(), frames }); } catch (e) {}
+  };
   start();
   setTimeout(report, 3000);
   if (!started) {
