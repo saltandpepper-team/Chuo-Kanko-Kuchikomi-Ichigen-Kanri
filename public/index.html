@@ -758,7 +758,7 @@ async function draft(r, silent, instr, auto){
       if(!silent) toast('AIに接続できないため、修正指示を反映できませんでした。返信文は変更していません');
     } else {
       text=fallbackDraft(r);
-      r.log.push(`${now()}　定型の下書きを作成（AI接続なしのため${instr?'、修正指示は未反映':''}）`);
+      r.log.push(`${now()}　定型の下書きを作成（AIに接続できないため${instr?'、修正指示は未反映':''}${e?.message?`：${String(e.message).slice(0,100)}`:''}）`);
       if(!silent && (instr || (e.code && e.code!=='unavailable'))) toast(instr?'AIに接続できないため、修正指示を反映できず定型文で下書きしました':'AIに接続できなかったため、定型文で下書きしました');
     }
   }
@@ -901,6 +901,9 @@ function useRealData(){
   notices=notices.filter(n=>ALL.some(a=>a.id===n.id));
   if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); renderBell(); }
 }
+/** 管理画面のボタン・リンク（[ 編集 ] など）や「167？」のような数字だけの行を取り除く（古い拡張機能が読み取った分にも効くように） */
+const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?])$/;
+function cleanExtText(t){ return String(t||'').split('\n').filter(l=>!EXT_NOISE.test(l.trim())).join('\n').trim(); }
 window.addEventListener('message',e=>{
   if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
   if(e.data.type==='ready'){ useRealData(); return; }
@@ -909,6 +912,7 @@ window.addEventListener('message',e=>{
   $('tbLink').textContent=`口コミ返信アシスタント（拡張機能）：接続済み（口コミ ${e.data.reviews.length}件）`;
   let added=0, changed=false;
   e.data.reviews.slice().sort((a,b)=>(a.firstSeenAt||0)-(b.firstSeenAt||0)).forEach(x=>{
+    x={...x, text:cleanExtText(x.text), reply:cleanExtText(x.reply)};
     const store=STORES.includes(x.store)?x.store:null;
     if(!store || !x.key || !x.text) return;
     const ex=ALL.find(a=>a.extId===x.key);
@@ -986,7 +990,7 @@ ${r.text}`, {});
   renderList(); if(r.id===selectedId) renderDetail();
 }
 const AI_BUSY=/429|quota|rate.?limit|RESOURCE_EXHAUSTED|high demand|overloaded|UNAVAILABLE|try again later/i;
-const AI_OFF=/has not been used|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|is disabled|PERMISSION_DENIED|API key not valid/i;
+const AI_OFF=/has not been used|SERVICE_DISABLED|API_KEY_SERVICE_BLOCKED|is disabled|PERMISSION_DENIED|API key not valid|App Check/i;
 let aiRetryTimer=null;
 const sleep=ms=>new Promise(f=>setTimeout(f,ms));
 /** 自動作成：1件ずつ順番に作る。混雑・回数制限のときは待って続きから作り、1件だけの失敗はその口コミを飛ばして続ける */
@@ -1008,8 +1012,9 @@ async function runAI(){
         $('aiLink').title=msg;
         if(AI_OFF.test(msg)){
           aiQueue.length=0; aiFailed=true; if(selectedId!=null) renderDetail();
-          setAiLink('AI：未設定（Firebase の AI Logic を有効にしてください）', true);
-          toast('AIの設定がまだ済んでいません。Firebase コンソールの「AI Logic」で Gemini Developer API を有効にしてください');
+          const appCheck=/App Check/i.test(msg);
+          setAiLink(appCheck?'AI：App Check で止められています（設定が必要です）':'AI：未設定（Firebase の AI Logic を有効にしてください）', true);
+          toast(appCheck?'AIが Firebase の App Check で止められています。App Check の設定が必要です':'AIの設定がまだ済んでいません。Firebase コンソールの「AI Logic」で Gemini Developer API を有効にしてください');
           return;
         }
         if(AI_BUSY.test(msg)){
