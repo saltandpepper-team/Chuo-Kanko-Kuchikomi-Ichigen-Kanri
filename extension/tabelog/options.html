@@ -2,7 +2,7 @@
 <html lang="ja">
 <head>
 <meta charset="utf-8">
-<title>食べログ 口コミ返信アシスタント 設定</title>
+<title>口コミ返信アシスタント 設定</title>
 <style>
   :root{--brand:#372822;--bg:#F6F4F1;--surface:#fff;--ink:#2B211C;--muted:#6F635C;--line:#E5DFD9;--warn:#C5221F;--warn-soft:#FCE8E6;--ok:#137333;--ok-soft:#E6F4EA;--note:#FEF3D6;--note-ink:#8C5A00}
   body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.6 'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;padding:24px 16px}
@@ -27,7 +27,7 @@
 </head>
 <body>
 <main>
-  <h1>食べログ 口コミ返信アシスタント</h1>
+  <h1>口コミ返信アシスタント（食べログ・トリップアドバイザー）</h1>
   <p class="note">入力した内容は、このPCのChromeの中にだけ保存されます（他のPCや他の人とは共有されません）。この拡張機能は返信欄への入力までを行い、返信（送信）ボタンは押しません。</p>
 
   <form id="form">
@@ -38,6 +38,15 @@
         <label>パスワード<input id="tbPw" type="password" autocomplete="off"></label>
       </div>
       <p class="hint">ログインが切れているときに自動でログインします。画像認証などで止まった場合は通知が出るので、手動でログインしてください。</p>
+    </section>
+
+    <section style="margin-top:16px">
+      <h2>トリップアドバイザー</h2>
+      <div class="row">
+        <label>山麓園の場所ID<input id="ta-山麓園" inputmode="numeric" spellcheck="false"></label>
+        <label>浅間茶屋の場所ID<input id="ta-浅間茶屋" inputmode="numeric" spellcheck="false"></label>
+      </div>
+      <p class="hint">トリップアドバイザーの口コミ画面のURL（…/reviews?locationId=<b>この数字</b>&amp;…）です。空欄の店舗は確認しません。トリップアドバイザーは自動ログインしないので、このChromeで一度「ログイン状態を保持」にしてログインしておいてください。</p>
     </section>
 
     <section style="margin-top:16px">

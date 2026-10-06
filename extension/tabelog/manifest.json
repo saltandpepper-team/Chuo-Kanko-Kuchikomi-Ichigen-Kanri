@@ -1,8 +1,8 @@
 {
   "manifest_version": 3,
-  "name": "食べログ 口コミ返信アシスタント",
-  "version": "1.1.1",
-  "description": "食べログ店舗管理画面の新着口コミをAIが確認し、返信欄に返信文を下書きします。口コミは口コミ一元管理アプリにも表示されます。送信ボタンは担当者が押します。",
+  "name": "口コミ返信アシスタント（食べログ・トリップアドバイザー）",
+  "version": "1.2.0",
+  "description": "食べログ・トリップアドバイザーの新着口コミをAIが確認し、返信欄に返信文を下書きします。口コミは口コミ一元管理アプリにも表示されます。送信ボタンは担当者が押します。",
   "permissions": [
     "storage",
     "alarms",
@@ -11,6 +11,8 @@
   "host_permissions": [
     "https://owner.tabelog.com/*",
     "https://api.openai.com/*",
+    "https://www.tripadvisor.jp/*",
+    "https://www.tripadvisor.com/*",
     "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
     "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
     "https://claude.ai/*",
@@ -33,6 +35,16 @@
     },
     {
       "matches": [
+        "https://www.tripadvisor.jp/reviews*",
+        "https://www.tripadvisor.com/reviews*"
+      ],
+      "js": [
+        "ta-content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
         "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
         "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
         "https://claude.ai/*",
@@ -49,7 +61,7 @@
   ],
   "options_page": "options.html",
   "action": {
-    "default_title": "食べログ 口コミ返信アシスタント",
+    "default_title": "口コミ返信アシスタント",
     "default_icon": "icon.png"
   },
   "icons": {

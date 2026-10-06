@@ -91,7 +91,7 @@
       e.preventDefault();
       e.target.disabled = true; e.target.textContent = '作成中…';
       const item = items.find(x => x.review.key === key);
-      const r = await send({ type: 'getDrafts', store: storeName(), reviews: [item.review], force: true });
+      const r = await send({ type: 'getDrafts', media: 'tabelog', store: storeName(), reviews: [item.review], force: true });
       if (r.drafts?.[key]) { ta.dataset.tbAssistFilled = '1'; fill(card, key, r.drafts[key]); }
       else label(ta, `AIで作成できませんでした：${(r.error || '').replace(/[<>&]/g, '')}`);
     };
@@ -102,12 +102,12 @@
   async function run() {
     items = readCards();
     const store = storeName();
-    const res = await send({ type: 'pageData', store, reviews: items.map(x => x.review) });
+    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href, reviews: items.map(x => x.review) });
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     const pending = items.filter(x => !x.review.replied);
     if (!pending.length) return;
     pending.forEach(x => { const ta = x.card.querySelector('textarea'); if (ta && !ta.value.trim()) label(ta, 'AIが返信文を作成しています…'); });
-    const r = await send({ type: 'getDrafts', store, reviews: pending.map(x => x.review) });
+    const r = await send({ type: 'getDrafts', media: 'tabelog', store, reviews: pending.map(x => x.review) });
     drafts = r.drafts || {};
     pending.forEach(x => {
       const ta = x.card.querySelector('textarea');
