@@ -78,6 +78,10 @@
   /** 閉じている口コミを開く（全文と返信欄を表示するため。送信はしない） */
   function expand(card) {
     if (card.querySelector('textarea')) return false;
+    // 口コミの枠そのものがボタンになっている画面（閉じた状態の口コミ）
+    if (card.matches('button,[role="button"]')) { card.click(); return true; }
+    const wrapBtn = [...card.querySelectorAll('button,[role="button"]')].find(b => DATE.test(b.innerText || ''));
+    if (wrapBtn) { wrapBtn.click(); return true; }
     let btn = card.querySelector('[aria-expanded="false"]');
     // 右上の ∨ （文字のないアイコンだけのボタン）
     if (!btn) btn = [...card.querySelectorAll('button,[role="button"]')].reverse().find(b => !b.innerText.trim() && b.querySelector('svg,img,i,span'));
