@@ -941,7 +941,8 @@ window.addEventListener('message',e=>{
 async function copyAndOpenOwner(r){
   const label=MEDIA[r.media].label;
   // 拡張機能があれば、承認した返信文を各媒体の返信欄に自動で入れてもらう
-  window.postMessage({source:'kuchikomi-app', type:'setDraft', key:r.extId, reply:r.reply}, '*');
+  // focus: 管理画面を開いたときに、この口コミの場所まで移動して返信欄を開いてもらう
+  window.postMessage({source:'kuchikomi-app', type:'setDraft', key:r.extId, reply:r.reply, focus:true}, '*');
   let copied=false;
   try{ await navigator.clipboard.writeText(r.reply); copied=true; }catch(e){}
   window.open(r.media==='tabelog'?TB_REPLY_URL:(r.pageUrl||'https://www.tripadvisor.jp/Owners'),'_blank','noopener');

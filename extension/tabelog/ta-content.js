@@ -164,6 +164,14 @@
     const res = await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: items.map(x => x.review), diag: diag() });
     store = res.store || '';
     document.querySelectorAll('textarea').forEach(onTextarea);
+    // アプリの「承認して自動入力」で選んだ口コミまで移動して開く（開くと返信欄に返信文が入る。送信はしない）
+    const f = await send({ type: 'takeFocus', keys: items.map(x => x.review.key) });
+    const x = f.key && f.here && read().find(i => i.review.key === f.key);
+    if (x) {
+      x.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      x.card.style.outline = '3px solid #E8710A'; x.card.style.outlineOffset = '4px';
+      expand(x.card);
+    }
   }
   /** 返信欄が現れたら、その口コミのAI返信文を入れる（なければその場で作成） */
   const busy = new Set();

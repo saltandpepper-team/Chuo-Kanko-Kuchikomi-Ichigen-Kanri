@@ -18,7 +18,7 @@
       if (e.source !== window || e.data?.source !== 'kuchikomi-app') return;
       if (e.data.type === 'hello') push();
       if (e.data.type === 'setDraft' && e.data.key) {
-        try { chrome.runtime.sendMessage({ type: 'appSetDraft', key: String(e.data.key), reply: String(e.data.reply || '') }); } catch (err) {}
+        try { chrome.runtime.sendMessage({ type: 'appSetDraft', key: String(e.data.key), reply: String(e.data.reply || ''), focus: !!e.data.focus }); } catch (err) {}
       }
     });
     chrome.storage.onChanged.addListener((c, area) => { if (area === 'local' && (c.reviews || c.drafts)) push(); });

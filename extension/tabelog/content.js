@@ -107,6 +107,30 @@
       const ta = x.card.querySelector('textarea');
       if (!fill(x.card, x.review.key, drafts[x.review.key]) && ta && !drafts[x.review.key] && !ta.value.trim()) label(ta, (r.error || '返信文がまだありません').replace(/[<>&]/g, ''));
     });
+    goToFocus();
+  }
+  /** アプリの「承認して自動入力」で選んだ口コミまで移動し、返信欄を開く（送信はしない） */
+  async function goToFocus() {
+    const f = await send({ type: 'takeFocus', keys: items.map(x => x.review.key) });
+    if (!f.key) return;
+    if (!f.here) { if (/^tabelog:/.test(f.key)) banner('アプリで選んだ口コミはこのページにありません。次のページ（「次の20件」など）を開いてください。'); return; }
+    const x = items.find(i => i.review.key === f.key);
+    if (!x) return;
+    x.card.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    x.card.style.outline = '3px solid #E8710A'; x.card.style.outlineOffset = '4px';
+    const ta = x.card.querySelector('textarea');
+    if (ta) { ta.focus({ preventScroll: true }); return; }
+    // 返信欄が別の画面にある場合は「この口コミに返信」などを押して開く（移動のためのクリックだけ。送信はしない）
+    const link = [...x.card.querySelectorAll('a,button,[role="button"]')].find(b => /この口コミに返信|返信する|返信を書く|口コミに返信/.test(b.innerText || ''));
+    if (link) link.click();
+  }
+  function banner(text) {
+    const el = document.createElement('div');
+    el.setAttribute('data-tb-assist', '');
+    el.style.cssText = 'position:fixed;top:12px;left:50%;transform:translateX(-50%);z-index:99999;padding:10px 16px;border-radius:8px;background:#372822;color:#fff;font-size:13px;box-shadow:0 2px 8px rgba(0,0,0,.3)';
+    el.textContent = text;
+    document.body.appendChild(el);
+    setTimeout(() => el.remove(), 10000);
   }
   // 「返信する」を押してから返信欄が出てくる画面にも対応
   new MutationObserver(muts => {

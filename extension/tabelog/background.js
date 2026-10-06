@@ -205,7 +205,17 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       const { drafts = {} } = await chrome.storage.local.get('drafts');
       const reply = String(msg.reply || '').slice(0, 4000);
       if (msg.key && reply) { drafts[msg.key] = { ...(drafts[msg.key] || {}), reply, fromApp: true, updatedAt: Date.now() }; await chrome.storage.local.set({ drafts }); }
+      // アプリの「承認して自動入力」から開いた管理画面で、この口コミの場所まで移動する
+      if (msg.key && msg.focus) await chrome.storage.local.set({ focus: { key: msg.key, at: Date.now() } });
       return sendResponse({ ok: true });
+    }
+    if (msg.type === 'takeFocus') {
+      // 10分以内にアプリから指定された口コミ（1回だけ使う）
+      const { focus } = await chrome.storage.local.get('focus');
+      if (!focus || Date.now() - focus.at > 10 * 60 * 1000) return sendResponse({ key: '' });
+      if (msg.keys && !msg.keys.includes(focus.key)) return sendResponse({ key: focus.key, here: false });
+      await chrome.storage.local.remove('focus');
+      return sendResponse({ key: focus.key, here: true });
     }
     sendResponse({});
   })();
