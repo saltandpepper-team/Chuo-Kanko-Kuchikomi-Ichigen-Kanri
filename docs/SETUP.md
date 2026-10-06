@@ -55,6 +55,14 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
 
 ## 5. 設定値の登録とデプロイ
 
+> **最初に次の2か所を変更してください**（サーバーの準備ができるまでは、本番URLでもデモと同じ簡易ログインで動くようにしてあります）。
+> - `public/index.html` の `const BACKEND_ENABLED = false;` を `true` に変更
+> - `firebase.json` の `hosting.rewrites` の先頭に次を追加
+>   ```json
+>   { "source": "/api/**", "function": { "functionId": "api", "region": "asia-northeast1" } }
+>   ```
+
+
 開発用PCで Firebase CLI を使います。
 
 ```bash
