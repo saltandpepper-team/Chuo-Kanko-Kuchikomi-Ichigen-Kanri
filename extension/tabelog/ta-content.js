@@ -3,7 +3,7 @@
 //   ※送信ボタンは押さない。担当者が内容を確認して押す
 (() => {
   const DATE = /(\d{4})年(\d{1,2})月(\d{1,2})日/;
-  const UI = /^(AIが作成した返信文です|AIが返信文を作成しています|AIで作成できませんでした|AIで作り直す|公開された返信|口コミを翻訳|原文を表示|翻訳を表示|お気に入りとして設定|お気に入りから削除|口コミを報告する|口コミへの返信方法|返信を削除する|返信を編集|表示される名前|送信|返信する|もっと見る|続きを読む|一部を表示|Your response|訪問日|旅行のタイプ|Date of visit)/;
+  const UI = /^(AIが作成した返信文です|返信文を確認しています|返信文がまだありません|書き直すときは|AIが返信文を作成しています|AIで作成できませんでした|AIで作り直す|公開された返信|口コミを翻訳|原文を表示|翻訳を表示|お気に入りとして設定|お気に入りから削除|口コミを報告する|口コミへの返信方法|返信を削除する|返信を編集|表示される名前|送信|返信する|もっと見る|続きを読む|一部を表示|Your response|訪問日|旅行のタイプ|Date of visit)/;
   const META = /(投稿\d[\d,]*件|役に立った|^[•・]$|^[●○◐◑◒◓◯⬤\s]+$)/;
   const send = msg => new Promise(res => { try { chrome.runtime.sendMessage(msg, r => res(r || {})); } catch (e) { res({}); } });
   const sleep = ms => new Promise(r => setTimeout(r, ms));
@@ -113,15 +113,7 @@
     setValue(ta, reply);
     ta.dataset.taAssistFilled = '1';
     ta.style.outline = '2px solid #372822';
-    const el = label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、送信ボタンを押してください（この拡張機能は送信しません）。 <button type="button" data-ta-redo style="margin-left:6px;font-size:12px">AIで作り直す</button>');
-    el.querySelector('[data-ta-redo]').onclick = async e => {
-      e.preventDefault();
-      e.target.disabled = true; e.target.textContent = '作成中…';
-      const it = items.find(x => x.review.key === key);
-      const r = await send({ type: 'getDrafts', media: 'tripadvisor', locationId, store, reviews: [it.review], force: true });
-      if (r.drafts?.[key]) fill(card, key, r.drafts[key]);
-      else label(ta, `AIで作成できませんでした：${(r.error || '').replace(/[<>&]/g, '')}`);
-    };
+    label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、送信ボタンを押してください（この拡張機能は送信しません）。（書き直すときはアプリの「指示を入れて書き直す」を使ってください）');
     return true;
   }
   /** 診断情報（設定画面の「診断情報をコピー」用）：画面の作りが想定と違うときの調査に使う */
@@ -183,12 +175,12 @@
     if (!items.some(i => i.review.key === x.review.key)) items.push(x); else items = items.map(i => i.review.key === x.review.key ? x : i);
     if (drafts[x.review.key]) { fill(x.card, x.review.key, drafts[x.review.key]); return; }
     busy.add(x.review.key);
-    label(ta, 'AIが返信文を作成しています…');
+    label(ta, '返信文を確認しています…');
     const r = await send({ type: 'getDrafts', media: 'tripadvisor', locationId, store, reviews: [x.review] });
     busy.delete(x.review.key);
     const y = read().find(i => i.review.key === x.review.key) || x;
     if (r.drafts?.[x.review.key]) { drafts[x.review.key] = r.drafts[x.review.key]; fill(y.card, x.review.key, drafts[x.review.key]); }
-    else { const t2 = y.card.querySelector('textarea'); if (t2) label(t2, `AIで作成できませんでした：${(r.error || '不明なエラー').replace(/[<>&]/g, '')}`); }
+    else { const t2 = y.card.querySelector('textarea'); if (t2) label(t2, (r.error || '返信文がまだありません').replace(/[<>&]/g, '')); }
   }
   // 担当者が口コミを開いて返信欄が出てきたときに入力する
   new MutationObserver(muts => {

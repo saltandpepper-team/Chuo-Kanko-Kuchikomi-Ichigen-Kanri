@@ -1,4 +1,4 @@
-// バックエンドの動作テスト（Google・Meta・OpenAI・Firestore はすべてモック）
+// バックエンドの動作テスト（Google・Meta・Firestore はすべてモック）
 const test = require('node:test');
 const assert = require('node:assert');
 const { createApp } = require('../app');
@@ -21,7 +21,7 @@ function setup() {
     fetch: fakeFetch,
     randomId: () => 'state' + (++t),
     now: () => t,
-    config: () => ({ googleClientId: 'gid', googleClientSecret: 'gsec', metaAppId: 'mid', metaAppSecret: 'msec', openaiApiKey: 'sk', openaiModel: 'mini', openaiModelHigh: 'big', allowedEmails: 'kayanuma.h@kaneyamaen.co.jp', publicBaseUrl: 'https://app.example/' })
+    config: () => ({ googleClientId: 'gid', googleClientSecret: 'gsec', metaAppId: 'mid', metaAppSecret: 'msec', allowedEmails: 'kayanuma.h@kaneyamaen.co.jp', publicBaseUrl: 'https://app.example/' })
   });
   return { app, store, calls, on, reply, advance: ms => { t += ms; } };
 }
@@ -142,15 +142,3 @@ test('連携の有効期限切れ・キャンセルは画面に戻してエラ�
   h.close();
 });
 
-test('AI：プロンプトを受け取り返信文を返す（指示ありは上位モデル）', async () => {
-  const s = setup(); const h = await serve(s.app);
-  s.on(/api\.openai\.com/, (u, o) => s.reply({ choices: [{ message: { content: ' 返信文です ' } }], model: JSON.parse(o.body).model }));
-  const r = await h.req('POST', '/api/ai/generate', { body: { prompt: '口コミ…', tier: 'default' } });
-  assert.equal(r.json.text, '返信文です');
-  assert.equal(JSON.parse(s.calls.at(-1).body).model, 'big');
-  await h.req('POST', '/api/ai/generate', { body: { prompt: '口コミ…', tier: 'quick' } });
-  assert.equal(JSON.parse(s.calls.at(-1).body).model, 'mini');
-  assert.equal((await h.req('POST', '/api/ai/generate', { body: { prompt: '' } })).status, 400);
-  assert.equal((await h.req('POST', '/api/ai/generate', { token: null, body: { prompt: 'x' } })).status, 401);
-  h.close();
-});

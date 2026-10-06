@@ -1,18 +1,14 @@
 const STORES = ['山麓園', '浅間茶屋'];
 const DEFAULT_TA = { '山麓園': '1703726', '浅間茶屋': '' };
-const DEFAULT_INFO = { '山麓園': '囲炉裏で楽しむろばた焼き、甲州の郷土料理（ほうとう等）と風情ある空間', '浅間茶屋': '' };
 const $ = id => document.getElementById(id);
 const fmt = t => t ? new Date(t).toLocaleString('ja-JP') : '—';
 
 async function load() {
-  const s = await chrome.storage.local.get(['tbId', 'tbPw', 'openaiKey', 'model', 'interval', 'storeInfo', 'style', 'taLocations']);
+  const s = await chrome.storage.local.get(['tbId', 'tbPw', 'interval', 'taLocations']);
   $('tbId').value = s.tbId || '';
   $('tbPw').value = s.tbPw || '';
-  $('openaiKey').value = s.openaiKey || '';
-  $('model').value = s.model || 'gpt-4o-mini';
   $('interval').value = s.interval || 30;
-  $('style').value = s.style || '';
-  STORES.forEach(st => { $('info-' + st).value = (s.storeInfo || {})[st] ?? DEFAULT_INFO[st]; $('ta-' + st).value = (s.taLocations || {})[st] ?? DEFAULT_TA[st]; });
+  STORES.forEach(st => { $('ta-' + st).value = (s.taLocations || {})[st] ?? DEFAULT_TA[st]; });
   renderStatus();
 }
 async function renderStatus() {
@@ -20,7 +16,7 @@ async function renderStatus() {
   const lines = [
     `最終確認：${fmt(status.lastCheckAt)}`,
     status.lastResult ? `結果：${status.lastResult}` : '',
-    `作成済みの返信文：${Object.keys(drafts).length}件`,
+    `アプリから届いた返信文：${Object.keys(drafts).length}件`,
     status.appSeenAt ? `アプリとの接続：${fmt(status.appSeenAt)}（${status.appOk ? 'つながりました' : 'アプリの画面として認識できませんでした。最新のアプリのファイルか確認してください'}）\n　${decodeURI(status.appUrl || '')}` : 'アプリとの接続：まだありません（アプリをこのChromeで開くと表示されます）'
   ].filter(Boolean);
   $('status').innerHTML = '';
@@ -33,13 +29,13 @@ async function renderStatus() {
   }
 }
 async function save() {
-  const storeInfo = {}, taLocations = {};
-  STORES.forEach(st => { storeInfo[st] = $('info-' + st).value.trim(); taLocations[st] = $('ta-' + st).value.replace(/\D/g, ''); });
+  const taLocations = {};
+  STORES.forEach(st => { taLocations[st] = $('ta-' + st).value.replace(/\D/g, ''); });
   await chrome.storage.local.set({
     tbId: $('tbId').value.trim(), tbPw: $('tbPw').value,
-    openaiKey: $('openaiKey').value.trim(), model: $('model').value.trim() || 'gpt-4o-mini',
-    interval: Math.max(10, +$('interval').value || 30), storeInfo, taLocations, style: $('style').value
+    interval: Math.max(10, +$('interval').value || 30), taLocations
   });
+  await chrome.storage.local.remove(['openaiKey', 'model', 'storeInfo', 'style']); // 以前のAI設定（OpenAI）は使わないので消す
 }
 $('form').addEventListener('submit', async e => {
   e.preventDefault();
