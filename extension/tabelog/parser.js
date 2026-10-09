@@ -50,7 +50,7 @@ function parseTabelog(raw){
     }
     // タイトルと日付が同じ行にある場合は、日付より前の部分をタイトルとする
     const inline=L[st.i].slice(0,L[st.i].search(TB_DATE)).trim();
-    const title=inline || ((L[st.t]&&st.t>=0&&!TB_DATE.test(L[st.t])&&st.t!==starts[n-1]?.a)?L[st.t]:'');
+    const title=inline || ((L[st.t]&&st.t>=0&&!TB_DATE.test(L[st.t])&&!TB_NOISE.test(L[st.t])&&!TB_UI.test(L[st.t])&&!TB_FOOTER.test(L[st.t])&&st.t!==starts[n-1]?.a)?L[st.t]:'');
     const text=[title?`【${title}】`:'',...body].filter(Boolean).join('\n');
     if(!text) return;
     out.push({media:'tabelog', author:au[1].trim(), rating, lang:guessLang(text), text,
