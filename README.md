@@ -1,17 +1,21 @@
 # 口コミ一元管理_返信文自動生成（中央観光株式会社）
 
-Google・Instagram・食べログ・トリップアドバイザーの口コミを1か所で確認し、AIが過去の返信の文体に合わせて返信文を下書きするデモアプリです。対象店舗：山麓園／浅間茶屋。
+Google・Instagram・食べログ・トリップアドバイザーの口コミを1か所で確認し、AIが過去の返信の文体に合わせて返信文を下書きするアプリです。対象店舗：山麓園／浅間茶屋。
 
-- 表示されている口コミ・返信内容はすべて架空のサンプルです。
-- ログインはデモ用の簡易認証（ID／パスワードのハッシュ照合）で、本番運用にはサーバー側の認証基盤への置き換えが必要です。
-- AIによる返信下書きは、AI連携が利用できない環境では定型文にフォールバックします。
+- Firebase Hostingの公開URL以外（ローカルプレビュー等）で開いた場合は、サンプルの口コミによるデモ表示になります。
+- 公開URLでは、Firebase Authenticationでログインしたスタッフが、Google・Instagramと実際に連携して口コミの取得・返信を行えます（本番モード）。本番モードを有効にする手順は [`docs/SETUP.md`](docs/SETUP.md) を参照してください。
+- 食べログ・トリップアドバイザーは公式の返信用APIが無いため、ブラウザ拡張機能と連携する受け口のみ実装済みです（拡張機能自体は別途開発が必要。詳細は `docs/SETUP.md`）。
+- AIによる返信下書きは、本番モードではCloud Functions経由でClaude APIを呼び出します。
 
 ## 構成
 
 - `public/index.html` — アプリ本体（単一HTML・ビルド不要の静的サイト）
-- `public/firebase-init.js` — Firebase SDK（Analytics）の初期化
-- `firebase.json` / `.firebaserc` — Firebase Hosting の設定
+- `public/firebase-init.js` — Firebase SDK（Authentication / Analytics）の初期化、`window.appBackend` の提供
+- `functions/` — Cloud Functions（`api`）。`/api/*` でHosting経由から呼び出されるバックエンド（Google・Instagram連携、AI下書き生成）
+- `scripts/addStaff.js` — ログイン可能なスタッフアカウントを作成する管理用スクリプト
+- `firebase.json` / `.firebaserc` / `firestore.rules` / `firestore.indexes.json` — Firebase Hosting・Functions・Firestore の設定
 - `.github/workflows/firebase-hosting-merge.yml` — `main` ブランチへのマージ時に自動デプロイするGitHub Actions
+- `docs/SETUP.md` — 本番連携（Instagram／Google／AI）の詳細なセットアップ手順
 
 ## Firebase Hosting へのデプロイ（初回セットアップ）
 
@@ -25,9 +29,13 @@ Google・Instagram・食べログ・トリップアドバイザーの口コミ�
    ```bash
    npx firebase-tools hosting:sites:create chuo-kanko-kuchikomi-ichigen-kanri --project chuo-kanko
    ```
-3. デプロイ
+3. デプロイ（画面だけを更新する場合）
    ```bash
    npx firebase-tools deploy --only hosting --project chuo-kanko
+   ```
+   Google・Instagram連携などバックエンドも含めて本番運用する場合は、先に [`docs/SETUP.md`](docs/SETUP.md) のシークレット設定を行ってから
+   ```bash
+   npx firebase-tools deploy --only functions,firestore,hosting --project chuo-kanko
    ```
 4. デプロイ後のURL
    - `https://chuo-kanko-kuchikomi-ichigen-kanri.web.app`

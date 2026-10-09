@@ -1,0 +1,22 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // staff: 本人のみ自分のドキュメントの存在を確認できる。書き込みは管理（Admin SDK）のみ。
+    // アクセス可否の実際の判定はCloud Functions側（requireAuth）で行う。
+    match /staff/{uid} {
+      allow read: if request.auth != null && request.auth.uid == uid;
+      allow write: if false;
+    }
+
+    // integrations: アクセストークンを含むため、クライアントからは一切アクセス不可。
+    // 口コミ自体もFirestoreに保存せず、Cloud Functions経由で都度取得する（pull型）。
+    match /integrations/{docId} {
+      allow read, write: if false;
+    }
+    match /oauthStates/{docId} {
+      allow read, write: if false;
+    }
+  }
+}

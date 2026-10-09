@@ -1,0 +1,8 @@
+{
+  "name": "chuo-kanko-admin-scripts",
+  "private": true,
+  "type": "commonjs",
+  "dependencies": {
+    "firebase-admin": "^12.6.0"
+  }
+}
