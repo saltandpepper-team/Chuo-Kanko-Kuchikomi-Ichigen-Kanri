@@ -44,10 +44,18 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
 1. [Meta for Developers](https://developers.facebook.com/) でアプリを作成します（種類：ビジネス）。
 2. 「Facebookログイン」を追加し、有効な OAuth リダイレクト URI に次を登録します。
    `https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/instagram/callback`
-3. 使う権限：`instagram_basic`、`instagram_manage_comments`、`pages_show_list`、`pages_read_engagement`、`business_management`
+3. 使う権限：`instagram_basic`、`instagram_manage_comments`、`instagram_manage_messages`、`pages_show_list`、`pages_read_engagement`、`business_management`
    - アプリが「開発モード」の間は、アプリの **管理者・テスター** に登録したアカウントだけが連携できます。萱沼様のFacebookアカウントを管理者かテスターに追加してください。
    - 他のアカウントでも使う場合は、アプリレビュー（権限の審査）とビジネス認証が必要です。
 4. 「アプリID」と「app secret」を控えます。
+5. **Webhooks（新着コメント・DMをその場で受け取る）を設定します（Functionsのデプロイ後に行う）。**
+   1. `functions/.env` の `WEBHOOK_VERIFY_TOKEN` に、推測されにくい文字列を自分で決めて入力します（例：ランダムな英数字30文字程度）。
+   2. アプリの左メニュー「製品」→「Webhooks」→「設定」を開きます。
+   3. コールバックURL：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/webhooks/instagram`
+   4. 確認トークン：上記1で決めた `WEBHOOK_VERIFY_TOKEN` と同じ値
+   5. 「確認して保存」を押す（Functionsが先にデプロイ済みである必要があります）
+   6. object を `instagram` にして、`comments`・`messages` の項目を購読（Subscribe）します
+   - 連携（OAuth）が完了すると、サーバーが自動的にそのページをWebhookに購読させます。何らかの理由で届かない場合は、Meta側の「Webhooks」画面から該当ページの購読状況を確認してください。
 
 ## 4. AI（Firebase AI Logic／Gemini）
 
@@ -109,7 +117,8 @@ firebase deploy --only functions,firestore:rules,hosting --project chuo-kanko
 ## 現時点の制限
 
 - **作業状態の保存**：AIの下書き・承認待ちなどの状態はサーバーに保存していません。ページを再読み込みすると、Google・Instagram の口コミは取得し直します（返信済みかどうかは各媒体から取得します）。食べログの取り込み分は再読み込みで消えます。
-- **Instagram の取得範囲**：直近10投稿のコメントが対象です。
+- **Instagram の取得範囲**：直近10投稿のコメントと、DM（ダイレクトメッセージ）の会話が対象です。
+- **新着コメント・DMの自動反映**：Meta からの Webhook 通知をサーバーが受け取り、アプリは20秒おきに軽い確認を行って自動で取り込みます（「新着を取得」を押さなくても反映されます）。Webhook の登録手順は「3. Instagram」の手順5を参照してください。
 - **食べログ・トリップアドバイザー**：Chrome 拡張機能で連携しています（`extension/tabelog/README.md`）。
 - サーバーの `/api/ai/generate`（OpenAI）は使っていません（AIはアプリ内の Firebase AI Logic を使います）。
 

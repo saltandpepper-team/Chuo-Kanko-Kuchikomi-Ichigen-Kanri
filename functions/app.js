@@ -4,6 +4,7 @@
 //   （パスワードは扱わない。ブラウザにトークンを渡さない）
 // ・口コミ・コメントの取得、返信の投稿（AIの返信文はアプリ内の Firebase AI Logic で作成）
 const express = require('express');
+const crypto = require('crypto');
 
 const STORES = ['山麓園', '浅間茶屋'];
 const GRAPH = 'https://graph.facebook.com/v23.0';
@@ -14,7 +15,7 @@ class HttpError extends Error { constructor(status, message) { super(message); t
 
 /**
  * @param {object} d 依存（テストで差し替えるため注入）
- * @param {{get:(p:string)=>Promise<object|null>, set:(p:string,v:object)=>Promise<void>, del:(p:string)=>Promise<void>}} d.db
+ * @param {{get:(p:string)=>Promise<object|null>, set:(p:string,v:object)=>Promise<void>, del:(p:string)=>Promise<void>, list:(p:string)=>Promise<object[]>}} d.db
  * @param {(token:string)=>Promise<{email?:string,uid:string}>} d.verifyIdToken
  * @param {typeof fetch} d.fetch
  * @param {()=>object} d.config 実行時に読む設定（シークレット等）
@@ -24,7 +25,7 @@ class HttpError extends Error { constructor(status, message) { super(message); t
 function createApp(d) {
   const now = d.now || (() => Date.now());
   const app = express();
-  app.use(express.json({ limit: '200kb' }));
+  app.use(express.json({ limit: '200kb', verify: (req, res, buf) => { req.rawBody = buf; } }));
   const cfg = () => d.config();
   const wrap = fn => (req, res) => fn(req, res).catch(e => {
     const status = e.status || 500;
@@ -92,13 +93,23 @@ function createApp(d) {
   }
 
   // ---- Instagram（Facebookログイン） ----
-  const IG_SCOPE = 'instagram_basic,instagram_manage_comments,pages_show_list,pages_read_engagement,business_management';
+  const IG_SCOPE = 'instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,business_management';
   async function igCandidates(userToken) {
     const j = await json(await d.fetch(`${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=100&access_token=${encodeURIComponent(userToken)}`));
     return (j.data || []).filter(p => p.instagram_business_account).map(p => ({
       id: p.instagram_business_account.id, label: `@${p.instagram_business_account.username || ''}（${p.name}）`,
       pageId: p.id, pageToken: p.access_token, username: p.instagram_business_account.username || ''
     }));
+  }
+  // 連携後、Webhook（新着コメント・DMの通知）を受け取れるよう、このページをアプリに購読させる
+  async function subscribeWebhooks(pick) {
+    try { await d.fetch(`${GRAPH}/${pick.pageId}/subscribed_apps?subscribed_fields=comments,messages&access_token=${encodeURIComponent(pick.pageToken)}`, { method: 'POST' }); }
+    catch (e) { console.error('webhook購読に失敗', e); }
+  }
+  /** Instagramの場所ID（アカウントID）から、連携済みの店舗を逆引きする */
+  async function storeOfInstagramId(igId) {
+    for (const s of STORES) { const c = await getConn(s, 'instagram'); if (c?.selected?.id === igId) return s; }
+    return '';
   }
 
   // OAuth開始：連携ページのURLを返す
@@ -149,6 +160,7 @@ function createApp(d) {
         const long = await json(await d.fetch(`${GRAPH}/oauth/access_token?` + new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: c.metaAppId, client_secret: c.metaAppSecret, fb_exchange_token: short.access_token })));
         const candidates = await igCandidates(long.access_token);
         saved = { candidates, selected: candidates.length === 1 ? candidates[0] : null, connectedAt: now(), by: st.uid };
+        if (saved.selected) await subscribeWebhooks(saved.selected);
       }
       await d.db.set(connPath(store, provider), saved);
       back({ connected: provider, store, ...(saved.selected ? {} : { pick: '1' }) });
@@ -171,6 +183,7 @@ function createApp(d) {
     const pick = (c?.candidates || []).find(x => x.id === req.body.id);
     if (!pick) throw new HttpError(400, '選択肢が見つかりません');
     await d.db.set(connPath(store, provider), { ...c, selected: pick });
+    if (provider === 'instagram') await subscribeWebhooks(pick);
     res.json({ ok: true, status: publicConn({ ...c, selected: pick }) });
   }));
   app.post('/api/:provider/disconnect', auth, wrap(async (req, res) => {
@@ -230,6 +243,77 @@ function createApp(d) {
       if (!/^\d+$/.test(name)) throw new HttpError(400, 'コメントIDが正しくありません');
       await json(await d.fetch(`${GRAPH}/${name}/replies`, { method: 'POST', body: new URLSearchParams({ message: comment, access_token: c.selected.pageToken }) }));
     }
+    res.json({ ok: true });
+  }));
+
+  // ---- Webhook（Instagramの新着コメント・DMをその場で受け取る） ----
+  const inboxPath = (store, id) => `inbox/${store}/items/${id}`;
+  // Metaからの検証リクエスト（Webhook登録時に1回だけ呼ばれる）
+  app.get('/api/webhooks/instagram', (req, res) => {
+    const mode = req.query['hub.mode'], token = req.query['hub.verify_token'], challenge = req.query['hub.challenge'];
+    if (mode === 'subscribe' && token === cfg().webhookVerifyToken && cfg().webhookVerifyToken) return res.status(200).send(challenge);
+    res.sendStatus(403);
+  });
+  // 新着コメント・DMの通知（Metaから直接呼ばれる。ログインは使わず署名で本人確認する）
+  app.post('/api/webhooks/instagram', wrap(async (req, res) => {
+    const sig = String(req.headers['x-hub-signature-256'] || '');
+    const expected = 'sha256=' + crypto.createHmac('sha256', cfg().metaAppSecret).update(req.rawBody || Buffer.from('')).digest('hex');
+    const ok = sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
+    if (!ok) throw new HttpError(401, '署名が一致しません');
+    for (const entry of req.body?.entry || []) {
+      const store = await storeOfInstagramId(entry.id);
+      if (!store) continue;
+      for (const ch of entry.changes || []) {
+        if (ch.field !== 'comments') continue;
+        const v = ch.value || {};
+        if (!v.id) continue;
+        await d.db.set(inboxPath(store, v.id), { kind: 'comment', store, extId: v.id, mediaId: v.media?.id || '', author: v.from?.username || '', text: v.text || '', receivedAt: now() });
+      }
+      for (const m of entry.messaging || []) {
+        const mid = m.message?.mid;
+        if (!mid || m.message?.is_echo) continue; // 自分が送った分は無視
+        await d.db.set(inboxPath(store, mid), { kind: 'dm', store, extId: mid, senderId: m.sender?.id || '', text: m.message?.text || '', receivedAt: now() });
+      }
+    }
+    res.sendStatus(200);
+  }));
+  // アプリ画面が定期的にこれだけを軽く確認し、新着があれば本体の取得（/api/reviews 等）を呼ぶ
+  app.get('/api/inbox', auth, wrap(async (req, res) => {
+    const store = storeOf(req.query.store);
+    const items = (await d.db.list(`inbox/${store}/items`)).sort((a, b) => (b.receivedAt || 0) - (a.receivedAt || 0)).slice(0, 50);
+    res.json({ items });
+  }));
+
+  // ---- Instagram ダイレクトメッセージ ----
+  app.get('/api/dms', auth, wrap(async (req, res) => {
+    const store = storeOf(req.query.store);
+    const c = await requireConn(store, 'instagram');
+    const tk = encodeURIComponent(c.selected.pageToken);
+    const conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&fields=participants&limit=50&access_token=${tk}`));
+    const items = [];
+    for (const cvs of conv.data || []) {
+      const other = (cvs.participants?.data || []).find(p => p.id !== c.selected.id);
+      if (!other) continue;
+      const msgs = await json(await d.fetch(`${GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
+      const list = (msgs.messages?.data || []);
+      const lastFromThem = list.find(m => m.from?.id !== c.selected.id);
+      if (!lastFromThem) continue;
+      const mine = list.find(m => m.from?.id === c.selected.id && new Date(m.created_time) > new Date(lastFromThem.created_time));
+      items.push({ media: 'dm', extId: 'dm:' + cvs.id, extName: other.id, conversationId: cvs.id,
+        author: '@' + (other.username || 'instagram'), rating: null, createTime: lastFromThem.created_time, text: lastFromThem.message || '', reply: mine?.message || '' });
+    }
+    res.json({ items });
+  }));
+  app.post('/api/dm-reply', auth, wrap(async (req, res) => {
+    const store = storeOf(req.body.store);
+    const comment = String(req.body.comment || '').trim(), recipientId = String(req.body.extName || '');
+    if (!comment) throw new HttpError(400, '返信文が空です');
+    if (!/^\d+$/.test(recipientId)) throw new HttpError(400, '送信先IDが正しくありません');
+    const c = await requireConn(store, 'instagram');
+    await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/messages`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ recipient: { id: recipientId }, message: { text: comment }, access_token: c.selected.pageToken })
+    }));
     res.json({ ok: true });
   }));
 

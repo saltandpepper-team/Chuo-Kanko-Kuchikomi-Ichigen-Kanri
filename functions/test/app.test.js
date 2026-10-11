@@ -16,20 +16,26 @@ function setup() {
     throw new Error('unexpected fetch ' + url);
   };
   const app = createApp({
-    db: { get: async p => store.has(p) ? structuredClone(store.get(p)) : null, set: async (p, v) => { store.set(p, structuredClone(v)); }, del: async p => { store.delete(p); } },
+    db: {
+      get: async p => store.has(p) ? structuredClone(store.get(p)) : null,
+      set: async (p, v) => { store.set(p, structuredClone(v)); },
+      del: async p => { store.delete(p); },
+      list: async p => [...store.entries()].filter(([k]) => k.startsWith(p + '/')).map(([k, v]) => ({ id: k.slice(p.length + 1), ...v }))
+    },
     verifyIdToken: async tok => { if (tok === 'good') return { uid: 'u1', email: 'Kayanuma.H@kaneyamaen.co.jp' }; if (tok === 'other') return { uid: 'u2', email: 'x@example.com' }; throw new Error('bad'); },
     fetch: fakeFetch,
     randomId: () => 'state' + (++t),
     now: () => t,
-    config: () => ({ googleClientId: 'gid', googleClientSecret: 'gsec', metaAppId: 'mid', metaAppSecret: 'msec', allowedEmails: 'kayanuma.h@kaneyamaen.co.jp', publicBaseUrl: 'https://app.example/' })
+    config: () => ({ googleClientId: 'gid', googleClientSecret: 'gsec', metaAppId: 'mid', metaAppSecret: 'msec', allowedEmails: 'kayanuma.h@kaneyamaen.co.jp', publicBaseUrl: 'https://app.example/', webhookVerifyToken: 'verify123' })
   });
   return { app, store, calls, on, reply, advance: ms => { t += ms; } };
 }
 async function serve(app) {
   const srv = await new Promise(r => { const s = app.listen(0, () => r(s)); });
   const base = `http://127.0.0.1:${srv.address().port}`;
-  const req = async (method, path, { token = 'good', body } = {}) => {
-    const res = await fetch(base + path, { method, redirect: 'manual', headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), ...(body ? { 'Content-Type': 'application/json' } : {}) }, body: body ? JSON.stringify(body) : undefined });
+  const req = async (method, path, { token = 'good', body, headers = {}, raw } = {}) => {
+    const sendBody = raw !== undefined ? raw : (body ? JSON.stringify(body) : undefined);
+    const res = await fetch(base + path, { method, redirect: 'manual', headers: { ...(token ? { Authorization: 'Bearer ' + token } : {}), ...((body || raw !== undefined) ? { 'Content-Type': 'application/json' } : {}), ...headers }, body: sendBody });
     const text = await res.text(); let json = null; try { json = JSON.parse(text); } catch (e) {}
     return { status: res.status, json, location: res.headers.get('location') };
   };
@@ -105,6 +111,7 @@ test('Instagram：連携（複数アカウントから選択）→コメント�
     { id: '57', text: '美味しかった', username: 'guest2', replies: { data: [{ username: 'sanrokuen_robata', text: 'ありがとうございます' }] } }
   ] }));
   s.on(/\/55\/replies$/, () => s.reply({ id: 'r1' }));
+  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
 
   const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
   const url = new URL(a.json.url);
@@ -125,7 +132,69 @@ test('Instagram：連携（複数アカウントから選択）→コメント�
 
   const r = await h.req('POST', '/api/reply', { body: { store: '山麓園', media: 'instagram', extName: '55', comment: 'お電話でどうぞ' } });
   assert.equal(r.status, 200);
-  assert.match(s.calls.find(c => c.method === 'POST').body, /message=/);
+  assert.match(s.calls.find(c => c.method === 'POST' && c.url.includes('/55/replies')).body, /message=/);
+  h.close();
+});
+
+test('Instagram：連携後にWebhook購読し、新着コメント・DMをその場で受け取る', async () => {
+  const s = setup(); const h = await serve(s.app);
+  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
+  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/\/me\/accounts/, () => s.reply({ data: [{ id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } }] }));
+  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
+
+  const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
+  await h.req('GET', `/api/instagram/callback?state=${new URL(a.json.url).searchParams.get('state')}&code=C3`, { token: null });
+  // 1件しか候補がないので自動で連携完了し、同時にWebhook購読のリクエストが飛ぶ
+  assert.ok(s.calls.some(c => c.url.includes('/P1/subscribed_apps') && c.url.includes('access_token=PT1')));
+
+  const crypto = require('node:crypto');
+  const payload = JSON.stringify({ object: 'instagram', entry: [
+    { id: '901', changes: [{ field: 'comments', value: { id: 'C100', media: { id: 'M9' }, from: { username: 'guest' }, text: '美味しかったです' } }] },
+    { id: '901', messaging: [{ sender: { id: '777' }, message: { mid: 'MID1', text: '予約できますか？' } }] }
+  ] });
+  const sig = 'sha256=' + crypto.createHmac('sha256', 'msec').update(payload).digest('hex');
+
+  const bad = await h.req('POST', '/api/webhooks/instagram', { token: null, raw: payload, headers: { 'X-Hub-Signature-256': 'sha256=0000' } });
+  assert.equal(bad.status, 401, '署名が違う通知は拒否する');
+
+  const ok = await h.req('POST', '/api/webhooks/instagram', { token: null, raw: payload, headers: { 'X-Hub-Signature-256': sig } });
+  assert.equal(ok.status, 200);
+
+  const verify = await h.req('GET', `/api/webhooks/instagram?hub.mode=subscribe&hub.verify_token=verify123&hub.challenge=XYZ`, { token: null });
+  assert.equal(verify.status, 200);
+
+  const inbox = (await h.req('GET', '/api/inbox?store=' + encodeURIComponent('山麓園'))).json.items;
+  assert.equal(inbox.length, 2);
+  assert.ok(inbox.some(x => x.kind === 'comment' && x.text === '美味しかったです'));
+  assert.ok(inbox.some(x => x.kind === 'dm' && x.text === '予約できますか？'));
+  h.close();
+});
+
+test('Instagram：DMの一覧取得と返信', async () => {
+  const s = setup(); const h = await serve(s.app);
+  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
+  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/\/me\/accounts/, () => s.reply({ data: [{ id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } }] }));
+  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
+  s.on(/\/P1\/conversations/, () => s.reply({ data: [{ id: 'CV1', participants: { data: [{ id: '901' }, { id: '777', username: 'guest' }] } }] }));
+  s.on(/\/CV1\?fields=messages/, () => s.reply({ messages: { data: [
+    { id: 'm1', message: '予約できますか？', from: { id: '777' }, created_time: '2026-10-01T00:00:00+0000' }
+  ] } }));
+  s.on(/\/P1\/messages$/, () => s.reply({ success: true }));
+
+  const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
+  await h.req('GET', `/api/instagram/callback?state=${new URL(a.json.url).searchParams.get('state')}&code=C4`, { token: null });
+
+  const dms = (await h.req('GET', '/api/dms?store=' + encodeURIComponent('山麓園'))).json.items;
+  assert.equal(dms.length, 1);
+  assert.equal(dms[0].text, '予約できますか？');
+  assert.equal(dms[0].extName, '777');
+
+  const r = await h.req('POST', '/api/dm-reply', { body: { store: '山麓園', extName: '777', comment: 'お電話でどうぞ' } });
+  assert.equal(r.status, 200);
+  const post = s.calls.find(c => c.url.includes('/P1/messages') && c.method === 'POST');
+  assert.match(post.body, /recipient/);
   h.close();
 });
 

@@ -9,6 +9,7 @@
   /* 各媒体のブランドカラー */
   --g:#1A73E8; --g-bg:#1A73E8; --g-ink:#FFFFFF;
   --ig:#D62976; --ig-bg:linear-gradient(45deg,#FEDA75 0%,#FA7E1E 25%,#D62976 50%,#962FBF 75%,#4F5BD5 100%); --ig-ink:#FFFFFF;
+  --dm:#5851DB; --dm-bg:#5851DB; --dm-ink:#FFFFFF;
   --tb:#D97F00; --tb-bg:#F39800; --tb-ink:#2B1A00;
   --ta:#00A876; --ta-bg:#34E0A1; --ta-ink:#000000;
   --warn:#C5221F; --warn-soft:#FCE8E6; --ok:#137333; --ok-soft:#E6F4EA; --wait:#8C5A00; --wait-soft:#FEF3D6;
@@ -114,7 +115,7 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .item .body{display:flex;flex-direction:column;gap:4px;min-width:0}
 .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .media{font-size:11px;font-weight:700;padding:1px 8px;border-radius:4px;color:#fff}
-.m-google{background:var(--g-bg);color:var(--g-ink)} .m-instagram{background:var(--ig-bg);color:var(--ig-ink)} .m-tabelog{background:var(--tb-bg);color:var(--tb-ink)} .m-tripadvisor{background:var(--ta-bg);color:var(--ta-ink)}
+.m-google{background:var(--g-bg);color:var(--g-ink)} .m-instagram{background:var(--ig-bg);color:var(--ig-ink)} .m-tabelog{background:var(--tb-bg);color:var(--tb-ink)} .m-tripadvisor{background:var(--ta-bg);color:var(--ta-ink)} .m-dm{background:var(--dm-bg);color:var(--dm-ink)}
 .stars{color:#F4B400;letter-spacing:1px;font-size:13px}
 .stars .off{color:var(--line)}
 .meta{color:var(--muted);font-size:12px}
@@ -321,6 +322,7 @@ const BACKEND = BACKEND_ENABLED && BACKEND_HOSTS.includes(location.hostname);
 const MEDIA = {
   google:{label:'Google', auto:true, api:'Google Business Profile API'},
   instagram:{label:'Instagram', auto:true, api:'Instagram Graph API'},
+  dm:{label:'Instagram DM', auto:true, api:'Instagram Messaging API'},
   tabelog:{label:'食べログ', auto:false, host:'食べログ 店舗管理画面'},
   tripadvisor:{label:'トリップアドバイザー', auto:false, host:'トリップアドバイザー 管理センター'}
 };
@@ -389,8 +391,8 @@ function renderFilters(){
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
 function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'||(sf==='foreign'?(r.lang&&r.lang!=='ja'):r.status===sf))); }
-const MCOLOR={google:'var(--g)',instagram:'var(--ig)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
-const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
+const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
+const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
   const todo=reviews.filter(r=>r.status!=='sent').length;
   const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
@@ -403,7 +405,7 @@ function renderStats(){
     return `<button type="button" class="mcard" data-f="${m}" aria-pressed="${mf===m}" style="--c:${MCOLOR[m]};--cbg:${MBG[m]}">
       <span class="name">${MEDIA[m].label}</span>
       <span class="count">${list.length}<small>件</small></span>
-      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント（評価なし）':'評価なし')}</span>
+      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント（評価なし）':m==='dm'?'メッセージ（評価なし）':'評価なし')}</span>
       <span class="bd">${bd}</span></button>`;
   }).join('');
 }
@@ -847,7 +849,7 @@ $('filters').addEventListener('click',e=>{ const b=e.target.closest('[data-f]');
 $('totalCard').addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('mediaCards').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; mf = mf===b.dataset.f ? 'all' : b.dataset.f; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('list').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(!b) return; selectedId=+b.dataset.id; renderList(); renderDetail(); autoDraft(); });
-const API_NAME={google:'Google Business Profile API',instagram:'Instagram Graph API',tabelog:'エージェント（食べログ）',tripadvisor:'エージェント（トリップアドバイザー）'};
+const API_NAME={google:'Google Business Profile API',instagram:'Instagram Graph API',dm:'Instagram Messaging API',tabelog:'エージェント（食べログ）',tripadvisor:'エージェント（トリップアドバイザー）'};
 function arrive(x){
   const id=Math.max(0,...ALL.map(r=>r.id))+1;
   const r={...x,id,date:now(),status:'new',reply:'',log:[`${now()}　${API_NAME[x.media]} から取得`]};
@@ -856,19 +858,21 @@ function arrive(x){
   return r;
 }
 $('fetchBtn').addEventListener('click',()=>fetchNew());
+const API_KINDS=['google','instagram','dm'];
+const FETCH_FN={google:'fetchGoogle', instagram:'fetchInstagram', dm:'fetchDm'};
 async function fetchNew(silent){
-  const store=currentStore, kinds=['google','instagram'].filter(m=>apiReady(store,m));
+  const store=currentStore, kinds=API_KINDS.filter(m=>apiReady(store,m));
   if(!kinds.length){ if(!silent) toast(NO_KEY_MSG); return; }
   const btn=$('fetchBtn'); btn.disabled=true; btn.textContent='取得中…';
   let added=0; const fails=[];
   for(const m of kinds){
-    try{ const items=await (m==='google'?API.fetchGoogle(store):API.fetchInstagram(store)); items.slice().reverse().forEach(x=>{ if(addFetched(store,x)) added++; }); }
+    try{ const items=await API[FETCH_FN[m]](store); items.slice().reverse().forEach(x=>{ if(addFetched(store,x)) added++; }); }
     catch(e){ fails.push(`${MEDIA[m].label}：${e.message}`); }
   }
   btn.disabled=false; btn.textContent='新着を取得';
   if(currentStore===store){ reviews=ALL.filter(r=>r.store===store); if(!reviews.some(r=>r.id===selectedId)){ selectedId=reviews[0]?.id ?? null; } renderAll(); autoDraft(); }
   kickAI();
-  const skipped=['google','instagram'].filter(m=>!kinds.includes(m)).map(m=>MEDIA[m].label);
+  const skipped=API_KINDS.filter(m=>!kinds.includes(m) && m!=='dm').map(m=>MEDIA[m].label);
   if(silent && !added && !fails.length) return;
   toast([fails.length?`取得に失敗しました（${fails.join(' / ')}）`:'', added?`新着の口コミを${added}件取得しました`:(fails.length?'':'新しい口コミはありません'), skipped.length?`${skipped.join('・')}は未設定のため取得していません`:''].filter(Boolean).join('。'));
 }
@@ -1061,6 +1065,7 @@ function saveApiConf(){ try{ localStorage.setItem(API_STORE_KEY, JSON.stringify(
 function apiCfg(store, media){ return apiConf[store]?.[media]||{}; }
 /** 必要な項目がすべて入っているか（Facebook App ID は通信には使わないため必須にしない） */
 function apiReady(store, media){
+  if(media==='dm'){ if(!BACKEND) return false; media='instagram'; } // DMは本番（サーバー経由）でのみ、Instagram連携と同じ接続を使う
   if(BACKEND) return !!beStatus[store]?.[media]?.connected;
   const c=apiCfg(store,media);
   if(media==='google') return !!(c.clientId&&c.clientSecret&&c.refreshToken&&c.locationId);
@@ -1220,9 +1225,26 @@ if(BACKEND){
   const q=(m,st)=>`/api/reviews?media=${m}&store=${encodeURIComponent(st)}`;
   API.fetchGoogle=async store=>(await call(q('google',store))).items.map(map);
   API.fetchInstagram=async store=>(await call(q('instagram',store))).items.map(map);
-  API.reply=async r=>{ await call('/api/reply',{store:r.store, media:r.media, extName:r.extName, comment:r.reply}); };
+  API.fetchDm=async store=>(await call(`/api/dms?store=${encodeURIComponent(store)}`)).items.map(map);
+  API.reply=async r=>{
+    if(r.media==='dm') return void await call('/api/dm-reply',{store:r.store, extName:r.extName, comment:r.reply});
+    await call('/api/reply',{store:r.store, media:r.media, extName:r.extName, comment:r.reply});
+  };
   $('apiSave').hidden=true; $('apiClear').hidden=true;
   document.querySelector('#apiOverlay .api-note').textContent='パスワードの入力は不要です。「連携する」を押し、Google／Meta（Facebook）の画面で許可するだけで連携できます。連携情報はサーバーで安全に保管され、このブラウザには保存されません。';
+  // Instagramの新着コメント・DMはMeta側からWebhookでサーバーに届く。このアプリは軽い問い合わせだけを定期的に行い、
+  // 何か届いていたら本体（/api/reviews・/api/dms）を取りに行く。これで「新着を取得」を押さなくても自動で反映される
+  let inboxSeen=new Set();
+  async function pollInbox(){
+    if(!beLoggedIn || !currentStore) return;
+    try{
+      const {items}=await call('/api/inbox?store='+encodeURIComponent(currentStore));
+      const fresh=items.filter(x=>!inboxSeen.has(x.id));
+      fresh.forEach(x=>inboxSeen.add(x.id));
+      if(fresh.length) fetchNew(true);
+    }catch(e){}
+  }
+  setInterval(pollInbox, 20000);
 }
 const BE_LABEL={google:'Googleビジネスプロフィール', instagram:'Instagram（Facebookページ経由）'};
 function renderApiModalBackend(){

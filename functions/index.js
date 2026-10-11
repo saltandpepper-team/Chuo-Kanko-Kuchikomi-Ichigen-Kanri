@@ -17,12 +17,14 @@ const GOOGLE_CLIENT_ID = defineString('GOOGLE_CLIENT_ID');
 const META_APP_ID = defineString('META_APP_ID');
 const ALLOWED_EMAILS = defineString('ALLOWED_EMAILS', { description: '利用を許可するメールアドレス（カンマ区切り）' });
 const PUBLIC_BASE_URL = defineString('PUBLIC_BASE_URL', { default: 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com' });
+const WEBHOOK_VERIFY_TOKEN = defineString('WEBHOOK_VERIFY_TOKEN', { description: 'MetaのWebhook登録時に入力する確認用の文字列（自分で決めてよい）' });
 
 const app = createApp({
   db: {
     get: async p => { const s = await fs.doc(p).get(); return s.exists ? s.data() : null; },
     set: async (p, v) => { await fs.doc(p).set(v); },
-    del: async p => { await fs.doc(p).delete(); }
+    del: async p => { await fs.doc(p).delete(); },
+    list: async p => (await fs.collection(p).get()).docs.map(doc => ({ id: doc.id, ...doc.data() }))
   },
   verifyIdToken: t => getAuth().verifyIdToken(t),
   fetch: (...a) => fetch(...a),
@@ -30,7 +32,8 @@ const app = createApp({
   config: () => ({
     googleClientId: GOOGLE_CLIENT_ID.value(), googleClientSecret: GOOGLE_CLIENT_SECRET.value(),
     metaAppId: META_APP_ID.value(), metaAppSecret: META_APP_SECRET.value(),
-    allowedEmails: ALLOWED_EMAILS.value(), publicBaseUrl: PUBLIC_BASE_URL.value()
+    allowedEmails: ALLOWED_EMAILS.value(), publicBaseUrl: PUBLIC_BASE_URL.value(),
+    webhookVerifyToken: WEBHOOK_VERIFY_TOKEN.value()
   })
 });
 
