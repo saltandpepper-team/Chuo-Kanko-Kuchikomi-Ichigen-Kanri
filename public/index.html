@@ -316,7 +316,7 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
 // 本番（Firebase Hosting 上）ではサーバー経由で連携し、デモ用のサンプル口コミは表示しない
 const BACKEND_HOSTS = ['chuo-kanko-kuchikomi-ichigen-kanri.web.app','chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com'];
 // サーバー（docs/SETUP.md）の準備ができるまでは false のまま。true にすると本番URLでFirebaseログイン・サーバー連携になる
-const BACKEND_ENABLED = false;
+const BACKEND_ENABLED = true;
 const BACKEND = BACKEND_ENABLED && BACKEND_HOSTS.includes(location.hostname);
 const MEDIA = {
   google:{label:'Google', auto:true, api:'Google Business Profile API'},
