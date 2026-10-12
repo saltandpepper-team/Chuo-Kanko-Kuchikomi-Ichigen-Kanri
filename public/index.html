@@ -396,7 +396,7 @@ const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabel
 function renderStats(){
   const todo=reviews.filter(r=>r.status!=='sent').length;
   const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
-  tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${reviews.length}<small>件</small></span><span class="todo">対応が必要 ${todo}件</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
+  tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${todo}<small>件</small></span><span class="todo">対応が必要（返信済み${reviews.length-todo}件を除く）</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
   $('mediaCards').innerHTML=Object.keys(MEDIA).map(m=>{
     const list=reviews.filter(r=>r.media===m);
     const rated=list.filter(r=>r.rating!=null);
