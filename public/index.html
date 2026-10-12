@@ -399,12 +399,13 @@ function renderStats(){
   tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${todo}<small>件</small></span><span class="todo">対応が必要（返信済み${reviews.length-todo}件を除く）</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
   $('mediaCards').innerHTML=Object.keys(MEDIA).map(m=>{
     const list=reviews.filter(r=>r.media===m);
+    const mTodo=list.filter(r=>r.status!=='sent').length;
     const rated=list.filter(r=>r.rating!=null);
     const avg=rated.length?(rated.reduce((a,r)=>a+r.rating,0)/rated.length).toFixed(1):null;
     const bd=['new','draft','filled','sent'].map(s=>{const n=list.filter(r=>r.status===s).length;const [t,c]=STATUS[s];return `<span class="pill ${c}${n?'':' zero'}">${t}<b>${n}</b></span>`;}).join('');
     return `<button type="button" class="mcard" data-f="${m}" aria-pressed="${mf===m}" style="--c:${MCOLOR[m]};--cbg:${MBG[m]}">
       <span class="name">${MEDIA[m].label}</span>
-      <span class="count">${list.length}<small>件</small></span>
+      <span class="count">${mTodo}<small>件</small></span>
       <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント（評価なし）':m==='dm'?'メッセージ（評価なし）':'評価なし')}</span>
       <span class="bd">${bd}</span></button>`;
   }).join('');
