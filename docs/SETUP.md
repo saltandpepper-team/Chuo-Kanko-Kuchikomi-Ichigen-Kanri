@@ -11,6 +11,20 @@
 
 > この本番モードは、上記のURL（`*.web.app` / `*.firebaseapp.com`）で開いたときだけ有効です。それ以外（ファイルを直接開く・claude.ai の公開版）では、これまでどおりのデモとして動きます。
 
+## 進捗メモ（2026年10月時点）
+
+- **Firebaseプロジェクト**：`chuo-kanko`。アクセス権は `keima.kitazawa@saltandpepper.jp` さんが保有。社内の別アカウントを追加する場合は、Firebaseコンソール→プロジェクト設定→ユーザーと権限、から依頼する
+- **Instagram（Meta）**：アプリ作成済み
+  - アプリ名：「中央観光_口コミ管理」
+  - アプリID：`2863945451069047752`
+  - app secret：Meta for Developers の「アプリの設定」→「ベーシック」から確認（このファイルには書かない）
+  - 必要な権限（instagram_basic・instagram_manage_comments・instagram_manage_messages・pages_show_list・pages_read_engagement・business_management）はすべてテスト準備完了
+  - 根角裕基様が管理者として登録済み
+  - 山麓園のFacebookページ・Instagram（`sanrokuen_robata`）との連携は完了。浅間茶屋はまだ
+- **Google ビジネスプロフィール API**：未着手（利用申請がまだ）
+- **Blazeプランへのアップグレード**：社内で承認済み、作業待ち
+- **デプロイ**：まだ一度も実行していない（`firebase deploy` 未実施）
+
 ---
 
 ## 1. Firebase（プロジェクト `chuo-kanko`）
