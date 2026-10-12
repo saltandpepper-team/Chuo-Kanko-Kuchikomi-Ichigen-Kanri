@@ -32,8 +32,9 @@
 - **Blazeプランへのアップグレード**：✅ 完了（2026/10/12）
 - **Firebase Authentication**：✅ 完了（2026/10/12）。メール/パスワードを有効化、萱沼様のアカウント（`kayanuma.h@kaneyamaen.co.jp`）を作成済み
 - **Firestore Database**：✅ 完了（2026/10/12）。ロケーション`asia-northeast1`、本番環境モードで作成済み
-- **デプロイ**：まだ一度も実行していない（`firebase deploy` 未実施）
-  - **次回はここから再開**：ローカルPCで Firebase CLI を使ってCloud Functionsをデプロイする（手順は下記「5. 設定値の登録とデプロイ」）。Google側のOAuthクライアントID・シークレットがまだ無いので、`GOOGLE_CLIENT_ID`と`GOOGLE_CLIENT_SECRET`は一旦仮の値（例：`pending`）で登録し、審査完了後に本物の値に差し替える
+- **デプロイ**：✅ 完了（2026/10/12）。萱沼様のパソコンから `firebase deploy --only functions,firestore:rules,hosting --project chuo-kanko` を実行し成功。本番URLでFirebase Authenticationログイン・AI返信文生成・拡張機能連携まで動作確認済み
+  - `functions/.env` の `META_APP_ID` と `WEBHOOK_VERIFY_TOKEN` は本物の値を設定済み。`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET` はGoogleのOAuthクライアントがまだ無いため仮の値（`pending`系）のまま。Google連携ボタンはGoogle側の審査完了後、本物の値に差し替えてから使う
+  - **次回はここから再開**：Instagramの本番連携（Instagram ↗ ボタンから「許可」）と、Webhooks登録（Meta for Developers → 製品 → Webhooks、コールバックURL `https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/webhooks/instagram`、確認トークンは`functions/.env`の`WEBHOOK_VERIFY_TOKEN`と同じ値）
 
 ---
 
