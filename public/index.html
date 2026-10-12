@@ -387,10 +387,10 @@ function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clea
 
 function renderFilters(){
   const base=reviews.filter(r=>mf==='all'||r.media===mf);
-  const opts=[['all','すべて',base.length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja').length]];
+  const opts=[['all','すべて',base.filter(r=>r.status!=='sent').length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja'&&r.status!=='sent').length]];
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
-function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'||(sf==='foreign'?(r.lang&&r.lang!=='ja'):r.status===sf))); }
+function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf))); }
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
