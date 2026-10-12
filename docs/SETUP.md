@@ -21,7 +21,14 @@
   - 必要な権限（instagram_basic・instagram_manage_comments・instagram_manage_messages・pages_show_list・pages_read_engagement・business_management）はすべてテスト準備完了
   - 根角裕基様が管理者として登録済み
   - 山麓園のFacebookページ・Instagram（`sanrokuen_robata`）との連携は完了。浅間茶屋はまだ
-- **Google ビジネスプロフィール API**：未着手（利用申請がまだ）
+- **Google ビジネスプロフィール API**：🚧 **利用申請済み・審査待ち**（[GBP APIお問い合わせフォーム](https://support.google.com/business/contact/api_default?hl=ja)から「基本のAPIアクセスの申請」で申請。申請は`sanrokuen1000@gmail.com`＝山麓園のビジネスプロフィール管理アカウントでログインして行う必要がある）
+  - 会社名義：中央観光株式会社
+  - プロジェクトID：`chuo-kanko`
+  - 浅間茶屋は管理アカウント未確認のため後回し
+  - **審査結果を待っている間に、並行して次の2つを進められる（次回はここから再開）：**
+    1. **OAuth同意画面の設定**：Google Cloud コンソール（S&P STAFFアカウント）→「APIとサービス」→「OAuth同意画面」。User Type＝外部、スコープに`https://www.googleapis.com/auth/business.manage`を追加、テストユーザーに`sanrokuen1000@gmail.com`を追加。**公開ステータスを「本番環境」にするのを忘れない**（「テスト」のままだと7日で連携が切れる）
+    2. **OAuthクライアントIDの作成**：「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」（種類：ウェブアプリケーション）。承認済みのリダイレクトURI：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/google/callback`。作成後の「クライアントID」と「クライアントシークレット」を控える
+  - API有効化の承認が下りたら、Google Cloud コンソール「APIとサービス」→「ライブラリ」で以下3つを有効化：My Business Account Management API／My Business Business Information API／Google My Business API
 - **Blazeプランへのアップグレード**：社内で承認済み、作業待ち
 - **デプロイ**：まだ一度も実行していない（`firebase deploy` 未実施）
 
