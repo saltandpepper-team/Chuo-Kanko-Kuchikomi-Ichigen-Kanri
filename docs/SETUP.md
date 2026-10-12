@@ -29,8 +29,11 @@
     1. **OAuth同意画面の設定**：Google Cloud コンソール（S&P STAFFアカウント）→「APIとサービス」→「OAuth同意画面」。User Type＝外部、スコープに`https://www.googleapis.com/auth/business.manage`を追加、テストユーザーに`sanrokuen1000@gmail.com`を追加。**公開ステータスを「本番環境」にするのを忘れない**（「テスト」のままだと7日で連携が切れる）
     2. **OAuthクライアントIDの作成**：「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」（種類：ウェブアプリケーション）。承認済みのリダイレクトURI：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/google/callback`。作成後の「クライアントID」と「クライアントシークレット」を控える
   - API有効化の承認が下りたら、Google Cloud コンソール「APIとサービス」→「ライブラリ」で以下3つを有効化：My Business Account Management API／My Business Business Information API／Google My Business API
-- **Blazeプランへのアップグレード**：社内で承認済み、作業待ち
+- **Blazeプランへのアップグレード**：✅ 完了（2026/10/12）
+- **Firebase Authentication**：✅ 完了（2026/10/12）。メール/パスワードを有効化、萱沼様のアカウント（`kayanuma.h@kaneyamaen.co.jp`）を作成済み
+- **Firestore Database**：✅ 完了（2026/10/12）。ロケーション`asia-northeast1`、本番環境モードで作成済み
 - **デプロイ**：まだ一度も実行していない（`firebase deploy` 未実施）
+  - **次回はここから再開**：ローカルPCで Firebase CLI を使ってCloud Functionsをデプロイする（手順は下記「5. 設定値の登録とデプロイ」）。Google側のOAuthクライアントID・シークレットがまだ無いので、`GOOGLE_CLIENT_ID`と`GOOGLE_CLIENT_SECRET`は一旦仮の値（例：`pending`）で登録し、審査完了後に本物の値に差し替える
 
 ---
 
