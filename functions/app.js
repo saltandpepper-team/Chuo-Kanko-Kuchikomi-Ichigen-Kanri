@@ -125,7 +125,8 @@ function createApp(d) {
       });
     } else {
       url = 'https://www.facebook.com/v23.0/dialog/oauth?' + new URLSearchParams({
-        client_id: c.metaAppId, redirect_uri: redirectUri('instagram'), response_type: 'code', scope: IG_SCOPE, state
+        client_id: c.metaAppId, redirect_uri: redirectUri('instagram'), response_type: 'code', scope: IG_SCOPE, state,
+        display: 'page', extras: JSON.stringify({ setup: { channel: 'IG_API_ONBOARDING' } })
       });
     }
     res.json({ url });
