@@ -14,19 +14,13 @@
 ## 進捗メモ（2026年10月時点）
 
 - **Firebaseプロジェクト**：`chuo-kanko`。アクセス権は `keima.kitazawa@saltandpepper.jp` さんが保有。社内の別アカウントを追加する場合は、Firebaseコンソール→プロジェクト設定→ユーザーと権限、から依頼する
-- **Instagram（Meta）**：⚠️ 2026/10/12に**Instagramログイン方式**（Facebookページ不要）に作り直した。サーバーコード（`functions/app.js`・`functions/index.js`・テスト）は変更・テスト済み（`npm test`で6/6成功）だが、**まだ本番デプロイしていない**
-  - Facebookアプリ名：「中央観光_口コミ管理」（アプリID`2863945451069047752`）←これは古い方式用で**今後使わない**
-  - **Instagramアプリ名**：「中央観光_口コミ管理-IG」、**InstagramアプリID**：`4079163505719674`（これが新しい`INSTAGRAM_APP_ID`の値）
-  - Instagram app secret：Meta for Developers →「ユースケース」→「Instagram API」→「Instagramログインによる API設定」の画面から確認（このファイルには書かない）。これが新しい`INSTAGRAM_APP_SECRET`の値
-  - 必要な権限：`instagram_business_basic`・`instagram_business_manage_comments`・`instagram_business_manage_messages`
-  - 根角裕基様が管理者として登録済み（Instagramテスターとしての登録は要確認）
-  - 山麓園・浅間茶屋とも、Instagramログイン方式でのOAuth連携（アプリ画面の「Instagram ↗」ボタン）はまだ実施していない。Facebookページは不要になったので、浅間茶屋もFacebookページ作成待ちなしで進められる
-  - **次回はここから再開**：
-    1. Meta側で「Instagramログインによる API設定」の権限追加・リダイレクトURI登録・テスターロール付与を完了させる（手順は下記「3. Instagram」参照）
-    2. ローカルの`functions/.env`の`META_APP_ID`行を`INSTAGRAM_APP_ID=4079163505719674`に置き換える
-    3. `firebase functions:secrets:set INSTAGRAM_APP_SECRET`で新しいInstagram app secretを登録（古い`META_APP_SECRET`は使われなくなる）
-    4. `firebase deploy --only functions,firestore:rules,hosting --project chuo-kanko`で再デプロイ
-    5. アプリ画面の「Instagram ↗」から実際に連携して動作確認
+- **Instagram（Meta）**：アプリ作成済み
+  - アプリ名：「中央観光_口コミ管理」
+  - アプリID：`2863945451069047752`
+  - app secret：Meta for Developers の「アプリの設定」→「ベーシック」から確認（このファイルには書かない）
+  - 必要な権限（instagram_basic・instagram_manage_comments・instagram_manage_messages・pages_show_list・pages_read_engagement・business_management）はすべてテスト準備完了
+  - 根角裕基様が管理者として登録済み
+  - 山麓園のFacebookページ・Instagram（`sanrokuen_robata`）との連携は完了。浅間茶屋はまだ
 - **Google ビジネスプロフィール API**：🚧 **利用申請済み・審査待ち**（[GBP APIお問い合わせフォーム](https://support.google.com/business/contact/api_default?hl=ja)から「基本のAPIアクセスの申請」で申請。申請は`sanrokuen1000@gmail.com`＝山麓園のビジネスプロフィール管理アカウントでログインして行う必要がある）
   - 会社名義：中央観光株式会社
   - プロジェクトID：`chuo-kanko`
@@ -38,10 +32,9 @@
 - **Blazeプランへのアップグレード**：✅ 完了（2026/10/12）
 - **Firebase Authentication**：✅ 完了（2026/10/12）。メール/パスワードを有効化、萱沼様のアカウント（`kayanuma.h@kaneyamaen.co.jp`）を作成済み
 - **Firestore Database**：✅ 完了（2026/10/12）。ロケーション`asia-northeast1`、本番環境モードで作成済み
-- **デプロイ**：✅ 初回デプロイ完了（2026/10/12）。萱沼様のパソコンから `firebase deploy --only functions,firestore:rules,hosting --project chuo-kanko` を実行し成功。本番URLでFirebase Authenticationログイン・AI返信文生成・拡張機能連携まで動作確認済み
-  - ⚠️ この初回デプロイは、Instagramログイン方式への切り替え（上記参照）より前の、Facebookログイン方式のコードで行ったもの。Instagram連携ボタンを押すと「アプリIDが無効」エラーになることが判明し、Instagramログイン方式へのコード修正を行った
-  - `GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET` はGoogleのOAuthクライアントがまだ無いため仮の値（`pending`系）のまま。Google連携ボタンはGoogle側の審査完了後、本物の値に差し替えてから使う
-  - **次回はここから再開**：上の「Instagram（Meta）」の次回再開手順（`.env`の`INSTAGRAM_APP_ID`設定・`INSTAGRAM_APP_SECRET`の登録・再デプロイ）から。その後Webhooks登録（コールバックURL `https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/webhooks/instagram`、確認トークンは`functions/.env`の`WEBHOOK_VERIFY_TOKEN`と同じ値）
+- **デプロイ**：✅ 完了（2026/10/12）。萱沼様のパソコンから `firebase deploy --only functions,firestore:rules,hosting --project chuo-kanko` を実行し成功。本番URLでFirebase Authenticationログイン・AI返信文生成・拡張機能連携まで動作確認済み
+  - `functions/.env` の `META_APP_ID` と `WEBHOOK_VERIFY_TOKEN` は本物の値を設定済み。`GOOGLE_CLIENT_ID`・`GOOGLE_CLIENT_SECRET` はGoogleのOAuthクライアントがまだ無いため仮の値（`pending`系）のまま。Google連携ボタンはGoogle側の審査完了後、本物の値に差し替えてから使う
+  - **次回はここから再開**：Instagramの本番連携（Instagram ↗ ボタンから「許可」）と、Webhooks登録（Meta for Developers → 製品 → Webhooks、コールバックURL `https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/webhooks/instagram`、確認トークンは`functions/.env`の`WEBHOOK_VERIFY_TOKEN`と同じ値）
 
 ---
 
@@ -69,26 +62,25 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
    - 承認済みのリダイレクト URI：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/google/callback`
    - 作成後の「クライアント ID」と「クライアント シークレット」を控えます。
 
-## 3. Instagram（Meta for Developers・Instagramログイン方式）
+## 3. Instagram（Meta for Developers）
 
-前提：Instagram アカウントが **ビジネス（またはクリエイター）アカウント** であること。**Facebookページは不要**（このアプリはInstagramに直接ログインする「Instagramログインによる API設定」を使う）。
+前提：Instagram アカウントが **ビジネス（またはクリエイター）アカウント** で、**Facebook ページに紐づいている** こと。
 
-> ⚠️ Meta for Developersのアプリには「Instagramログインによる API設定」と「Facebookログインによる API設定」の2方式があります。本アプリのサーバーコードは**Instagramログイン方式**を前提にしているので、アプリの「ユースケース」→「Instagram API」のカスタマイズ画面で、左メニューが「Instagramログインによる API設定」になっていることを確認してください。
-
-1. [Meta for Developers](https://developers.facebook.com/) でアプリを作成（または既存のアプリを使用）し、ユースケースに「Instagramでメッセージとコンテンツを管理」を追加します。
-2. 「ユースケース」→「Instagram API」→「Instagramログインによる API設定」の画面で、**Instagramアプリ名・InstagramアプリID・Instagram app secret** を確認します（Facebookアプリ全体のID・secretとは別物なので注意）。
-3. 「アクセス許可と機能」で、以下の権限を追加します：`instagram_business_basic`、`instagram_business_manage_comments`、`instagram_business_manage_messages`
-4. 同画面の「Instagramビジネスログインを設定する」から、OAuthリダイレクトURIを登録します。
+1. [Meta for Developers](https://developers.facebook.com/) でアプリを作成します（種類：ビジネス）。
+2. 「Facebookログイン」を追加し、有効な OAuth リダイレクト URI に次を登録します。
    `https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/instagram/callback`
-5. 「役割」タブで、連携するアカウント（萱沼様など）を「Instagramテスター」として追加し、Instagram側（アプリ内の通知）で招待を承諾してもらいます。
-   - アプリが本番公開・アプリレビュー前の間は、テスターに登録したアカウントだけが連携できます。
-6. **Webhooks（新着コメント・DMをその場で受け取る）を設定します（Functionsのデプロイ後に行う）。**
+3. 使う権限：`instagram_basic`、`instagram_manage_comments`、`instagram_manage_messages`、`pages_show_list`、`pages_read_engagement`、`business_management`
+   - アプリが「開発モード」の間は、アプリの **管理者・テスター** に登録したアカウントだけが連携できます。萱沼様のFacebookアカウントを管理者かテスターに追加してください。
+   - 他のアカウントでも使う場合は、アプリレビュー（権限の審査）とビジネス認証が必要です。
+4. 「アプリID」と「app secret」を控えます。
+5. **Webhooks（新着コメント・DMをその場で受け取る）を設定します（Functionsのデプロイ後に行う）。**
    1. `functions/.env` の `WEBHOOK_VERIFY_TOKEN` に、推測されにくい文字列を自分で決めて入力します（例：ランダムな英数字30文字程度）。
-   2. 同じカスタマイズ画面の「3. Webhooksを設定する」から、コールバックURLとトークンを登録します。
-      - コールバックURL：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/webhooks/instagram`
-      - トークンを認証：上記1で決めた `WEBHOOK_VERIFY_TOKEN` と同じ値
-   3. `comments`・`messages` の項目を購読（Subscribe）します
-   - 連携（OAuth）が完了すると、サーバーが自動的にそのInstagramアカウントをWebhookに購読させます。何らかの理由で届かない場合は、Meta側の「Webhooks」設定から購読状況を確認してください。
+   2. アプリの左メニュー「製品」→「Webhooks」→「設定」を開きます。
+   3. コールバックURL：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/webhooks/instagram`
+   4. 確認トークン：上記1で決めた `WEBHOOK_VERIFY_TOKEN` と同じ値
+   5. 「確認して保存」を押す（Functionsが先にデプロイ済みである必要があります）
+   6. object を `instagram` にして、`comments`・`messages` の項目を購読（Subscribe）します
+   - 連携（OAuth）が完了すると、サーバーが自動的にそのページをWebhookに購読させます。何らかの理由で届かない場合は、Meta側の「Webhooks」画面から該当ページの購読状況を確認してください。
 
 ## 4. AI（Firebase AI Logic／Gemini）
 
@@ -125,11 +117,11 @@ firebase login
 
 # 公開してよい設定値（functions/.env）
 cp functions/.env.example functions/.env
-#   → functions/.env を編集（GOOGLE_CLIENT_ID / INSTAGRAM_APP_ID / ALLOWED_EMAILS）
+#   → functions/.env を編集（GOOGLE_CLIENT_ID / META_APP_ID / ALLOWED_EMAILS）
 
 # 秘密の値（Secret Manager に保存。コマンド実行後に値を貼り付け）
 firebase functions:secrets:set GOOGLE_CLIENT_SECRET
-firebase functions:secrets:set INSTAGRAM_APP_SECRET
+firebase functions:secrets:set META_APP_SECRET
 
 # デプロイ
 (cd functions && npm ci)
