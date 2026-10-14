@@ -124,11 +124,35 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   }
 });
 
+/** 「M/D」形式の口コミ日付を、だいたいの時刻に変換する（並び替え・比較用。未来すぎる場合は去年の日付とみなす） */
+function roughDateTs(dateStr, now) {
+  const m = String(dateStr || '').match(/^(\d{1,2})\/(\d{1,2})$/);
+  if (!m) return null;
+  const mo = +m[1] - 1, da = +m[2];
+  let d = new Date(now.getFullYear(), mo, da);
+  if (d.getTime() - now.getTime() > 60 * 24 * 3600 * 1000) d = new Date(now.getFullYear() - 1, mo, da);
+  return d.getTime();
+}
 // ---- アプリ（口コミ一元管理）に渡すため、読み取った口コミを保存 ----
 async function rememberReviews(list, store, media, pageUrl) {
   const { reviews = {} } = await chrome.storage.local.get('reviews');
   const t = Date.now();
   list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', replied: !!r.replied, reply: r.reply || '', pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
+  // この媒体・店舗の今回の一覧にない口コミのうち、一覧の中で一番古い口コミより新しいもの（＝本来なら表示されているはず）は、
+  // 食べログ・トリップアドバイザー側で削除されたとみなしてアプリ側からも消す（ページをまたいで見えないだけの古い口コミは残す）
+  if (list.length) {
+    const tsList = list.map(r => roughDateTs(r.date, new Date())).filter(x => x !== null);
+    if (tsList.length) {
+      const oldestTs = Math.min(...tsList);
+      const presentKeys = new Set(list.map(r => r.key));
+      Object.keys(reviews).forEach(k => {
+        const rv = reviews[k];
+        if (rv.media !== media || rv.store !== store || presentKeys.has(k)) return;
+        const ts = roughDateTs(rv.date, new Date());
+        if (ts !== null && ts >= oldestTs) delete reviews[k];
+      });
+    }
+  }
   // 古いものから削除して最大400件に保つ
   const keys = Object.keys(reviews).sort((a, b) => reviews[b].seenAt - reviews[a].seenAt);
   keys.slice(400).forEach(k => delete reviews[k]);
