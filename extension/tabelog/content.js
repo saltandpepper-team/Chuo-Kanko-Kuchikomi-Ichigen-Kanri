@@ -47,8 +47,9 @@
       if (!DATE.test(t.nodeValue)) continue;
       const el = t.parentElement;
       if (!el || el.closest('[data-tb-assist]')) continue;
-      const near = (el.parentElement?.innerText || el.innerText || '');
-      if (/訪問/.test(near)) dateEls.push(el);
+      // 「訪問月」の記載が無い口コミ（投稿日＝訪問日のときなど）もあるため、ここでは絞り込まない
+      // （本物の口コミかどうかは readCards() の parseTabelog（投稿者名の有無）で判定する）
+      dateEls.push(el);
     }
     const uniq = dateEls.filter((el, i) => !dateEls.some((o, k) => k !== i && o !== el && el.contains(o)));
     return uniq.map(el => {

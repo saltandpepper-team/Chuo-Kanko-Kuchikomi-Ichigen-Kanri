@@ -22,9 +22,8 @@ function parseTabelog(raw){
   const starts=[];
   for(let i=0;i<L.length;i++){
     if(!TB_DATE.test(L[i])) continue;
-    const near=L.slice(i,i+2).join(' ');
-    if(!/訪問/.test(near)) continue;
     // 日付の前後どちらかがタイトル、その次が「投稿者名（件数）」
+    // ※「訪問月」の記載が無い口コミ（投稿日＝訪問日のときなど）もあるため、訪問の文字は必須にしない
     let a=-1; for(let k=i+1;k<=i+3&&k<L.length;k++){ if(TB_AUTHOR.test(L[k]) && !TB_DATE.test(L[k])){ a=k; break; } }
     if(a<0) continue;
     const titleIdx = (a===i+1 || /訪問/.test(L[i+1]||'') && a===i+2) ? i-1 : i+1;
