@@ -947,6 +947,18 @@ window.addEventListener('message',e=>{
       if(n && !x.replied && x.draft){ n.reply=x.draft; n.status='draft'; n.log.push(`${now()}　AIが返信文を作成（拡張機能）`); }
     }
   });
+  // 食べログ・トリップアドバイザー側で削除され、拡張機能の一覧にも無くなった口コミはアプリからも消す
+  if(e.data.reviews.length){
+    const presentKeys=new Set(e.data.reviews.map(x=>x.key));
+    for(let i=ALL.length-1;i>=0;i--){
+      const a=ALL[i];
+      if(a.extId && EXT_MEDIA.includes(a.media) && !presentKeys.has(a.extId)){
+        ALL.splice(i,1);
+        if(selectedId===a.id) selectedId=null;
+        changed=true;
+      }
+    }
+  }
   if(!added && !changed) return;
   if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); }
   if(added) toast(`拡張機能から口コミを${added}件取得しました`);
