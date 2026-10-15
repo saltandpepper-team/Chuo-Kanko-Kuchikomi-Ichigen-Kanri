@@ -96,7 +96,6 @@ function createApp(d) {
   const IG_SCOPE = 'instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,business_management';
   async function igCandidates(userToken) {
     const j = await json(await d.fetch(`${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=100&access_token=${encodeURIComponent(userToken)}`));
-    console.error('[診断用ログ] /me/accounts の結果', JSON.stringify(j)); // TODO: 原因が分かったら削除する
     return (j.data || []).filter(p => p.instagram_business_account).map(p => ({
       id: p.instagram_business_account.id, label: `@${p.instagram_business_account.username || ''}（${p.name}）`,
       pageId: p.id, pageToken: p.access_token, username: p.instagram_business_account.username || ''
@@ -213,16 +212,21 @@ function createApp(d) {
       })) });
     }
     const tk = encodeURIComponent(c.selected.pageToken), uid = encodeURIComponent(c.selected.id);
-    const media2 = await json(await d.fetch(`${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=10&access_token=${tk}`));
     const items = [];
-    for (const p of media2.data || []) {
-      const cm = await json(await d.fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
-      for (const k of cm.data || []) {
-        if (k.username === c.selected.username) continue;
-        const mine = (k.replies?.data || []).find(x => x.username === c.selected.username);
-        items.push({ media: 'instagram', extId: 'instagram:' + k.id, extName: k.id, permalink: p.permalink,
-          author: '@' + (k.username || 'instagram'), rating: null, createTime: k.timestamp, text: k.text || '', reply: mine?.text || '' });
+    // 直近◯件ではなく全投稿を辿って、未返信のコメントを漏れなく集める（念のため最大20ページ＝投稿1000件分で打ち切る）
+    let mediaUrl = `${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=50&access_token=${tk}`;
+    for (let page = 0; mediaUrl && page < 20; page++) {
+      const media2 = await json(await d.fetch(mediaUrl));
+      for (const p of media2.data || []) {
+        const cm = await json(await d.fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
+        for (const k of cm.data || []) {
+          if (k.username === c.selected.username) continue;
+          const mine = (k.replies?.data || []).find(x => x.username === c.selected.username);
+          items.push({ media: 'instagram', extId: 'instagram:' + k.id, extName: k.id, permalink: p.permalink,
+            author: '@' + (k.username || 'instagram'), rating: null, createTime: k.timestamp, text: k.text || '', reply: mine?.text || '' });
+        }
       }
+      mediaUrl = media2.paging?.next || null;
     }
     res.json({ items });
   }));

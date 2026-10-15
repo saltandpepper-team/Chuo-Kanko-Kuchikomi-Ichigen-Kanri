@@ -136,6 +136,25 @@ test('Instagram：連携（複数アカウントから選択）→コメント�
   h.close();
 });
 
+test('Instagram：投稿が複数ページにまたがっていても、全ページのコメントを集める', async () => {
+  const s = setup(); const h = await serve(s.app);
+  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
+  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/\/me\/accounts/, () => s.reply({ data: [{ id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } }] }));
+  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
+  s.on(/\/901\/media\?.*after=CUR1/, () => s.reply({ data: [{ id: 'M2', permalink: 'https://instagram.com/p/y' }] }));
+  s.on(/\/901\/media/, () => s.reply({ data: [{ id: 'M1', permalink: 'https://instagram.com/p/x' }], paging: { next: 'https://graph.facebook.com/v23.0/901/media?after=CUR1&access_token=PT1' } }));
+  s.on(/\/M1\/comments/, () => s.reply({ data: [{ id: '55', text: '1ページ目', username: 'guest' }] }));
+  s.on(/\/M2\/comments/, () => s.reply({ data: [{ id: '56', text: '2ページ目', username: 'guest' }] }));
+
+  const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
+  await h.req('GET', `/api/instagram/callback?state=${new URL(a.json.url).searchParams.get('state')}&code=C9`, { token: null });
+
+  const rv = (await h.req('GET', '/api/reviews?media=instagram&store=' + encodeURIComponent('山麓園'))).json.items;
+  assert.deepEqual(rv.map(x => x.extName).sort(), ['55', '56']);
+  h.close();
+});
+
 test('Instagram：連携後にWebhook購読し、新着コメント・DMをその場で受け取る', async () => {
   const s = setup(); const h = await serve(s.app);
   s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
