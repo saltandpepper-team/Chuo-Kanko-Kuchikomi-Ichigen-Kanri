@@ -8,7 +8,6 @@ const crypto = require('crypto');
 
 const STORES = ['山麓園', '浅間茶屋'];
 const GRAPH = 'https://graph.facebook.com/v23.0';
-const IG_GRAPH = 'https://graph.instagram.com/v23.0';
 const STAR = { ONE: 1, TWO: 2, THREE: 3, FOUR: 4, FIVE: 5 };
 const PROVIDERS = ['google', 'instagram'];
 
@@ -93,16 +92,18 @@ function createApp(d) {
     return out;
   }
 
-  // ---- Instagram（Instagramログイン。Facebookページは経由しない） ----
-  const IG_SCOPE = 'instagram_business_basic,instagram_business_manage_comments,instagram_business_manage_messages';
-  // Instagramのアカウントでログインするため、連携先は常にそのアカウント1つだけ（店舗を選ぶ必要が無い）
-  async function igAccount(token) {
-    const me = await json(await d.fetch(`${IG_GRAPH}/me?fields=id,username&access_token=${encodeURIComponent(token)}`));
-    return [{ id: me.id, label: `@${me.username || ''}`, token, username: me.username || '' }];
+  // ---- Instagram（Facebookログイン） ----
+  const IG_SCOPE = 'instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,business_management';
+  async function igCandidates(userToken) {
+    const j = await json(await d.fetch(`${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=100&access_token=${encodeURIComponent(userToken)}`));
+    return (j.data || []).filter(p => p.instagram_business_account).map(p => ({
+      id: p.instagram_business_account.id, label: `@${p.instagram_business_account.username || ''}（${p.name}）`,
+      pageId: p.id, pageToken: p.access_token, username: p.instagram_business_account.username || ''
+    }));
   }
-  // 連携後、Webhook（新着コメント・DMの通知）を受け取れるよう、このアカウントをアプリに購読させる
+  // 連携後、Webhook（新着コメント・DMの通知）を受け取れるよう、このページをアプリに購読させる
   async function subscribeWebhooks(pick) {
-    try { await d.fetch(`${IG_GRAPH}/${pick.id}/subscribed_apps?subscribed_fields=comments,messages&access_token=${encodeURIComponent(pick.token)}`, { method: 'POST' }); }
+    try { await d.fetch(`${GRAPH}/${pick.pageId}/subscribed_apps?subscribed_fields=comments,messages&access_token=${encodeURIComponent(pick.pageToken)}`, { method: 'POST' }); }
     catch (e) { console.error('webhook購読に失敗', e); }
   }
   /** Instagramの場所ID（アカウントID）から、連携済みの店舗を逆引きする */
@@ -123,8 +124,9 @@ function createApp(d) {
         access_type: 'offline', prompt: 'consent', include_granted_scopes: 'true', state
       });
     } else {
-      url = 'https://www.instagram.com/oauth/authorize?' + new URLSearchParams({
-        client_id: c.instagramAppId, redirect_uri: redirectUri('instagram'), response_type: 'code', scope: IG_SCOPE, state
+      url = 'https://www.facebook.com/v23.0/dialog/oauth?' + new URLSearchParams({
+        client_id: c.metaAppId, redirect_uri: redirectUri('instagram'), response_type: 'code', scope: IG_SCOPE, state,
+        display: 'page', extras: JSON.stringify({ setup: { channel: 'IG_API_ONBOARDING' } })
       });
     }
     res.json({ url });
@@ -155,15 +157,11 @@ function createApp(d) {
         const candidates = await googleCandidates(tok.access_token);
         saved = { refreshToken: tok.refresh_token, candidates, selected: candidates.length === 1 ? candidates[0] : null, connectedAt: now(), by: st.uid };
       } else {
-        // 認可コードの末尾に付く「#_」は取り除く必要がある（Instagramログインの仕様）
-        const short = await json(await d.fetch('https://api.instagram.com/oauth/access_token', {
-          method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-          body: new URLSearchParams({ client_id: c.instagramAppId, client_secret: c.instagramAppSecret, grant_type: 'authorization_code', redirect_uri: redirectUri('instagram'), code: code.replace(/#_$/, '') }).toString()
-        }));
-        const long = await json(await d.fetch(`${IG_GRAPH}/access_token?` + new URLSearchParams({ grant_type: 'ig_exchange_token', client_secret: c.instagramAppSecret, access_token: short.access_token })));
-        const candidates = await igAccount(long.access_token);
-        saved = { candidates, selected: candidates[0], connectedAt: now(), by: st.uid };
-        await subscribeWebhooks(saved.selected);
+        const short = await json(await d.fetch(`${GRAPH}/oauth/access_token?` + new URLSearchParams({ client_id: c.metaAppId, client_secret: c.metaAppSecret, redirect_uri: redirectUri('instagram'), code })));
+        const long = await json(await d.fetch(`${GRAPH}/oauth/access_token?` + new URLSearchParams({ grant_type: 'fb_exchange_token', client_id: c.metaAppId, client_secret: c.metaAppSecret, fb_exchange_token: short.access_token })));
+        const candidates = await igCandidates(long.access_token);
+        saved = { candidates, selected: candidates.length === 1 ? candidates[0] : null, connectedAt: now(), by: st.uid };
+        if (saved.selected) await subscribeWebhooks(saved.selected);
       }
       await d.db.set(connPath(store, provider), saved);
       back({ connected: provider, store, ...(saved.selected ? {} : { pick: '1' }) });
@@ -213,11 +211,11 @@ function createApp(d) {
         createTime: v.createTime, text: v.comment || '', reply: v.reviewReply?.comment || ''
       })) });
     }
-    const tk = encodeURIComponent(c.selected.token), uid = encodeURIComponent(c.selected.id);
-    const media2 = await json(await d.fetch(`${IG_GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=10&access_token=${tk}`));
+    const tk = encodeURIComponent(c.selected.pageToken), uid = encodeURIComponent(c.selected.id);
+    const media2 = await json(await d.fetch(`${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=10&access_token=${tk}`));
     const items = [];
     for (const p of media2.data || []) {
-      const cm = await json(await d.fetch(`${IG_GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
+      const cm = await json(await d.fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
       for (const k of cm.data || []) {
         if (k.username === c.selected.username) continue;
         const mine = (k.replies?.data || []).find(x => x.username === c.selected.username);
@@ -244,7 +242,7 @@ function createApp(d) {
       }));
     } else {
       if (!/^\d+$/.test(name)) throw new HttpError(400, 'コメントIDが正しくありません');
-      await json(await d.fetch(`${IG_GRAPH}/${name}/replies`, { method: 'POST', body: new URLSearchParams({ message: comment, access_token: c.selected.token }) }));
+      await json(await d.fetch(`${GRAPH}/${name}/replies`, { method: 'POST', body: new URLSearchParams({ message: comment, access_token: c.selected.pageToken }) }));
     }
     res.json({ ok: true });
   }));
@@ -260,7 +258,7 @@ function createApp(d) {
   // 新着コメント・DMの通知（Metaから直接呼ばれる。ログインは使わず署名で本人確認する）
   app.post('/api/webhooks/instagram', wrap(async (req, res) => {
     const sig = String(req.headers['x-hub-signature-256'] || '');
-    const expected = 'sha256=' + crypto.createHmac('sha256', cfg().instagramAppSecret).update(req.rawBody || Buffer.from('')).digest('hex');
+    const expected = 'sha256=' + crypto.createHmac('sha256', cfg().metaAppSecret).update(req.rawBody || Buffer.from('')).digest('hex');
     const ok = sig.length === expected.length && crypto.timingSafeEqual(Buffer.from(sig), Buffer.from(expected));
     if (!ok) throw new HttpError(401, '署名が一致しません');
     for (const entry of req.body?.entry || []) {
@@ -291,13 +289,13 @@ function createApp(d) {
   app.get('/api/dms', auth, wrap(async (req, res) => {
     const store = storeOf(req.query.store);
     const c = await requireConn(store, 'instagram');
-    const tk = encodeURIComponent(c.selected.token);
-    const conv = await json(await d.fetch(`${IG_GRAPH}/${c.selected.id}/conversations?platform=instagram&fields=participants&limit=50&access_token=${tk}`));
+    const tk = encodeURIComponent(c.selected.pageToken);
+    const conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&fields=participants&limit=50&access_token=${tk}`));
     const items = [];
     for (const cvs of conv.data || []) {
       const other = (cvs.participants?.data || []).find(p => p.id !== c.selected.id);
       if (!other) continue;
-      const msgs = await json(await d.fetch(`${IG_GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
+      const msgs = await json(await d.fetch(`${GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
       const list = (msgs.messages?.data || []);
       const lastFromThem = list.find(m => m.from?.id !== c.selected.id);
       if (!lastFromThem) continue;
@@ -313,9 +311,9 @@ function createApp(d) {
     if (!comment) throw new HttpError(400, '返信文が空です');
     if (!/^\d+$/.test(recipientId)) throw new HttpError(400, '送信先IDが正しくありません');
     const c = await requireConn(store, 'instagram');
-    await json(await d.fetch(`${IG_GRAPH}/${c.selected.id}/messages`, {
+    await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/messages`, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ recipient: { id: recipientId }, message: { text: comment }, access_token: c.selected.token })
+      body: JSON.stringify({ recipient: { id: recipientId }, message: { text: comment }, access_token: c.selected.pageToken })
     }));
     res.json({ ok: true });
   }));
