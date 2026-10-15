@@ -26,7 +26,7 @@ function setup() {
     fetch: fakeFetch,
     randomId: () => 'state' + (++t),
     now: () => t,
-    config: () => ({ googleClientId: 'gid', googleClientSecret: 'gsec', metaAppId: 'mid', metaAppSecret: 'msec', allowedEmails: 'kayanuma.h@kaneyamaen.co.jp', publicBaseUrl: 'https://app.example/', webhookVerifyToken: 'verify123' })
+    config: () => ({ googleClientId: 'gid', googleClientSecret: 'gsec', instagramAppId: 'iid', instagramAppSecret: 'isec', allowedEmails: 'kayanuma.h@kaneyamaen.co.jp', publicBaseUrl: 'https://app.example/', webhookVerifyToken: 'verify123' })
   });
   return { app, store, calls, on, reply, advance: ms => { t += ms; } };
 }
@@ -95,15 +95,12 @@ test('Google：連携→口コミ取得→返信', async () => {
   h.close();
 });
 
-test('Instagram：連携（複数アカウントから選択）→コメント取得→返信', async () => {
+test('Instagram：連携（Instagramログイン。Facebookページは経由しない）→コメント取得→返信', async () => {
   const s = setup(); const h = await serve(s.app);
-  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
-  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
-  s.on(/\/me\/accounts/, () => s.reply({ data: [
-    { id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } },
-    { id: 'P2', name: '浅間茶屋', access_token: 'PT2', instagram_business_account: { id: '902', username: 'sengen' } },
-    { id: 'P3', name: 'IGなし', access_token: 'PT3' }
-  ] }));
+  s.on(/api\.instagram\.com\/oauth\/access_token/, () => s.reply({ access_token: 'short' }));
+  s.on(/graph\.instagram\.com\/v23\.0\/access_token\?.*ig_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/graph\.instagram\.com\/v23\.0\/me\?/, () => s.reply({ id: '901', username: 'sanrokuen_robata' }));
+  s.on(/\/901\/subscribed_apps/, () => s.reply({ success: true }));
   s.on(/\/901\/media/, () => s.reply({ data: [{ id: 'M1', permalink: 'https://instagram.com/p/x' }] }));
   s.on(/\/M1\/comments/, () => s.reply({ data: [
     { id: '55', text: '予約できますか？', username: 'guest', timestamp: '2026-10-02T00:00:00+0000' },
@@ -111,24 +108,23 @@ test('Instagram：連携（複数アカウントから選択）→コメント�
     { id: '57', text: '美味しかった', username: 'guest2', replies: { data: [{ username: 'sanrokuen_robata', text: 'ありがとうございます' }] } }
   ] }));
   s.on(/\/55\/replies$/, () => s.reply({ id: 'r1' }));
-  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
 
   const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
   const url = new URL(a.json.url);
-  assert.match(url.searchParams.get('scope'), /instagram_manage_comments/);
+  assert.match(url.host, /^www\.instagram\.com$/, 'Facebookではなくinstagram.comに飛ばす');
+  assert.match(url.searchParams.get('scope'), /instagram_business_manage_comments/);
   const cb = await h.req('GET', `/api/instagram/callback?state=${url.searchParams.get('state')}&code=C2`, { token: null });
-  assert.match(cb.location, /pick=1/);
+  assert.match(cb.location, /^https:\/\/app\.example\/\?connected=instagram&store=/);
+  assert.doesNotMatch(cb.location, /pick=/, 'Instagramログインでは選ぶアカウントが1つだけなので即連携完了する');
 
-  let st = (await h.req('GET', '/api/status')).json.stores['山麓園'].instagram;
-  assert.equal(st.connected, false); assert.equal(st.needsPick, true); assert.equal(st.candidates.length, 2);
-  assert.equal(JSON.stringify(st).includes('PT1'), false, 'トークンはブラウザに返さない');
-  await h.req('POST', '/api/instagram/select', { body: { store: '山麓園', id: '901' } });
-  st = (await h.req('GET', '/api/status')).json.stores['山麓園'].instagram;
+  const st = (await h.req('GET', '/api/status')).json.stores['山麓園'].instagram;
   assert.equal(st.connected, true);
+  assert.equal(st.label, '@sanrokuen_robata');
+  assert.equal(JSON.stringify(st).includes('long'), false, 'トークンはブラウザに返さない');
 
   const rv = (await h.req('GET', '/api/reviews?media=instagram&store=' + encodeURIComponent('山麓園'))).json.items;
   assert.deepEqual(rv.map(x => [x.extName, x.reply]), [['55', ''], ['57', 'ありがとうございます']]);
-  assert.ok(s.calls.some(c => c.url.includes('access_token=PT1')));
+  assert.ok(s.calls.some(c => c.url.includes('access_token=long')));
 
   const r = await h.req('POST', '/api/reply', { body: { store: '山麓園', media: 'instagram', extName: '55', comment: 'お電話でどうぞ' } });
   assert.equal(r.status, 200);
@@ -138,22 +134,22 @@ test('Instagram：連携（複数アカウントから選択）→コメント�
 
 test('Instagram：連携後にWebhook購読し、新着コメント・DMをその場で受け取る', async () => {
   const s = setup(); const h = await serve(s.app);
-  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
-  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
-  s.on(/\/me\/accounts/, () => s.reply({ data: [{ id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } }] }));
-  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
+  s.on(/api\.instagram\.com\/oauth\/access_token/, () => s.reply({ access_token: 'short' }));
+  s.on(/graph\.instagram\.com\/v23\.0\/access_token\?.*ig_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/graph\.instagram\.com\/v23\.0\/me\?/, () => s.reply({ id: '901', username: 'sanrokuen_robata' }));
+  s.on(/\/901\/subscribed_apps/, () => s.reply({ success: true }));
 
   const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
   await h.req('GET', `/api/instagram/callback?state=${new URL(a.json.url).searchParams.get('state')}&code=C3`, { token: null });
-  // 1件しか候補がないので自動で連携完了し、同時にWebhook購読のリクエストが飛ぶ
-  assert.ok(s.calls.some(c => c.url.includes('/P1/subscribed_apps') && c.url.includes('access_token=PT1')));
+  // 連携が完了すると、同時にWebhook購読のリクエストが飛ぶ
+  assert.ok(s.calls.some(c => c.url.includes('/901/subscribed_apps') && c.url.includes('access_token=long')));
 
   const crypto = require('node:crypto');
   const payload = JSON.stringify({ object: 'instagram', entry: [
     { id: '901', changes: [{ field: 'comments', value: { id: 'C100', media: { id: 'M9' }, from: { username: 'guest' }, text: '美味しかったです' } }] },
     { id: '901', messaging: [{ sender: { id: '777' }, message: { mid: 'MID1', text: '予約できますか？' } }] }
   ] });
-  const sig = 'sha256=' + crypto.createHmac('sha256', 'msec').update(payload).digest('hex');
+  const sig = 'sha256=' + crypto.createHmac('sha256', 'isec').update(payload).digest('hex');
 
   const bad = await h.req('POST', '/api/webhooks/instagram', { token: null, raw: payload, headers: { 'X-Hub-Signature-256': 'sha256=0000' } });
   assert.equal(bad.status, 401, '署名が違う通知は拒否する');
@@ -173,15 +169,15 @@ test('Instagram：連携後にWebhook購読し、新着コメント・DMをそ�
 
 test('Instagram：DMの一覧取得と返信', async () => {
   const s = setup(); const h = await serve(s.app);
-  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
-  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
-  s.on(/\/me\/accounts/, () => s.reply({ data: [{ id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } }] }));
-  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
-  s.on(/\/P1\/conversations/, () => s.reply({ data: [{ id: 'CV1', participants: { data: [{ id: '901' }, { id: '777', username: 'guest' }] } }] }));
+  s.on(/api\.instagram\.com\/oauth\/access_token/, () => s.reply({ access_token: 'short' }));
+  s.on(/graph\.instagram\.com\/v23\.0\/access_token\?.*ig_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/graph\.instagram\.com\/v23\.0\/me\?/, () => s.reply({ id: '901', username: 'sanrokuen_robata' }));
+  s.on(/\/901\/subscribed_apps/, () => s.reply({ success: true }));
+  s.on(/\/901\/conversations/, () => s.reply({ data: [{ id: 'CV1', participants: { data: [{ id: '901' }, { id: '777', username: 'guest' }] } }] }));
   s.on(/\/CV1\?fields=messages/, () => s.reply({ messages: { data: [
     { id: 'm1', message: '予約できますか？', from: { id: '777' }, created_time: '2026-10-01T00:00:00+0000' }
   ] } }));
-  s.on(/\/P1\/messages$/, () => s.reply({ success: true }));
+  s.on(/\/901\/messages$/, () => s.reply({ success: true }));
 
   const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
   await h.req('GET', `/api/instagram/callback?state=${new URL(a.json.url).searchParams.get('state')}&code=C4`, { token: null });
@@ -193,7 +189,7 @@ test('Instagram：DMの一覧取得と返信', async () => {
 
   const r = await h.req('POST', '/api/dm-reply', { body: { store: '山麓園', extName: '777', comment: 'お電話でどうぞ' } });
   assert.equal(r.status, 200);
-  const post = s.calls.find(c => c.url.includes('/P1/messages') && c.method === 'POST');
+  const post = s.calls.find(c => c.url.includes('/901/messages') && c.method === 'POST');
   assert.match(post.body, /recipient/);
   h.close();
 });

@@ -12,9 +12,9 @@ initializeApp();
 const fs = getFirestore();
 
 const GOOGLE_CLIENT_SECRET = defineSecret('GOOGLE_CLIENT_SECRET');
-const META_APP_SECRET = defineSecret('META_APP_SECRET');
+const INSTAGRAM_APP_SECRET = defineSecret('INSTAGRAM_APP_SECRET');
 const GOOGLE_CLIENT_ID = defineString('GOOGLE_CLIENT_ID');
-const META_APP_ID = defineString('META_APP_ID');
+const INSTAGRAM_APP_ID = defineString('INSTAGRAM_APP_ID');
 const ALLOWED_EMAILS = defineString('ALLOWED_EMAILS', { description: '利用を許可するメールアドレス（カンマ区切り）' });
 const PUBLIC_BASE_URL = defineString('PUBLIC_BASE_URL', { default: 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com' });
 const WEBHOOK_VERIFY_TOKEN = defineString('WEBHOOK_VERIFY_TOKEN', { description: 'MetaのWebhook登録時に入力する確認用の文字列（自分で決めてよい）' });
@@ -31,7 +31,7 @@ const app = createApp({
   randomId: () => crypto.randomBytes(24).toString('hex'),
   config: () => ({
     googleClientId: GOOGLE_CLIENT_ID.value(), googleClientSecret: GOOGLE_CLIENT_SECRET.value(),
-    metaAppId: META_APP_ID.value(), metaAppSecret: META_APP_SECRET.value(),
+    instagramAppId: INSTAGRAM_APP_ID.value(), instagramAppSecret: INSTAGRAM_APP_SECRET.value(),
     allowedEmails: ALLOWED_EMAILS.value(), publicBaseUrl: PUBLIC_BASE_URL.value(),
     webhookVerifyToken: WEBHOOK_VERIFY_TOKEN.value()
   })
@@ -39,5 +39,5 @@ const app = createApp({
 
 exports.api = onRequest({
   region: 'asia-northeast1', timeoutSeconds: 120, memory: '256MiB', maxInstances: 3,
-  secrets: [GOOGLE_CLIENT_SECRET, META_APP_SECRET]
+  secrets: [GOOGLE_CLIENT_SECRET, INSTAGRAM_APP_SECRET]
 }, app);
