@@ -96,6 +96,7 @@ function createApp(d) {
   const IG_SCOPE = 'instagram_basic,instagram_manage_comments,instagram_manage_messages,pages_show_list,pages_read_engagement,business_management';
   async function igCandidates(userToken) {
     const j = await json(await d.fetch(`${GRAPH}/me/accounts?fields=id,name,access_token,instagram_business_account{id,username}&limit=100&access_token=${encodeURIComponent(userToken)}`));
+    console.error('[診断用ログ] /me/accounts の結果', JSON.stringify(j)); // TODO: 原因が分かったら削除する
     return (j.data || []).filter(p => p.instagram_business_account).map(p => ({
       id: p.instagram_business_account.id, label: `@${p.instagram_business_account.username || ''}（${p.name}）`,
       pageId: p.id, pageToken: p.access_token, username: p.instagram_business_account.username || ''
