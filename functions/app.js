@@ -295,18 +295,26 @@ function createApp(d) {
     const store = storeOf(req.query.store);
     const c = await requireConn(store, 'instagram');
     const tk = encodeURIComponent(c.selected.pageToken);
-    const conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&fields=participants&limit=50&access_token=${tk}`));
     const items = [];
-    for (const cvs of conv.data || []) {
-      const other = (cvs.participants?.data || []).find(p => p.id !== c.selected.id);
-      if (!other) continue;
-      const msgs = await json(await d.fetch(`${GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
-      const list = (msgs.messages?.data || []);
-      const lastFromThem = list.find(m => m.from?.id !== c.selected.id);
-      if (!lastFromThem) continue;
-      const mine = list.find(m => m.from?.id === c.selected.id && new Date(m.created_time) > new Date(lastFromThem.created_time));
-      items.push({ media: 'dm', extId: 'dm:' + cvs.id, extName: other.id, conversationId: cvs.id,
-        author: '@' + (other.username || 'instagram'), rating: null, createTime: lastFromThem.created_time, text: lastFromThem.message || '', reply: mine?.message || '' });
+    const seen = new Set();
+    // 「メイン」以外に「リクエスト」フォルダにも未承認のDMが届くため、両方を確認する
+    for (const folder of ['inbox', 'pending']) {
+      let conv;
+      try { conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&folder=${folder}&fields=participants&limit=50&access_token=${tk}`)); }
+      catch (e) { continue; } // このfolderが使えない場合はスキップ（他のfolderは続行）
+      for (const cvs of conv.data || []) {
+        if (seen.has(cvs.id)) continue;
+        seen.add(cvs.id);
+        const other = (cvs.participants?.data || []).find(p => p.id !== c.selected.id);
+        if (!other) continue;
+        const msgs = await json(await d.fetch(`${GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
+        const list = (msgs.messages?.data || []);
+        const lastFromThem = list.find(m => m.from?.id !== c.selected.id);
+        if (!lastFromThem) continue;
+        const mine = list.find(m => m.from?.id === c.selected.id && new Date(m.created_time) > new Date(lastFromThem.created_time));
+        items.push({ media: 'dm', extId: 'dm:' + cvs.id, extName: other.id, conversationId: cvs.id,
+          author: '@' + (other.username || 'instagram'), rating: null, createTime: lastFromThem.created_time, text: lastFromThem.message || '', reply: mine?.message || '' });
+      }
     }
     res.json({ items });
   }));

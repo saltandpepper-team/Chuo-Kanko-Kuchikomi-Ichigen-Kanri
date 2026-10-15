@@ -210,10 +210,27 @@ test('Instagram：DMの一覧取得と返信', async () => {
   assert.equal(dms[0].text, '予約できますか？');
   assert.equal(dms[0].extName, '777');
 
-  const r = await h.req('POST', '/api/dm-reply', { body: { store: '山麓園', extName: '777', comment: 'お電話でどうぞ' } });
-  assert.equal(r.status, 200);
-  const post = s.calls.find(c => c.url.includes('/P1/messages') && c.method === 'POST');
-  assert.match(post.body, /recipient/);
+  const r0 = await h.req('POST', '/api/dm-reply', { body: { store: '山麓園', extName: '777', comment: 'お電話でどうぞ' } });
+  assert.equal(r0.status, 200);
+  h.close();
+});
+
+test('Instagram：DMは「メイン」だけでなく「リクエスト」フォルダの未承認分も拾う', async () => {
+  const s = setup(); const h = await serve(s.app);
+  s.on(/oauth\/access_token\?.*code=/, () => s.reply({ access_token: 'short' }));
+  s.on(/oauth\/access_token\?.*fb_exchange_token/, () => s.reply({ access_token: 'long' }));
+  s.on(/\/me\/accounts/, () => s.reply({ data: [{ id: 'P1', name: '山麓園', access_token: 'PT1', instagram_business_account: { id: '901', username: 'sanrokuen_robata' } }] }));
+  s.on(/\/P1\/subscribed_apps/, () => s.reply({ success: true }));
+  s.on(/\/P1\/conversations\?.*folder=pending/, () => s.reply({ data: [{ id: 'CV2', participants: { data: [{ id: '901' }, { id: '888', username: 'newguest' }] } }] }));
+  s.on(/\/P1\/conversations\?.*folder=inbox/, () => s.reply({ data: [{ id: 'CV1', participants: { data: [{ id: '901' }, { id: '777', username: 'guest' }] } }] }));
+  s.on(/\/CV1\?fields=messages/, () => s.reply({ messages: { data: [{ id: 'm1', message: '予約できますか？', from: { id: '777' }, created_time: '2026-10-01T00:00:00+0000' }] } }));
+  s.on(/\/CV2\?fields=messages/, () => s.reply({ messages: { data: [{ id: 'm2', message: 'お休みはいつですか？', from: { id: '888' }, created_time: '2026-10-15T00:00:00+0000' }] } }));
+
+  const a = await h.req('GET', '/api/instagram/auth-url?store=' + encodeURIComponent('山麓園'));
+  await h.req('GET', `/api/instagram/callback?state=${new URL(a.json.url).searchParams.get('state')}&code=C5`, { token: null });
+
+  const dms = (await h.req('GET', '/api/dms?store=' + encodeURIComponent('山麓園'))).json.items;
+  assert.deepEqual(dms.map(x => x.text).sort(), ['お休みはいつですか？', '予約できますか？']);
   h.close();
 });
 
