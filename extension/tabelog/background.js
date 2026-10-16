@@ -6,6 +6,8 @@
 const TB_REPLY_URL = 'https://owner.tabelog.com/owner_rst/reply_top';
 /** 食べログ「口コミ返信」ページのN件目以降（lc=2＝表示件数100件、更新日の新しい順） */
 const tbUrl = page => `${TB_REPLY_URL}/?srt=update&sby=desc&PG=${page}&smp=&lc=2`;
+/** 食べログはこれより前の口コミをアプリ内に不要とのことなので、保存済みの分も含めて消す（parser.js の TB_CUTOFF と合わせる） */
+const TB_CUTOFF_TS = new Date(2026, 9, 1).getTime();
 const TA_URL = id => `https://www.tripadvisor.jp/reviews?locationId=${encodeURIComponent(id)}&screen=allreviews`;
 const MEDIA_LABEL = { tabelog: '食べログ', tripadvisor: 'トリップアドバイザー' };
 const APP_URL = 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/';
@@ -182,6 +184,16 @@ async function rememberReviews(list, store, media, pageUrl) {
         if (ts !== null && ts >= oldestTs) delete reviews[k];
       });
     }
+  }
+  // 食べログ：足切り日より前の口コミは（足切り導入前に保存済みの分も含めて）アプリ内に表示しない
+  // ※古いデータには ts が無いものもあるため、無ければ date（M/D）から大まかな日付を計算する
+  if (media === 'tabelog') {
+    Object.keys(reviews).forEach(k => {
+      const rv = reviews[k];
+      if (rv.media !== 'tabelog') return;
+      const ts = rv.ts || roughDateTs(rv.date, new Date());
+      if (ts !== null && ts < TB_CUTOFF_TS) delete reviews[k];
+    });
   }
   // 古いものから削除して最大400件に保つ
   const keys = Object.keys(reviews).sort((a, b) => reviews[b].seenAt - reviews[a].seenAt);
