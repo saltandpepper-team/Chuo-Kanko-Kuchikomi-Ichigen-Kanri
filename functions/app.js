@@ -297,11 +297,13 @@ function createApp(d) {
     const tk = encodeURIComponent(c.selected.pageToken);
     const items = [];
     const seen = new Set();
+    const diag = { folders: {} }; // TODO: 原因が分かったら削除する
     // 「メイン」以外に「リクエスト」フォルダにも未承認のDMが届くため、両方を確認する
     for (const folder of ['inbox', 'pending']) {
       let conv;
       try { conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&folder=${folder}&fields=participants&limit=50&access_token=${tk}`)); }
-      catch (e) { continue; } // このfolderが使えない場合はスキップ（他のfolderは続行）
+      catch (e) { diag.folders[folder] = { error: e.message }; continue; } // このfolderが使えない場合はスキップ（他のfolderは続行）
+      diag.folders[folder] = { count: (conv.data || []).length };
       for (const cvs of conv.data || []) {
         if (seen.has(cvs.id)) continue;
         seen.add(cvs.id);
@@ -316,6 +318,7 @@ function createApp(d) {
           author: '@' + (other.username || 'instagram'), rating: null, createTime: lastFromThem.created_time, text: lastFromThem.message || '', reply: mine?.message || '' });
       }
     }
+    console.error('[診断用ログ] /api/dms', JSON.stringify(diag)); // TODO: 原因が分かったら削除する
     res.json({ items });
   }));
   app.post('/api/dm-reply', auth, wrap(async (req, res) => {
