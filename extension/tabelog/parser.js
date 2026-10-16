@@ -56,7 +56,7 @@ function parseTabelog(raw){
     if(!text) return;
     if(new Date(2000+ +yy,+mm-1,+dd) < TB_CUTOFF) return;
     out.push({media:'tabelog', author:au[1].trim(), rating, lang:guessLang(text), text,
-      date:`${+mm}/${+dd}`, reply:reply.join('\n'), title,
+      date:`${+mm}/${+dd}`, ts:new Date(2000+ +yy,+mm-1,+dd).getTime(), reply:reply.join('\n'), title,
       extId:'tabelog:'+[au[1].trim(),`20${yy}/${mm}/${dd}`,title||body[0]||''].join('|').slice(0,200)});
   });
   return out;

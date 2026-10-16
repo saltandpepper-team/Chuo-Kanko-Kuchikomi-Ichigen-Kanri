@@ -4,6 +4,8 @@
 // ・送信ボタンは押さない（返信欄への入力は担当者の画面で content.js / ta-content.js が行う）
 
 const TB_REPLY_URL = 'https://owner.tabelog.com/owner_rst/reply_top';
+/** 食べログ「口コミ返信」ページのN件目以降（lc=2＝表示件数100件、更新日の新しい順） */
+const tbUrl = page => `${TB_REPLY_URL}/?srt=update&sby=desc&PG=${page}&smp=&lc=2`;
 const TA_URL = id => `https://www.tripadvisor.jp/reviews?locationId=${encodeURIComponent(id)}&screen=allreviews`;
 const MEDIA_LABEL = { tabelog: '食べログ', tripadvisor: 'トリップアドバイザー' };
 const APP_URL = 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/';
@@ -92,20 +94,48 @@ function checkTarget(t) {
       timer: setTimeout(() => done({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面が時間内に読み込めませんでした` }), 90000) };
   });
 }
+/** 食べログ：「口コミ返信」の全ページを順に開いて口コミを集め、まとめて1回だけ保存・新着判定する
+ * （更新日の新しい順に並ぶため、古い口コミへの返信で順番が入れ替わっても、全ページ見れば未返信を取りこぼさない） */
+async function checkTabelogAllPages() {
+  const label = '食べログ';
+  const first = await checkTarget({ kind: 'tabelog', url: tbUrl(1), label });
+  if (!first.ok) return first;
+  const { store, pageUrl, total, pageSize } = first;
+  const all = [...first.reviews];
+  const seen = new Set(all.map(r => r.key));
+  const totalPages = Math.min(20, Math.max(1, Math.ceil((total || all.length) / (pageSize || all.length || 1))));
+  let note = '';
+  for (let page = 2; page <= totalPages; page++) {
+    const r = await checkTarget({ kind: 'tabelog', url: tbUrl(page), label });
+    if (!r.ok) { note = `${page}ページ目以降を確認できませんでした（${r.error}）`; break; }
+    for (const rv of r.reviews) { if (!seen.has(rv.key)) { seen.add(rv.key); all.push(rv); } }
+  }
+  await rememberReviews(all, store, 'tabelog', pageUrl);
+  const { notified } = await getState();
+  const fresh = all.filter(r => !r.replied && !notified[r.key]);
+  if (fresh.length) {
+    fresh.forEach(r => { notified[r.key] = Date.now(); });
+    await chrome.storage.local.set({ notified });
+    notify('new-' + Date.now(), `${MEDIA_LABEL.tabelog}（${store}）に新しい口コミが${fresh.length}件あります`,
+      'クリックするとアプリ（口コミ一元管理）が開き、AIが返信文を作成します。内容を確認して承認してください。', APP_URL);
+  }
+  await updateBadge();
+  return { ok: true, total: all.length, unreplied: all.filter(r => !r.replied).length, note };
+}
 async function runCheck() {
   if (running) return { ok: false, error: '確認中です' };
   running = true;
   try {
     await closeLeftoverTabs();
     const s = await getSettings();
-    const targets = [{ kind: 'tabelog', url: TB_REPLY_URL, label: '食べログ' }];
+    const targets = [{ kind: 'tabelog', label: '食べログ', run: checkTabelogAllPages }];
     for (const [store, id] of Object.entries(s.taLocations)) {
       if (String(id || '').trim()) targets.push({ kind: 'tripadvisor', store, url: TA_URL(String(id).trim()), label: `トリップアドバイザー（${store}）` });
     }
     await setStatus({ lastCheckStartedAt: Date.now() });
     const lines = [], errors = [];
     for (const t of targets) {
-      const r = await checkTarget(t);
+      const r = await (t.run ? t.run() : checkTarget(t));
       if (r.ok) lines.push(`${t.label}：口コミ ${r.total}件を確認（未返信 ${r.unreplied}件）${r.note ? `　※${r.note}` : ''}`);
       else lines.push(`${t.label}：${r.error}`);
       const err = r.ok ? '' : r.error;
@@ -137,7 +167,7 @@ function roughDateTs(dateStr, now) {
 async function rememberReviews(list, store, media, pageUrl) {
   const { reviews = {} } = await chrome.storage.local.get('reviews');
   const t = Date.now();
-  list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', replied: !!r.replied, reply: r.reply || '', pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
+  list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', ts: r.ts || prev?.ts || null, replied: !!r.replied, reply: r.reply || '', pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
   // この媒体・店舗の今回の一覧にない口コミのうち、一覧の中で一番古い口コミより新しいもの（＝本来なら表示されているはず）は、
   // 食べログ・トリップアドバイザー側で削除されたとみなしてアプリ側からも消す（ページをまたいで見えないだけの古い口コミは残す）
   if (list.length) {
@@ -190,8 +220,14 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         if (isCheck) check.done({ ok: false, error: '場所IDが設定と一致しません' });
         return sendResponse({ mode: 'none' });
       }
-      await rememberReviews(msg.reviews, store, media, msg.pageUrl);
       if (msg.diag) { const { status } = await getState(); await setStatus({ diag: { ...(status.diag || {}), [media]: { ...msg.diag, at: Date.now(), unreplied: msg.reviews.filter(r => !r.replied).length } } }); }
+      if (isCheck && media === 'tabelog') {
+        // 食べログの裏確認は複数ページにまたがるため、保存・通知は checkTabelogAllPages でまとめて1回だけ行う
+        sendResponse({ mode: 'check' });
+        check.done({ ok: true, store, pageUrl: msg.pageUrl, total: msg.total, pageSize: msg.pageSize, reviews: msg.reviews });
+        return;
+      }
+      await rememberReviews(msg.reviews, store, media, msg.pageUrl);
       if (isCheck) {
         const { notified } = await getState();
         const fresh = msg.reviews.filter(r => !r.replied && !notified[r.key]);

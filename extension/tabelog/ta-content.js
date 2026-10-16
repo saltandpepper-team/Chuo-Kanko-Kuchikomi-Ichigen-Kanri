@@ -68,7 +68,7 @@
     const replied = /公開された返信|返信を削除する/.test(card.innerText) || !!(ta && ta.value.trim() && ta.dataset.taAssistFilled !== '1');
     return {
       key: `tripadvisor:${author}|${y}/${String(m).padStart(2, '0')}/${String(d).padStart(2, '0')}`,
-      author: author || 'トリップアドバイザーのユーザー', rating: ratingOf(card), date: `${+m}/${+d}`, title,
+      author: author || 'トリップアドバイザーのユーザー', rating: ratingOf(card), date: `${+m}/${+d}`, ts: new Date(+y, +m - 1, +d).getTime(), title,
       text: [title ? `【${title}】` : '', body].filter(Boolean).join('\n'),
       replied, reply: replied && ta ? ta.value.trim() : '', truncated: /…$/.test(body) || !ta
     };

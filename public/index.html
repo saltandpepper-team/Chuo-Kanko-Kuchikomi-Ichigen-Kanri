@@ -390,7 +390,8 @@ function renderFilters(){
   const opts=[['all','すべて',base.filter(r=>r.status!=='sent').length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja'&&r.status!=='sent').length]];
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
-function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf))); }
+// 口コミがあった日の新しい順に並べる（日付が分からないものは末尾へ）
+function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
@@ -932,6 +933,7 @@ window.addEventListener('message',e=>{
     if(!store || !x.key || !x.text) return;
     const ex=ALL.find(a=>a.extId===x.key);
     if(ex && x.rating!=null && ex.rating==null){ ex.rating=x.rating; changed=true; } // あとから読み取れた評価を反映
+    if(ex && x.ts && !ex.ts){ ex.ts=x.ts; changed=true; } // 拡張機能の更新前に取り込んだ分に、並び替え用の日付を補う
     if(ex){
       // 食べログ側で返信済みになったら、アプリでも返信済みにする
       if(x.replied && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply||ex.reply; ex.log.push(`${now()}　${MEDIA[ex.media].label}で返信済みを確認`); changed=true; }
@@ -939,7 +941,7 @@ window.addEventListener('message',e=>{
       return;
     }
     const media=EXT_MEDIA.includes(x.media)?x.media:'tabelog', label=MEDIA[media].label;
-    const r={media, extId:x.key, author:x.author||`${label}のユーザー`, rating:x.rating??null, date:x.date||'', lang:guessLang(x.text), text:x.text, title:x.title||'', pageUrl:x.pageUrl||'',
+    const r={media, extId:x.key, author:x.author||`${label}のユーザー`, rating:x.rating??null, date:x.date||'', ts:x.ts||null, lang:guessLang(x.text), text:x.text, title:x.title||'', pageUrl:x.pageUrl||'',
       reply:x.replied?(x.reply||`（${label}で返信済み）`):'', logLine:`${now()}　${label}の管理画面から取得（拡張機能）`};
     if(addFetched(store, r)){
       added++;
@@ -1244,7 +1246,7 @@ async function call(path, body){
 }
 async function refreshStatus(){ beStatus=(await call('/api/status')).stores||{}; }
 if(BACKEND){
-  const map=x=>({...x, date:fmtDate(x.createTime), lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
+  const map=x=>({...x, date:fmtDate(x.createTime), ts:x.createTime?+new Date(x.createTime):null, lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
   const q=(m,st)=>`/api/reviews?media=${m}&store=${encodeURIComponent(st)}`;
   API.fetchGoogle=async store=>(await call(q('google',store))).items.map(map);
   API.fetchInstagram=async store=>(await call(q('instagram',store))).items.map(map);

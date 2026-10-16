@@ -66,7 +66,7 @@
     return findCards().map(card => {
       const r = parseTabelog(card.innerText)[0];
       if (!r) return null;
-      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, replied: !!r.reply, reply: r.reply || '' } };
+      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, ts: r.ts, replied: !!r.reply, reply: r.reply || '' } };
     }).filter(Boolean);
   }
   function label(textarea, html) {
@@ -95,9 +95,13 @@
   async function run() {
     items = readCards();
     const store = storeName();
+    const totalMatch = document.body.innerText.match(/全\s*([\d,]+)\s*件/);
+    const total = totalMatch ? +totalMatch[1].replace(/,/g, '') : items.length;
     const diag = { url: location.href, cards: items.length,
       samples: items.slice(0, 3).map(x => ({ text: x.card.innerText.slice(0, 700), textareas: x.card.querySelectorAll('textarea').length, replied: x.review.replied })) };
-    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href, reviews: items.map(x => x.review), diag });
+    // pageSize・total は、裏での定期確認が全ページを辿るための手がかり（背景スクリプト側でページ送りする）
+    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href,
+      reviews: items.map(x => x.review), pageSize: items.length, total, diag });
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     const pending = items.filter(x => !x.review.replied);
     if (!pending.length) return;
