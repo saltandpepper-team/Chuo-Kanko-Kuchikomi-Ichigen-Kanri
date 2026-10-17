@@ -906,7 +906,9 @@ function addFetched(store, x){
 
 // ---- 食べログ連携（Chrome拡張機能「食べログ 口コミ返信アシスタント」から受け取る） ----
 // 拡張機能が食べログ店舗管理画面で読み取った口コミと、AIが作った返信文がこのページに届く
-const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top';
+// 拡張機能（background.js）が全ページを確認するときと同じ並び順・表示件数で開く
+// （並び順が違うと、選んだ口コミがこのページの一覧に無く、見当違いの場所が表示されてしまうため）
+const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top/?srt=update&sby=desc&PG=1&smp=&lc=2';
 const EXT_MEDIA=['tabelog','tripadvisor']; // 拡張機能で連携する媒体
 let tbBridge=false;
 function tabelogHello(){ window.postMessage({source:'kuchikomi-app', type:'hello'}, '*'); }
