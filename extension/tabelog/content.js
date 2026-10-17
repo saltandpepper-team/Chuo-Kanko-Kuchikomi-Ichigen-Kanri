@@ -100,11 +100,12 @@
     const diag = { url: location.href, cards: items.length,
       samples: items.slice(0, 3).map(x => ({ text: x.card.innerText.slice(0, 700), textareas: x.card.querySelectorAll('textarea').length, replied: x.review.replied })) };
     // pageSize・total は、裏での定期確認が全ページを辿るための手がかり（背景スクリプト側でページ送りする）。
-    // 返信済みの口コミ（食べログ側で直接返信した分を含む）はアプリに取り込まない
-    const pending = items.filter(x => !x.review.replied);
+    // 返信済みの口コミも引き続きアプリに渡す（「返信済み」として検索・確認できるようにするため。
+    // 「承認待ち」などの対応が必要な一覧には出さない判定は replied フラグを見てアプリ側で行う）
     const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href,
-      reviews: pending.map(x => x.review), pageSize: items.length, total, diag });
+      reviews: items.map(x => x.review), pageSize: items.length, total, diag });
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
+    const pending = items.filter(x => !x.review.replied);
     if (!pending.length) return;
     pending.forEach(x => { const ta = x.card.querySelector('textarea'); if (ta && !ta.value.trim()) label(ta, '返信文を確認しています…'); });
     const r = await send({ type: 'getDrafts', media: 'tabelog', store, reviews: pending.map(x => x.review) });

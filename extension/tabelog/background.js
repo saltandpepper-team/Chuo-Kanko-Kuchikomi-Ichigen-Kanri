@@ -122,8 +122,7 @@ async function checkTabelogAllPages() {
       'クリックするとアプリ（口コミ一元管理）が開き、AIが返信文を作成します。内容を確認して承認してください。', APP_URL);
   }
   await updateBadge();
-  // all は未返信の口コミだけ（返信済みは取り込まない）なので、全体の件数は食べログ側の表示件数（total）を使う
-  return { ok: true, total: total || all.length, unreplied: all.length, note };
+  return { ok: true, total: total || all.length, unreplied: all.filter(r => !r.replied).length, note };
 }
 async function runCheck() {
   if (running) return { ok: false, error: '確認中です' };
