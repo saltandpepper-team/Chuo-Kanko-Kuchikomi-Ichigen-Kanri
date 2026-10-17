@@ -257,6 +257,9 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
   <div class="main">
     <aside class="panel">
       <div class="filters" id="filters" role="group" aria-label="絞り込み"></div>
+      <div class="filters">
+        <input type="search" id="searchBox" placeholder="投稿者名で検索" aria-label="投稿者名で検索" style="flex:1;min-width:0;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)">
+      </div>
       <div class="filters" style="justify-content:space-between;align-items:center">
         <span class="meta" id="countLabel"></span>
         <button class="btn" id="bulkBtn" type="button" style="padding:4px 10px;font-size:12px">高評価の下書きをまとめて作成</button>
@@ -369,7 +372,7 @@ const DEFAULT_STYLE = `【お手本1】山麓園・高評価の口コミへの�
 またお近くへお越しの際は、ぜひお立ち寄りください。スタッフ一同、心よりお待ちしております。`;
 
 let reviews = [], incoming = [], currentStore = null;
-let selectedId = null, mf = 'all', sf = 'all', sample = null, busy = false;
+let selectedId = null, mf = 'all', sf = 'all', q = '', sample = null, busy = false;
 const $ = id => document.getElementById(id);
 $('styleBox').value = DEFAULT_STYLE;
 
@@ -391,7 +394,7 @@ function renderFilters(){
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
 // 口コミがあった日の新しい順に並べる（日付が分からないものは末尾へ）
-function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
+function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
@@ -858,6 +861,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('overlay').hi
 
 // events
 $('filters').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; sf=b.dataset.f; renderFilters(); renderList(); });
+$('searchBox').addEventListener('input',e=>{ q=e.target.value.trim().toLowerCase(); renderList(); });
 $('totalCard').addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('mediaCards').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; mf = mf===b.dataset.f ? 'all' : b.dataset.f; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('list').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(!b) return; selectedId=+b.dataset.id; renderList(); renderDetail(); autoDraft(); });
