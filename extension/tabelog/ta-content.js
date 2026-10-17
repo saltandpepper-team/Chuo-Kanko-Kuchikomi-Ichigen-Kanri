@@ -116,6 +116,19 @@
     label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、送信ボタンを押してください（この拡張機能は送信しません）。（書き直すときはアプリの「指示を入れて書き直す」を使ってください）');
     return true;
   }
+  /** ページ送りのボタンがどう見えているかの調査用（「診断情報をコピー」に含める） */
+  function pagerDebug() {
+    const visible = b => b && b.offsetParent !== null;
+    const all = [...document.querySelectorAll('button, a')];
+    const numBtns = all.filter(b => visible(b) && /^\d+$/.test((b.innerText || '').trim()));
+    const next = findNextPageButton();
+    return {
+      numBtnTexts: numBtns.map(b => b.innerText.trim()),
+      numBtnClasses: numBtns.map(b => (b.className || '').toString().slice(0, 80)),
+      nextFound: !!next,
+      nextTag: next ? next.tagName + (next.getAttribute('aria-label') ? `[aria-label=${next.getAttribute('aria-label')}]` : '') + ' ' + JSON.stringify((next.innerText || '').trim()) : null
+    };
+  }
   /** 診断情報（設定画面の「診断情報をコピー」用）：画面の作りが想定と違うときの調査に使う */
   function diag() {
     const body = document.body.innerText;
@@ -124,6 +137,7 @@
       pageReplyLabels: (body.match(/公開された返信/g) || []).length,
       pageTextareas: document.querySelectorAll('textarea').length,
       pageToggles: document.querySelectorAll('[aria-expanded]').length,
+      pager: pagerDebug(),
       samples: findCards().slice(0, 3).map(c => ({
         text: c.innerText.slice(0, 700), toggles: c.querySelectorAll('[aria-expanded]').length,
         textareas: [...c.querySelectorAll('textarea')].map(t => t.value.slice(0, 40)),
@@ -157,7 +171,9 @@
   async function collectAllPages() {
     const seen = new Set(); const all = [];
     let expandBudget = 40; // 全文を開いて読みに行くのは、ページをまたいでも合計40件まで（時間がかかりすぎないように）
+    let pagesWalked = 0, stopReason = 'maxPages';
     for (let page = 0; page < 20; page++) {
+      pagesWalked = page + 1;
       const items = read();
       const firstKey = items[0]?.review.key;
       // この時点の一覧（未返信は全文も読みに行く。既存のロジックを踏襲）
@@ -172,13 +188,13 @@
       }
       for (const x of read()) { if (!seen.has(x.review.key)) { seen.add(x.review.key); all.push({ ...x.review, text: full[x.review.key] || x.review.text }); } }
       const next = findNextPageButton();
-      if (!next) break;
+      if (!next) { stopReason = 'noNextButton'; break; }
       next.click();
       let changed = false;
       for (let i = 0; i < 20; i++) { await sleep(400); if (read()[0]?.review.key !== firstKey) { changed = true; break; } }
-      if (!changed) break; // ページが変わらなければ、最終ページとみなして終了
+      if (!changed) { stopReason = 'pageDidNotChange'; break; } // ページが変わらなければ、最終ページとみなして終了
     }
-    return all;
+    return { all, pagesWalked, stopReason };
   }
 
   async function run() {
@@ -194,8 +210,8 @@
     if (mode === 'check') {
       // 裏での定期確認：1〜6などの番号でページ送りする一覧なので、ページを進めながら全ページ分集める
       // （トリップアドバイザーは口コミを開くと他が閉じるため、未返信の口コミはページごとに1件ずつ開いて全文を読む）
-      const reviews = await collectAllPages();
-      await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews, diag: { ...diag(), pagesCollected: reviews.length } });
+      const { all: reviews, pagesWalked, stopReason } = await collectAllPages();
+      await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews, diag: { ...diag(), pagesCollected: reviews.length, pagesWalked, stopReason } });
       return;
     }
     // 担当者が見ているとき：勝手に開閉せず、口コミを開いて返信欄が出たときに入力する
