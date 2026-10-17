@@ -1432,7 +1432,7 @@ function switchStore(store){
   // 拡張機能・API連携で実データを扱う店舗ではデモの新着は出さない
   clearTimeout(arrivalTimer);
   if(tbBridge && !BACKEND) return;
-  if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && r.media!=='tabelog')) fetchNew(true); return; }
+  if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && !EXT_MEDIA.includes(r.media))) fetchNew(true); return; }
   // デモ：ログイン後、3分おきに新着が1件ずつ届く
   const scheduleNextArrival=()=>{
     arrivalTimer=setTimeout(()=>{
