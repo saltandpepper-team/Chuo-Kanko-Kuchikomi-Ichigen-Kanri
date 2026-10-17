@@ -381,8 +381,8 @@ function mediaHtml(m){ return `<span class="media m-${m}">${MEDIA[m].label}</spa
 function statusHtml(s){ const [t,c]=STATUS[s]; return `<span class="pill ${c}">${t}</span>`; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function now(){ const d=new Date(); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）',ko:'韓国語',th:'タイ語',fr:'フランス語',it:'イタリア語',es:'スペイン語',de:'ドイツ語'};
-const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文',ko:'한국어',th:'TH',fr:'FR',it:'IT',es:'ES',de:'DE'};
+const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）',ko:'韓国語',th:'タイ語',fr:'フランス語',it:'イタリア語',es:'スペイン語',de:'ドイツ語',ru:'ロシア語'};
+const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文',ko:'한국어',th:'TH',fr:'FR',it:'IT',es:'ES',de:'DE',ru:'RU'};
 function langBadge(r){ return r.lang&&r.lang!=='ja' ? `<span class="lang-badge" title="${LANG[r.lang]}の口コミ">${LANG_SHORT[r.lang]||r.lang}</span>` : ''; }
 function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [t.trim(),''] : [p[0].trim(), p.slice(1).join('\n').trim()]; }
 // Instagramのコメントは、返信しただけでは投稿者に通知が届かないことがあるため、冒頭に@メンションを入れて通知を届ける
@@ -1132,6 +1132,7 @@ function guessLang(t){
   if(/[一-鿿]/.test(t)) return /[們個這說時會來為對問點華灣鐘體]/.test(t)?'zh-TW':'zh-CN';
   if(/[가-힣]/.test(t)) return 'ko';
   if(/[ก-๙]/.test(t)) return 'th';
+  if(/[Ѐ-ӿ]/.test(t)) return 'ru'; // キリル文字（ロシア語など）
   if(!/[a-z]/i.test(t)) return 'ja';
   // ラテン文字の口コミは、よく使う単語の数でヨーロッパの主な言語を見分ける（決め手がなければ英語）
   const words=t.toLowerCase().match(/[a-zà-öø-ÿ']+/g)||[];
