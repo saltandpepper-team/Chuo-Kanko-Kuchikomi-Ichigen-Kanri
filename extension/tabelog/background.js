@@ -66,7 +66,7 @@ function notify(id, title, message, url) {
   if (url) notifyUrls[id] = url;
   chrome.notifications.create(id, { type: 'basic', iconUrl: 'icon.png', title, message, priority: 2 });
 }
-chrome.notifications.onClicked.addListener(id => { chrome.tabs.create({ url: notifyUrls[id] || APP_URL }); chrome.notifications.clear(id); });
+chrome.notifications.onClicked.addListener(id => { chrome.tabs.create({ url: notifyUrls[id] || APP_URL }).catch(() => {}); chrome.notifications.clear(id); });
 
 // ---- 裏で各媒体の口コミページを開いて確認 ----
 let check = null;   // 確認中の1ページ { tabId, kind, store, url, loginTried, done, timer }
@@ -79,21 +79,31 @@ async function closeLeftoverTabs() {
 }
 chrome.runtime.onStartup.addListener(closeLeftoverTabs);
 function checkTarget(t) {
-  return new Promise(async resolve => {
-    const tab = await chrome.tabs.create({ url: t.url, active: false });
-    const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
-    await chrome.storage.local.set({ checkTabs: [...checkTabs, tab.id] });
-    const done = async result => {
-      if (!check || check.tabId !== tab.id) return;
-      clearTimeout(check.timer);
-      check = null;
-      try { await chrome.tabs.remove(tab.id); } catch (e) {}
-      const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
-      await chrome.storage.local.set({ checkTabs: checkTabs.filter(x => x !== tab.id) });
-      resolve(result);
-    };
-    check = { tabId: tab.id, ...t, loginTried: false, done,
-      timer: setTimeout(() => done({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面が時間内に読み込めませんでした` }), 90000) };
+  // ※ new Promise の中で async 関数をそのまま実行すると、途中で例外が起きても
+  // このPromiseはreject/resolveされず「Uncaught (in promise)」として握りつぶされ、
+  // 確認処理がそのまま止まってしまう（「今すぐ確認する」が効かなくなる不具合の原因）。
+  // そのため必ず try/catch で受け止めて resolve する。
+  return new Promise(resolve => {
+    (async () => {
+      try {
+        const tab = await chrome.tabs.create({ url: t.url, active: false });
+        const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
+        await chrome.storage.local.set({ checkTabs: [...checkTabs, tab.id] });
+        const done = async result => {
+          if (!check || check.tabId !== tab.id) return;
+          clearTimeout(check.timer);
+          check = null;
+          try { await chrome.tabs.remove(tab.id); } catch (e) {}
+          const { checkTabs = [] } = await chrome.storage.local.get('checkTabs');
+          await chrome.storage.local.set({ checkTabs: checkTabs.filter(x => x !== tab.id) });
+          resolve(result);
+        };
+        check = { tabId: tab.id, ...t, loginTried: false, done,
+          timer: setTimeout(() => done({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面が時間内に読み込めませんでした` }), 90000) };
+      } catch (e) {
+        resolve({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面を開けませんでした（${e && e.message ? e.message : 'タブの操作に失敗しました'}。少し時間をおいて再度お試しください）` });
+      }
+    })();
   });
 }
 /** 食べログ：「口コミ返信」の全ページを順に開いて口コミを集め、まとめて1回だけ保存・新着判定する
@@ -152,7 +162,7 @@ async function runCheck() {
 chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   if (!check || check.kind !== 'tabelog' || tabId !== check.tabId || info.status !== 'complete' || !tab.url) return;
   if (tab.url.startsWith('https://owner.tabelog.com/') && !/\/owner_account\/login/.test(tab.url) && !/\/owner_rst\/reply/.test(tab.url)) {
-    chrome.tabs.update(tabId, { url: TB_REPLY_URL });
+    chrome.tabs.update(tabId, { url: TB_REPLY_URL }).catch(() => {});
   }
 });
 
