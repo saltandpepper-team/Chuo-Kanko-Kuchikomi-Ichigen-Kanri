@@ -385,6 +385,10 @@ const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN
 const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文',ko:'한국어',th:'TH',fr:'FR',it:'IT',es:'ES',de:'DE'};
 function langBadge(r){ return r.lang&&r.lang!=='ja' ? `<span class="lang-badge" title="${LANG[r.lang]}の口コミ">${LANG_SHORT[r.lang]||r.lang}</span>` : ''; }
 function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [t.trim(),''] : [p[0].trim(), p.slice(1).join('\n').trim()]; }
+// Instagramのコメントは、返信しただけでは投稿者に通知が届かないことがあるため、冒頭に@メンションを入れて通知を届ける
+function igMentionLine(r){ return (r.media==='instagram' && /^@/.test(r.author||'') && r.author!=='@instagram') ? r.author : ''; }
+function stripMention(r,text){ const m=igMentionLine(r); text=String(text||''); return m && text.startsWith(m) ? text.slice(m.length).replace(/^\s*\n+/,'') : text; }
+function withMention(r,text){ const m=igMentionLine(r); return m ? m+'\n\n'+stripMention(r,text) : text; }
 function isLow(r){ return r.rating!=null && r.rating<=3; }
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3200); }
 
@@ -495,9 +499,9 @@ function buildPrompt(r, instr){
   const lang = LANG[r.lang]||'口コミと同じ言語';
   const top = instr ? `【最重要の修正指示】ユーザーから以下の指定がありました。この指示を最優先して返信文を作成・書き直してください：『${instr.slice(0,500)}』
 この指示は、下の「構成」「ルール」「お手本」（長さ・段落構成・言葉づかいを含む）よりも優先します。食い違う場合は必ずこの指示に従ってください（ただし、返信する言語と、返信文だけを出力する形式は守る）。
-${r.reply.trim()?`
+${stripMention(r,r.reply).trim()?`
 現在の返信文（これを上の指示に沿って書き直す）:
-${r.reply.trim()}
+${stripMention(r,r.reply).trim()}
 `:''}
 ` : '';
   const ig = r.media==='instagram';
@@ -783,7 +787,7 @@ async function draft(r, silent, instr, auto){
     }
   }
   r.drafting=false; r.partial='';
-  const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
+  const [body,ja]=splitJa(text); r.reply=withMention(r,body); r.replyJa=ja; if(r.status==='new') r.status='draft';
   r.fallback = fromAI ? '' : (r.fallback || (instr ? '' : body)); // 定型文のままなら、AIが使えるようになったときに作り直す
   if(fromAI) rememberAI(r);
   if(!silent) renderAll(); else if(r.id===selectedId) renderDetail();
