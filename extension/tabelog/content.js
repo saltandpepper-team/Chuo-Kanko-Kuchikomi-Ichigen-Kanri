@@ -62,11 +62,19 @@
       return card;
     });
   }
+  /** カードの「この口コミに返信」リンクから review_id を取り出す（一覧の並び順に関係なく、
+   * この口コミの入力ページへ直接移動できるようにするため。食べログは並び替え・表示件数の
+   * URLパラメータに従わない場合があり、一覧の並び順を前提にした移動は当てにならないため） */
+  function findReplyEntryId(card) {
+    const a = [...card.querySelectorAll('a[href]')].find(a => /\/owner_rst\/reply_entry/.test(a.getAttribute('href') || ''));
+    const m = a && (a.getAttribute('href') || '').match(/review_id=(\d+)/);
+    return m ? m[1] : null;
+  }
   function readCards() {
     return findCards().map(card => {
       const r = parseTabelog(card.innerText)[0];
       if (!r) return null;
-      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, ts: r.ts, replied: !!r.reply, reply: r.reply || '' } };
+      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, ts: r.ts, replied: !!r.reply, reply: r.reply || '', replyEntryId: findReplyEntryId(card) } };
     }).filter(Boolean);
   }
   function label(textarea, html) {

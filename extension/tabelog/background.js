@@ -179,7 +179,7 @@ function roughDateTs(dateStr, now) {
 async function rememberReviews(list, store, media, pageUrl) {
   const { reviews = {} } = await chrome.storage.local.get('reviews');
   const t = Date.now();
-  list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', ts: r.ts || prev?.ts || null, replied: !!r.replied, reply: r.reply || '', pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
+  list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', ts: r.ts || prev?.ts || null, replied: !!r.replied, reply: r.reply || '', replyEntryId: r.replyEntryId || prev?.replyEntryId || null, pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
   // この媒体・店舗の今回の一覧にない口コミのうち、一覧の中で一番古い口コミより新しいもの（＝本来なら表示されているはず）は、
   // 食べログ・トリップアドバイザー側で削除されたとみなしてアプリ側からも消す（ページをまたいで見えないだけの古い口コミは残す）
   if (list.length) {
