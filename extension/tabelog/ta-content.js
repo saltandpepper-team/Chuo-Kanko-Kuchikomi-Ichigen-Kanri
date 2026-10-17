@@ -134,21 +134,51 @@
     };
   }
   const isLoginPage = () => !!document.querySelector('input[type="password"]') || /RegistrationController|\/login/i.test(location.pathname);
-  /** 一覧は最初の数十件しか表示されず、スクロール（または「もっと見る」）しないと全件出てこないため、
-   * 裏での定期確認のときだけ、増えなくなるか件数表示に達するまで読み込む（担当者が見ている画面は邪魔しない） */
-  async function loadAllCards() {
-    const total = () => { const m = document.body.innerText.match(/([\d,]+)\s*件の口コミ/); return m ? +m[1].replace(/,/g, '') : null; };
-    let last = -1, stall = 0;
-    for (let i = 0; i < 50 && stall < 3; i++) {
-      const n = findCards().length;
-      const t = total();
-      if (t !== null && n >= t) break;
-      stall = n === last ? stall + 1 : 0;
-      last = n;
-      const more = [...document.querySelectorAll('button,[role="button"],a')].find(b => /もっと見る|次の\s*\d*\s*件|さらに表示|もっと読み込む|show more|load more/i.test((b.innerText || '').trim()) && b.offsetParent !== null);
-      if (more) more.click(); else window.scrollTo(0, document.body.scrollHeight);
-      await sleep(600);
+  /** 一覧は1〜6など番号でページ送りする作りで、スクロールでは増えないため、「次へ」に当たるボタンを探してページを進める */
+  function findNextPageButton() {
+    const visible = b => b && b.offsetParent !== null && b.getAttribute('aria-disabled') !== 'true' && !b.disabled;
+    const all = [...document.querySelectorAll('button, a')];
+    const byLabel = all.find(b => visible(b) && /次のページ|次へ|^\s*next\s*$/i.test(b.getAttribute('aria-label') || ''));
+    if (byLabel) return byLabel;
+    const numBtns = all.filter(b => visible(b) && /^\d+$/.test((b.innerText || '').trim()));
+    if (!numBtns.length) return null;
+    const current = numBtns.find(b => b.getAttribute('aria-current') === 'page' || b.getAttribute('aria-current') === 'true' || /active|current|selected/i.test(b.className || ''));
+    if (current) {
+      const idx = numBtns.indexOf(current);
+      if (idx >= 0 && idx + 1 < numBtns.length) return numBtns[idx + 1];
     }
+    // 現在地が分からない場合、一番右の番号ボタンのすぐ後ろにある（番号ではない）ボタン＝「次へ」の矢印とみなす
+    const last = numBtns[numBtns.length - 1];
+    const siblings = last.parentElement ? [...last.parentElement.children] : [];
+    const after = siblings.slice(siblings.indexOf(last) + 1).find(el => el.matches('button,a') && visible(el) && !/^\d+$/.test((el.innerText || '').trim()));
+    return after || null;
+  }
+  /** 裏での定期確認のときだけ、ページ送りしながら口コミを集める（担当者が見ている画面は邪魔しない） */
+  async function collectAllPages() {
+    const seen = new Set(); const all = [];
+    let expandBudget = 40; // 全文を開いて読みに行くのは、ページをまたいでも合計40件まで（時間がかかりすぎないように）
+    for (let page = 0; page < 20; page++) {
+      const items = read();
+      const firstKey = items[0]?.review.key;
+      // この時点の一覧（未返信は全文も読みに行く。既存のロジックを踏襲）
+      const full = {};
+      const keys = items.filter(x => !x.review.replied).map(x => x.review.key).slice(0, expandBudget);
+      expandBudget -= keys.length;
+      for (const key of keys) {
+        const x = read().find(i => i.review.key === key);
+        if (!x || x.card.querySelector('textarea')) { if (x) full[key] = x.review.text; continue; }
+        if (!expand(x.card)) continue;
+        for (let k = 0; k < 10; k++) { await sleep(300); const y = read().find(i => i.review.key === key); if (y && y.card.querySelector('textarea')) { full[key] = y.review.text; break; } }
+      }
+      for (const x of read()) { if (!seen.has(x.review.key)) { seen.add(x.review.key); all.push({ ...x.review, text: full[x.review.key] || x.review.text }); } }
+      const next = findNextPageButton();
+      if (!next) break;
+      next.click();
+      let changed = false;
+      for (let i = 0; i < 20; i++) { await sleep(400); if (read()[0]?.review.key !== firstKey) { changed = true; break; } }
+      if (!changed) break; // ページが変わらなければ、最終ページとみなして終了
+    }
+    return all;
   }
 
   async function run() {
@@ -162,18 +192,10 @@
     }
     mode = (await send({ type: 'pageMode' })).mode;
     if (mode === 'check') {
-      await loadAllCards();
-      // 裏での定期確認：未返信の口コミを1件ずつ開いて全文を読む（トリップアドバイザーは1件開くと他が閉じるため）
-      const full = {};
-      const keys = read().filter(x => !x.review.replied).map(x => x.review.key).slice(0, 40);
-      for (const key of keys) {
-        const x = read().find(i => i.review.key === key);
-        if (!x || x.card.querySelector('textarea')) { if (x) full[key] = x.review.text; continue; }
-        if (!expand(x.card)) continue;
-        for (let k = 0; k < 10; k++) { await sleep(300); const y = read().find(i => i.review.key === key); if (y && y.card.querySelector('textarea')) { full[key] = y.review.text; break; } }
-      }
-      items = read().map(x => ({ ...x, review: { ...x.review, text: full[x.review.key] || x.review.text } }));
-      await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: items.map(x => x.review), diag: diag() });
+      // 裏での定期確認：1〜6などの番号でページ送りする一覧なので、ページを進めながら全ページ分集める
+      // （トリップアドバイザーは口コミを開くと他が閉じるため、未返信の口コミはページごとに1件ずつ開いて全文を読む）
+      const reviews = await collectAllPages();
+      await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews, diag: { ...diag(), pagesCollected: reviews.length } });
       return;
     }
     // 担当者が見ているとき：勝手に開閉せず、口コミを開いて返信欄が出たときに入力する

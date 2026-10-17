@@ -98,8 +98,8 @@ function checkTarget(t) {
           await chrome.storage.local.set({ checkTabs: checkTabs.filter(x => x !== tab.id) });
           resolve(result);
         };
-        // トリップアドバイザーは口コミをスクロールしながら読み込むため、他媒体より長めに待つ
-        const timeoutMs = t.kind === 'tripadvisor' ? 180000 : 90000;
+        // トリップアドバイザーはページ送りしながら読み込むため、他媒体より長めに待つ
+        const timeoutMs = t.kind === 'tripadvisor' ? 240000 : 90000;
         check = { tabId: tab.id, ...t, loginTried: false, done,
           timer: setTimeout(() => done({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面が時間内に読み込めませんでした` }), timeoutMs) };
       } catch (e) {
