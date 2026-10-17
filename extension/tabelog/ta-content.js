@@ -190,9 +190,15 @@
       const next = findNextPageButton();
       if (!next) { stopReason = 'noNextButton'; break; }
       next.click();
+      // クリック直後、一瞬0件になる読み込み中の状態があるため、「口コミが実際にあり、かつ前と違う」ことを確認する
       let changed = false;
-      for (let i = 0; i < 20; i++) { await sleep(400); if (read()[0]?.review.key !== firstKey) { changed = true; break; } }
+      for (let i = 0; i < 25; i++) {
+        await sleep(400);
+        const r0 = read()[0];
+        if (r0 && r0.review.key !== firstKey) { changed = true; break; }
+      }
       if (!changed) { stopReason = 'pageDidNotChange'; break; } // ページが変わらなければ、最終ページとみなして終了
+      await sleep(500); // 残りのカードが表示されるまで少し待つ
     }
     return { all, pagesWalked, stopReason };
   }
