@@ -931,7 +931,7 @@ function useRealData(){
   if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); renderBell(); }
 }
 /** 管理画面のボタン・リンク（[ 編集 ] など）や「167？」のような数字だけの行を取り除く（古い拡張機能が読み取った分にも効くように） */
-const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?]|価格|サービス|食事|雰囲気|料理|立地|客室|清潔さ|睡眠の質|コストパフォーマンス|Value|Service|Food|Atmosphere|Location|Rooms|Cleanliness|Sleep Quality)$/;
+const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?]|価格|サービス|食事|雰囲気|料理|立地|客室|清潔さ|睡眠の質|コストパフォーマンス|Value|Service|Food|Atmosphere|Location|Rooms|Cleanliness|Sleep Quality|.{0,30}、その他)$/;
 function cleanExtText(t){ return String(t||'').split('\n').filter(l=>!EXT_NOISE.test(l.trim())).join('\n').trim(); }
 window.addEventListener('message',e=>{
   if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
