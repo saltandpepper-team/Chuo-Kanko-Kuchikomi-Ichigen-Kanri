@@ -151,5 +151,25 @@
     }
   }).observe(document.body, { childList: true, subtree: true });
 
+  // 「口コミ返信（入力画面）」：一覧の枠に返信欄が無く、1件だけの入力ページに移動した場合
+  // （一覧ページに日付などの目印が無いため、findCards() では読み取れない。アプリで選んだ口コミの
+  // 下書きを、ここに来たらそのまま入力する）
+  if (/\/owner_rst\/reply_entry/.test(location.pathname)) {
+    (async () => {
+      const ta = document.querySelector('textarea');
+      if (!ta || (ta.value.trim() && ta.dataset.tbAssistFilled !== '1')) return;
+      const f = await send({ type: 'takeFocus' });
+      if (!f.key) return;
+      const r = await send({ type: 'getDrafts', media: 'tabelog', store: storeName(), reviews: [{ key: f.key, replied: false }] });
+      const draft = r.drafts && r.drafts[f.key];
+      if (!draft) return;
+      setValue(ta, draft);
+      ta.dataset.tbAssistFilled = '1';
+      ta.style.outline = '2px solid #372822';
+      label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、返信ボタンを押してください（この拡張機能は送信しません）。（書き直すときはアプリの「指示を入れて書き直す」を使ってください）');
+    })();
+    return;
+  }
+
   run();
 })();
