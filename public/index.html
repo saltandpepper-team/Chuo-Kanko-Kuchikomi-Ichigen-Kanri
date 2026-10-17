@@ -388,21 +388,24 @@ function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [
 function isLow(r){ return r.rating!=null && r.rating<=3; }
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3200); }
 
+// 一覧・集計ではInstagramのコメントとDM（メッセージ）をまとめて1つの「Instagram」として扱う
+function inMediaGroup(r,m){ return m==='instagram' ? (r.media==='instagram'||r.media==='dm') : r.media===m; }
 function renderFilters(){
-  const base=reviews.filter(r=>mf==='all'||r.media===mf);
+  const base=reviews.filter(r=>mf==='all'||inMediaGroup(r,mf));
   const opts=[['all','すべて',base.filter(r=>r.status!=='sent').length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja'&&r.status!=='sent').length]];
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
 // 口コミがあった日の新しい順に並べる（日付が分からないものは末尾へ）
-function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
+function visible(){ return reviews.filter(r=> (mf==='all'||inMediaGroup(r,mf)) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
   const todo=reviews.filter(r=>r.status!=='sent').length;
   const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
   tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${todo}<small>件</small></span><span class="todo">対応が必要（返信済み${reviews.length-todo}件を除く）</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
-  $('mediaCards').innerHTML=Object.keys(MEDIA).map(m=>{
-    const list=reviews.filter(r=>r.media===m);
+  // InstagramのコメントとDMは1つの「Instagram」としてまとめて表示する（DM単独のカードは出さない）
+  $('mediaCards').innerHTML=Object.keys(MEDIA).filter(m=>m!=='dm').map(m=>{
+    const list=reviews.filter(r=>inMediaGroup(r,m));
     const mTodo=list.filter(r=>r.status!=='sent').length;
     const rated=list.filter(r=>r.rating!=null);
     const avg=rated.length?(rated.reduce((a,r)=>a+r.rating,0)/rated.length).toFixed(1):null;
@@ -410,7 +413,7 @@ function renderStats(){
     return `<button type="button" class="mcard" data-f="${m}" aria-pressed="${mf===m}" style="--c:${MCOLOR[m]};--cbg:${MBG[m]}">
       <span class="name">${MEDIA[m].label}</span>
       <span class="count">${mTodo}<small>件</small></span>
-      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント（評価なし）':m==='dm'?'メッセージ（評価なし）':'評価なし')}</span>
+      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント・DM（評価なし）':'評価なし')}</span>
       <span class="bd">${bd}</span></button>`;
   }).join('');
 }
