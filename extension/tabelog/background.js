@@ -98,8 +98,10 @@ function checkTarget(t) {
           await chrome.storage.local.set({ checkTabs: checkTabs.filter(x => x !== tab.id) });
           resolve(result);
         };
+        // トリップアドバイザーは口コミをスクロールしながら読み込むため、他媒体より長めに待つ
+        const timeoutMs = t.kind === 'tripadvisor' ? 180000 : 90000;
         check = { tabId: tab.id, ...t, loginTried: false, done,
-          timer: setTimeout(() => done({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面が時間内に読み込めませんでした` }), 90000) };
+          timer: setTimeout(() => done({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面が時間内に読み込めませんでした` }), timeoutMs) };
       } catch (e) {
         resolve({ ok: false, error: `${MEDIA_LABEL[t.kind]}の画面を開けませんでした（${e && e.message ? e.message : 'タブの操作に失敗しました'}。少し時間をおいて再度お試しください）` });
       }

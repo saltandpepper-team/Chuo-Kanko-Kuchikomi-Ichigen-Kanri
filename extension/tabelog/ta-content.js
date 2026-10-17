@@ -134,6 +134,22 @@
     };
   }
   const isLoginPage = () => !!document.querySelector('input[type="password"]') || /RegistrationController|\/login/i.test(location.pathname);
+  /** 一覧は最初の数十件しか表示されず、スクロール（または「もっと見る」）しないと全件出てこないため、
+   * 裏での定期確認のときだけ、増えなくなるか件数表示に達するまで読み込む（担当者が見ている画面は邪魔しない） */
+  async function loadAllCards() {
+    const total = () => { const m = document.body.innerText.match(/([\d,]+)\s*件の口コミ/); return m ? +m[1].replace(/,/g, '') : null; };
+    let last = -1, stall = 0;
+    for (let i = 0; i < 50 && stall < 3; i++) {
+      const n = findCards().length;
+      const t = total();
+      if (t !== null && n >= t) break;
+      stall = n === last ? stall + 1 : 0;
+      last = n;
+      const more = [...document.querySelectorAll('button,[role="button"],a')].find(b => /もっと見る|次の\s*\d*\s*件|さらに表示|もっと読み込む|show more|load more/i.test((b.innerText || '').trim()) && b.offsetParent !== null);
+      if (more) more.click(); else window.scrollTo(0, document.body.scrollHeight);
+      await sleep(600);
+    }
+  }
 
   async function run() {
     // 口コミが表示されるまで待つ（画面はあとから読み込まれる）
@@ -146,6 +162,7 @@
     }
     mode = (await send({ type: 'pageMode' })).mode;
     if (mode === 'check') {
+      await loadAllCards();
       // 裏での定期確認：未返信の口コミを1件ずつ開いて全文を読む（トリップアドバイザーは1件開くと他が閉じるため）
       const full = {};
       const keys = read().filter(x => !x.review.replied).map(x => x.review.key).slice(0, 40);
