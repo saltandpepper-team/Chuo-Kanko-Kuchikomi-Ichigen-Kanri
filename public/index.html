@@ -1144,7 +1144,7 @@ async function apiJson(res){
   }
   return body||{};
 }
-function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?now():`${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
+function fmtDate(iso){ const d=new Date(iso); return isNaN(d)?now():`${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
 function guessLang(t){
   t=String(t||'');
   // 外国語の口コミに画面の日本語（「サービス」など）が少し混ざっていても日本語と判定しないよう、文字数で比べる

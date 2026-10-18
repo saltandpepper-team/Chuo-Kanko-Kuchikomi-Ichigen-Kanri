@@ -169,9 +169,13 @@ chrome.tabs.onUpdated.addListener((tabId, info, tab) => {
   }
 });
 
-/** 「M/D」形式の口コミ日付を、だいたいの時刻に変換する（並び替え・比較用。未来すぎる場合は去年の日付とみなす） */
+/** 口コミ日付（「YYYY/M/D」、または年の無い古いデータの「M/D」形式）を、だいたいの時刻に変換する
+ * （並び替え・比較用。年が無い場合、未来すぎるなら去年の日付とみなす） */
 function roughDateTs(dateStr, now) {
-  const m = String(dateStr || '').match(/^(\d{1,2})\/(\d{1,2})$/);
+  const s = String(dateStr || '');
+  const withYear = s.match(/^(\d{4})\/(\d{1,2})\/(\d{1,2})$/);
+  if (withYear) return new Date(+withYear[1], +withYear[2] - 1, +withYear[3]).getTime();
+  const m = s.match(/^(\d{1,2})\/(\d{1,2})$/);
   if (!m) return null;
   const mo = +m[1] - 1, da = +m[2];
   let d = new Date(now.getFullYear(), mo, da);
