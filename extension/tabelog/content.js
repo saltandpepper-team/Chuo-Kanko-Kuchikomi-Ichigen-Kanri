@@ -47,8 +47,9 @@
       if (!DATE.test(t.nodeValue)) continue;
       const el = t.parentElement;
       if (!el || el.closest('[data-tb-assist]')) continue;
-      const near = (el.parentElement?.innerText || el.innerText || '');
-      if (/訪問/.test(near)) dateEls.push(el);
+      // 「訪問月」の記載が無い口コミ（投稿日＝訪問日のときなど）もあるため、ここでは絞り込まない
+      // （本物の口コミかどうかは readCards() の parseTabelog（投稿者名の有無）で判定する）
+      dateEls.push(el);
     }
     const uniq = dateEls.filter((el, i) => !dateEls.some((o, k) => k !== i && o !== el && el.contains(o)));
     return uniq.map(el => {
@@ -61,11 +62,19 @@
       return card;
     });
   }
+  /** カードの「この口コミに返信」リンクから review_id を取り出す（一覧の並び順に関係なく、
+   * この口コミの入力ページへ直接移動できるようにするため。食べログは並び替え・表示件数の
+   * URLパラメータに従わない場合があり、一覧の並び順を前提にした移動は当てにならないため） */
+  function findReplyEntryId(card) {
+    const a = [...card.querySelectorAll('a[href]')].find(a => /\/owner_rst\/reply_entry/.test(a.getAttribute('href') || ''));
+    const m = a && (a.getAttribute('href') || '').match(/review_id=(\d+)/);
+    return m ? m[1] : null;
+  }
   function readCards() {
     return findCards().map(card => {
       const r = parseTabelog(card.innerText)[0];
       if (!r) return null;
-      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, replied: !!r.reply, reply: r.reply || '' } };
+      return { card, review: { key: r.extId, author: r.author, rating: r.rating, text: r.text, title: r.title, date: r.date, ts: r.ts, replied: !!r.reply, reply: r.reply || '', replyEntryId: findReplyEntryId(card) } };
     }).filter(Boolean);
   }
   function label(textarea, html) {
@@ -94,9 +103,15 @@
   async function run() {
     items = readCards();
     const store = storeName();
+    const totalMatch = document.body.innerText.match(/全\s*([\d,]+)\s*件/);
+    const total = totalMatch ? +totalMatch[1].replace(/,/g, '') : items.length;
     const diag = { url: location.href, cards: items.length,
       samples: items.slice(0, 3).map(x => ({ text: x.card.innerText.slice(0, 700), textareas: x.card.querySelectorAll('textarea').length, replied: x.review.replied })) };
-    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href, reviews: items.map(x => x.review), diag });
+    // pageSize・total は、裏での定期確認が全ページを辿るための手がかり（背景スクリプト側でページ送りする）。
+    // 返信済みの口コミも引き続きアプリに渡す（「返信済み」として検索・確認できるようにするため。
+    // 「承認待ち」などの対応が必要な一覧には出さない判定は replied フラグを見てアプリ側で行う）
+    const res = await send({ type: 'pageData', media: 'tabelog', store, pageUrl: location.href,
+      reviews: items.map(x => x.review), pageSize: items.length, total, diag });
     if (res.mode !== 'assist') return; // 裏での定期確認のときは入力しない
     const pending = items.filter(x => !x.review.replied);
     if (!pending.length) return;
@@ -143,6 +158,26 @@
       });
     }
   }).observe(document.body, { childList: true, subtree: true });
+
+  // 「口コミ返信（入力画面）」：一覧の枠に返信欄が無く、1件だけの入力ページに移動した場合
+  // （一覧ページに日付などの目印が無いため、findCards() では読み取れない。アプリで選んだ口コミの
+  // 下書きを、ここに来たらそのまま入力する）
+  if (/\/owner_rst\/reply_entry/.test(location.pathname)) {
+    (async () => {
+      const ta = document.querySelector('textarea');
+      if (!ta || (ta.value.trim() && ta.dataset.tbAssistFilled !== '1')) return;
+      const f = await send({ type: 'takeFocus' });
+      if (!f.key) return;
+      const r = await send({ type: 'getDrafts', media: 'tabelog', store: storeName(), reviews: [{ key: f.key, replied: false }] });
+      const draft = r.drafts && r.drafts[f.key];
+      if (!draft) return;
+      setValue(ta, draft);
+      ta.dataset.tbAssistFilled = '1';
+      ta.style.outline = '2px solid #372822';
+      label(ta, '<b>AIが作成した返信文です。</b>内容を確認・修正して、返信ボタンを押してください（この拡張機能は送信しません）。（書き直すときはアプリの「指示を入れて書き直す」を使ってください）');
+    })();
+    return;
+  }
 
   run();
 })();

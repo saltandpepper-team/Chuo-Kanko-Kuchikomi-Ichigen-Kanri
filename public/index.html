@@ -257,6 +257,9 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
   <div class="main">
     <aside class="panel">
       <div class="filters" id="filters" role="group" aria-label="絞り込み"></div>
+      <div class="filters">
+        <input type="search" id="searchBox" placeholder="投稿者名で検索" aria-label="投稿者名で検索" style="flex:1;min-width:0;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)">
+      </div>
       <div class="filters" style="justify-content:space-between;align-items:center">
         <span class="meta" id="countLabel"></span>
         <button class="btn" id="bulkBtn" type="button" style="padding:4px 10px;font-size:12px">高評価の下書きをまとめて作成</button>
@@ -369,7 +372,7 @@ const DEFAULT_STYLE = `【お手本1】山麓園・高評価の口コミへの�
 またお近くへお越しの際は、ぜひお立ち寄りください。スタッフ一同、心よりお待ちしております。`;
 
 let reviews = [], incoming = [], currentStore = null;
-let selectedId = null, mf = 'all', sf = 'all', sample = null, busy = false;
+let selectedId = null, mf = 'all', sf = 'all', q = '', sample = null, busy = false;
 const $ = id => document.getElementById(id);
 $('styleBox').value = DEFAULT_STYLE;
 
@@ -378,27 +381,35 @@ function mediaHtml(m){ return `<span class="media m-${m}">${MEDIA[m].label}</spa
 function statusHtml(s){ const [t,c]=STATUS[s]; return `<span class="pill ${c}">${t}</span>`; }
 function esc(s){ return String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c])); }
 function now(){ const d=new Date(); return `${d.getMonth()+1}/${d.getDate()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`; }
-const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）',ko:'韓国語',th:'タイ語',fr:'フランス語',it:'イタリア語',es:'スペイン語',de:'ドイツ語'};
-const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文',ko:'한국어',th:'TH',fr:'FR',it:'IT',es:'ES',de:'DE'};
+const LANG={ja:'日本語',en:'英語','zh-TW':'中国語（繁体字）','zh-CN':'中国語（簡体字）',ko:'韓国語',th:'タイ語',fr:'フランス語',it:'イタリア語',es:'スペイン語',de:'ドイツ語',ru:'ロシア語'};
+const LANG_SHORT={en:'EN','zh-TW':'中文','zh-CN':'中文',ko:'한국어',th:'TH',fr:'FR',it:'IT',es:'ES',de:'DE',ru:'RU'};
 function langBadge(r){ return r.lang&&r.lang!=='ja' ? `<span class="lang-badge" title="${LANG[r.lang]}の口コミ">${LANG_SHORT[r.lang]||r.lang}</span>` : ''; }
 function splitJa(t){ const p=String(t).split(/\n-{3,}\n/); return p.length<2 ? [t.trim(),''] : [p[0].trim(), p.slice(1).join('\n').trim()]; }
+// Instagramのコメントは、返信しただけでは投稿者に通知が届かないことがあるため、冒頭に@メンションを入れて通知を届ける
+function igMentionLine(r){ return (r.media==='instagram' && /^@/.test(r.author||'') && r.author!=='@instagram') ? r.author : ''; }
+function stripMention(r,text){ const m=igMentionLine(r); text=String(text||''); return m && text.startsWith(m) ? text.slice(m.length).replace(/^\s*\n+/,'') : text; }
+function withMention(r,text){ const m=igMentionLine(r); return m ? m+'\n\n'+stripMention(r,text) : text; }
 function isLow(r){ return r.rating!=null && r.rating<=3; }
 function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clearTimeout(toast._t); toast._t=setTimeout(()=>t.hidden=true,3200); }
 
+// 一覧・集計ではInstagramのコメントとDM（メッセージ）をまとめて1つの「Instagram」として扱う
+function inMediaGroup(r,m){ return m==='instagram' ? (r.media==='instagram'||r.media==='dm') : r.media===m; }
 function renderFilters(){
-  const base=reviews.filter(r=>mf==='all'||r.media===mf);
+  const base=reviews.filter(r=>mf==='all'||inMediaGroup(r,mf));
   const opts=[['all','すべて',base.filter(r=>r.status!=='sent').length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja'&&r.status!=='sent').length]];
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
-function visible(){ return reviews.filter(r=> (mf==='all'||r.media===mf) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf))); }
+// 口コミがあった日の新しい順に並べる（日付が分からないものは末尾へ）
+function visible(){ return reviews.filter(r=> (mf==='all'||inMediaGroup(r,mf)) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
   const todo=reviews.filter(r=>r.status!=='sent').length;
   const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
   tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${todo}<small>件</small></span><span class="todo">対応が必要（返信済み${reviews.length-todo}件を除く）</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
-  $('mediaCards').innerHTML=Object.keys(MEDIA).map(m=>{
-    const list=reviews.filter(r=>r.media===m);
+  // InstagramのコメントとDMは1つの「Instagram」としてまとめて表示する（DM単独のカードは出さない）
+  $('mediaCards').innerHTML=Object.keys(MEDIA).filter(m=>m!=='dm').map(m=>{
+    const list=reviews.filter(r=>inMediaGroup(r,m));
     const mTodo=list.filter(r=>r.status!=='sent').length;
     const rated=list.filter(r=>r.rating!=null);
     const avg=rated.length?(rated.reduce((a,r)=>a+r.rating,0)/rated.length).toFixed(1):null;
@@ -406,7 +417,7 @@ function renderStats(){
     return `<button type="button" class="mcard" data-f="${m}" aria-pressed="${mf===m}" style="--c:${MCOLOR[m]};--cbg:${MBG[m]}">
       <span class="name">${MEDIA[m].label}</span>
       <span class="count">${mTodo}<small>件</small></span>
-      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント（評価なし）':m==='dm'?'メッセージ（評価なし）':'評価なし')}</span>
+      <span class="avg">${avg?'平均 ★'+avg:(m==='instagram'?'コメント・DM（評価なし）':'評価なし')}</span>
       <span class="bd">${bd}</span></button>`;
   }).join('');
 }
@@ -488,9 +499,9 @@ function buildPrompt(r, instr){
   const lang = LANG[r.lang]||'口コミと同じ言語';
   const top = instr ? `【最重要の修正指示】ユーザーから以下の指定がありました。この指示を最優先して返信文を作成・書き直してください：『${instr.slice(0,500)}』
 この指示は、下の「構成」「ルール」「お手本」（長さ・段落構成・言葉づかいを含む）よりも優先します。食い違う場合は必ずこの指示に従ってください（ただし、返信する言語と、返信文だけを出力する形式は守る）。
-${r.reply.trim()?`
+${stripMention(r,r.reply).trim()?`
 現在の返信文（これを上の指示に沿って書き直す）:
-${r.reply.trim()}
+${stripMention(r,r.reply).trim()}
 `:''}
 ` : '';
   const ig = r.media==='instagram';
@@ -507,6 +518,17 @@ ${r.reply.trim()}
 - 法令・公序良俗に反する内容、犯罪行為や危険行為につながる内容
 - 他者の著作物（雑誌・書籍等）を出典なしに引用すること
 - 口コミの内容と直接関係のないお願い・宣伝（「他のSNSでいいねしてください」「次回サービスします」等）` : '';
+  const tripadvisorGuideline = r.media==='tripadvisor' ? `
+
+【トリップアドバイザー「管理者からの返信」ガイドラインの遵守（必須）】この返信はガイドライン審査を通過する必要があるため、以下に該当する表現は絶対に書かない：
+- 口コミ本文の引用や、宿泊客・第三者とのやり取りの転載（独自の文章で書く）
+- プレゼント・割引・金銭などの見返りの提供、口コミと無関係なURL・宣伝
+- 政治・倫理・宗教・社会問題についての私見
+- 投稿者を脅す・強要するような表現、「虚偽の口コミだ」といった決めつけ
+- トリップアドバイザーのスタッフやポリシーへの言及
+- 投稿者の身元の推測、氏名・住所・電話番号など個人を特定できる情報
+- 箇条書き・リスト形式（表示されないため、必ず通常の文章・段落で書く）
+- 絵文字、全角記号の多用、不自然な機械翻訳のような言い回し` : '';
   return `${top}あなたは観光地の飲食店「${r.store}」のオーナーとして口コミに返信する担当です。下の「お手本」の言葉づかい・丁寧さ・段落構成に合わせて、口コミへの返信文を1つだけ書いてください。短い定型文ではなく、口コミの内容を踏まえた読み応えのある丁寧な返信にしてください。
 
 構成（段落ごとに空行を1行入れて区切る）:
@@ -524,7 +546,7 @@ ${r.reply.trim()}
 - できない約束はしない
 - 質問があれば丁寧に答えるか、確認方法を案内する（予約はお電話で承っている旨を案内。公式サイトは予約不可、情報確認のみ）
 - 誇張・絵文字・ハッシュタグは使わない
-- 前置きや説明は書かず、返信文だけを出力する${tabelogGuideline}
+- 前置きや説明は書かず、返信文だけを出力する${tabelogGuideline}${tripadvisorGuideline}
 
 媒体: ${MEDIA[r.media].label}
 投稿者: ${r.author}
@@ -776,7 +798,7 @@ async function draft(r, silent, instr, auto){
     }
   }
   r.drafting=false; r.partial='';
-  const [body,ja]=splitJa(text); r.reply=body; r.replyJa=ja; if(r.status==='new') r.status='draft';
+  const [body,ja]=splitJa(text); r.reply=withMention(r,body); r.replyJa=ja; if(r.status==='new') r.status='draft';
   r.fallback = fromAI ? '' : (r.fallback || (instr ? '' : body)); // 定型文のままなら、AIが使えるようになったときに作り直す
   if(fromAI) rememberAI(r);
   if(!silent) renderAll(); else if(r.id===selectedId) renderDetail();
@@ -857,6 +879,7 @@ document.addEventListener('keydown',e=>{ if(e.key==='Escape' && !$('overlay').hi
 
 // events
 $('filters').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; sf=b.dataset.f; renderFilters(); renderList(); });
+$('searchBox').addEventListener('input',e=>{ q=e.target.value.trim().toLowerCase(); renderList(); });
 $('totalCard').addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('mediaCards').addEventListener('click',e=>{ const b=e.target.closest('[data-f]'); if(!b) return; mf = mf===b.dataset.f ? 'all' : b.dataset.f; sf='all'; renderFilters(); renderStats(); renderList(); });
 $('list').addEventListener('click',e=>{ const b=e.target.closest('[data-id]'); if(!b) return; selectedId=+b.dataset.id; renderList(); renderDetail(); autoDraft(); });
@@ -889,7 +912,13 @@ async function fetchNew(silent){
 }
 /** APIから取得した口コミを一覧に追加（同じ口コミは二重に追加しない） */
 function addFetched(store, x){
-  if(ALL.some(a=>a.extId===x.extId)) return false;
+  const ex=ALL.find(a=>a.extId===x.extId);
+  if(ex){
+    // Google・Instagramの管理画面で直接返信された場合、アプリ側にも返信済みを反映する
+    // （反映しないと「未対応」のまま残り、「承認して送信」で既存の返信を上書き・二重投稿してしまう）
+    if(x.reply && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply; ex.log.push(`${now()}　${MEDIA[ex.media].label}で返信済みを確認`); }
+    return false;
+  }
   const id=Math.max(0,...ALL.map(r=>r.id))+1;
   const r={...x,id,store,reply:x.reply||'',status:x.reply?'sent':'new',log:[x.logLine||`${now()}　${API_NAME[x.media]} から取得`]};
   delete r.logLine;
@@ -901,7 +930,9 @@ function addFetched(store, x){
 
 // ---- 食べログ連携（Chrome拡張機能「食べログ 口コミ返信アシスタント」から受け取る） ----
 // 拡張機能が食べログ店舗管理画面で読み取った口コミと、AIが作った返信文がこのページに届く
-const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top';
+// 拡張機能（background.js）が全ページを確認するときと同じ並び順・表示件数で開く
+// （並び順が違うと、選んだ口コミがこのページの一覧に無く、見当違いの場所が表示されてしまうため）
+const TB_REPLY_URL='https://owner.tabelog.com/owner_rst/reply_top/?srt=update&sby=desc&PG=1&smp=&lc=2';
 const EXT_MEDIA=['tabelog','tripadvisor']; // 拡張機能で連携する媒体
 let tbBridge=false;
 function tabelogHello(){ window.postMessage({source:'kuchikomi-app', type:'hello'}, '*'); }
@@ -917,7 +948,7 @@ function useRealData(){
   if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); renderBell(); }
 }
 /** 管理画面のボタン・リンク（[ 編集 ] など）や「167？」のような数字だけの行を取り除く（古い拡張機能が読み取った分にも効くように） */
-const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?]|価格|サービス|食事|雰囲気|料理|立地|客室|清潔さ|睡眠の質|コストパフォーマンス|Value|Service|Food|Atmosphere|Location|Rooms|Cleanliness|Sleep Quality)$/;
+const EXT_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?]|価格|サービス|食事|雰囲気|料理|立地|客室|清潔さ|睡眠の質|コストパフォーマンス|Value|Service|Food|Atmosphere|Location|Rooms|Cleanliness|Sleep Quality|.{0,30}、その他)$/;
 function cleanExtText(t){ return String(t||'').split('\n').filter(l=>!EXT_NOISE.test(l.trim())).join('\n').trim(); }
 window.addEventListener('message',e=>{
   if(e.source!==window || e.data?.source!=='tabelog-assistant') return;
@@ -932,6 +963,8 @@ window.addEventListener('message',e=>{
     if(!store || !x.key || !x.text) return;
     const ex=ALL.find(a=>a.extId===x.key);
     if(ex && x.rating!=null && ex.rating==null){ ex.rating=x.rating; changed=true; } // あとから読み取れた評価を反映
+    if(ex && x.ts && !ex.ts){ ex.ts=x.ts; changed=true; } // 拡張機能の更新前に取り込んだ分に、並び替え用の日付を補う
+    if(ex && x.replyEntryId && ex.replyEntryId!==x.replyEntryId){ ex.replyEntryId=x.replyEntryId; changed=true; } // 承認時に食べログのこの口コミの入力ページへ直接移動するため
     if(ex){
       // 食べログ側で返信済みになったら、アプリでも返信済みにする
       if(x.replied && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply||ex.reply; ex.log.push(`${now()}　${MEDIA[ex.media].label}で返信済みを確認`); changed=true; }
@@ -939,7 +972,7 @@ window.addEventListener('message',e=>{
       return;
     }
     const media=EXT_MEDIA.includes(x.media)?x.media:'tabelog', label=MEDIA[media].label;
-    const r={media, extId:x.key, author:x.author||`${label}のユーザー`, rating:x.rating??null, date:x.date||'', lang:guessLang(x.text), text:x.text, title:x.title||'', pageUrl:x.pageUrl||'',
+    const r={media, extId:x.key, author:x.author||`${label}のユーザー`, rating:x.rating??null, date:x.date||'', ts:x.ts||null, lang:guessLang(x.text), text:x.text, title:x.title||'', pageUrl:x.pageUrl||'', replyEntryId:x.replyEntryId||'',
       reply:x.replied?(x.reply||`（${label}で返信済み）`):'', logLine:`${now()}　${label}の管理画面から取得（拡張機能）`};
     if(addFetched(store, r)){
       added++;
@@ -947,6 +980,18 @@ window.addEventListener('message',e=>{
       if(n && !x.replied && x.draft){ n.reply=x.draft; n.status='draft'; n.log.push(`${now()}　AIが返信文を作成（拡張機能）`); }
     }
   });
+  // 食べログ・トリップアドバイザー側で削除され、拡張機能の一覧にも無くなった口コミはアプリからも消す
+  if(e.data.reviews.length){
+    const presentKeys=new Set(e.data.reviews.map(x=>x.key));
+    for(let i=ALL.length-1;i>=0;i--){
+      const a=ALL[i];
+      if(a.extId && EXT_MEDIA.includes(a.media) && !presentKeys.has(a.extId)){
+        ALL.splice(i,1);
+        if(selectedId===a.id) selectedId=null;
+        changed=true;
+      }
+    }
+  }
   if(!added && !changed) return;
   if(currentStore){ reviews=ALL.filter(r=>r.store===currentStore); if(!reviews.some(r=>r.id===selectedId)) selectedId=reviews[0]?.id ?? null; renderAll(); }
   if(added) toast(`拡張機能から口コミを${added}件取得しました`);
@@ -960,7 +1005,10 @@ async function copyAndOpenOwner(r){
   window.postMessage({source:'kuchikomi-app', type:'setDraft', key:r.extId, reply:r.reply, focus:true}, '*');
   let copied=false;
   try{ await navigator.clipboard.writeText(r.reply); copied=true; }catch(e){}
-  window.open(r.media==='tabelog'?TB_REPLY_URL:(r.pageUrl||'https://www.tripadvisor.jp/Owners'),'_blank','noopener');
+  // 食べログは一覧の並び替え・表示件数がURLの指定通りにならないことがあり、一覧の並び順を当てにして
+  // 目的の口コミまで移動するのは不安定なため、review_idが分かっていればその口コミの入力ページへ直接開く
+  const tbUrl=r.replyEntryId?`https://owner.tabelog.com/owner_rst/reply_entry?review_id=${encodeURIComponent(r.replyEntryId)}`:TB_REPLY_URL;
+  window.open(r.media==='tabelog'?tbUrl:(r.pageUrl||'https://www.tripadvisor.jp/Owners'),'_blank','noopener');
   if(r.status!=='filled'){ r.status='filled'; r.log.push(`${now()}　返信文をコピーして${label}の管理画面を開く（送信待ち）`); }
   toast(tbBridge?`${label}の返信欄に返信文が入ります。内容を確認して送信（返信）ボタンを押してください（返信済みは次の確認で自動で反映されます）`
     :copied?`返信文をコピーしました。${label}の返信欄に貼り付けて送信し、最後に「返信済みにする」を押してください`:`コピーできませんでした。返信文を選択してコピーしてから、${label}で貼り付けてください`);
@@ -1101,6 +1149,7 @@ function guessLang(t){
   if(/[一-鿿]/.test(t)) return /[們個這說時會來為對問點華灣鐘體]/.test(t)?'zh-TW':'zh-CN';
   if(/[가-힣]/.test(t)) return 'ko';
   if(/[ก-๙]/.test(t)) return 'th';
+  if(/[Ѐ-ӿ]/.test(t)) return 'ru'; // キリル文字（ロシア語など）
   if(!/[a-z]/i.test(t)) return 'ja';
   // ラテン文字の口コミは、よく使う単語の数でヨーロッパの主な言語を見分ける（決め手がなければ英語）
   const words=t.toLowerCase().match(/[a-zà-öø-ÿ']+/g)||[];
@@ -1232,7 +1281,7 @@ async function call(path, body){
 }
 async function refreshStatus(){ beStatus=(await call('/api/status')).stores||{}; }
 if(BACKEND){
-  const map=x=>({...x, date:fmtDate(x.createTime), lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
+  const map=x=>({...x, date:fmtDate(x.createTime), ts:x.createTime?+new Date(x.createTime):null, lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
   const q=(m,st)=>`/api/reviews?media=${m}&store=${encodeURIComponent(st)}`;
   API.fetchGoogle=async store=>(await call(q('google',store))).items.map(map);
   API.fetchInstagram=async store=>(await call(q('instagram',store))).items.map(map);
@@ -1256,6 +1305,9 @@ if(BACKEND){
     }catch(e){}
   }
   setInterval(pollInbox, 20000);
+  // GoogleビジネスプロフィールにはWebhookが無く、新着を知らせてくれないため、
+  // 数分おきに直接確認しに行く（APIの呼び出し回数を抑えるため、Instagramより間隔を空ける）
+  setInterval(()=>{ if(beLoggedIn && currentStore && apiReady(currentStore,'google')) fetchNew(true); }, 180000);
 }
 const BE_LABEL={google:'Googleビジネスプロフィール', instagram:'Instagram（Facebookページ経由）'};
 function renderApiModalBackend(){
@@ -1414,7 +1466,7 @@ function switchStore(store){
   // 拡張機能・API連携で実データを扱う店舗ではデモの新着は出さない
   clearTimeout(arrivalTimer);
   if(tbBridge && !BACKEND) return;
-  if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && r.media!=='tabelog')) fetchNew(true); return; }
+  if(['google','instagram'].some(m=>apiReady(store,m))){ if(BACKEND && !ALL.some(r=>r.store===store && r.extId && !EXT_MEDIA.includes(r.media))) fetchNew(true); return; }
   // デモ：ログイン後、3分おきに新着が1件ずつ届く
   const scheduleNextArrival=()=>{
     arrivalTimer=setTimeout(()=>{

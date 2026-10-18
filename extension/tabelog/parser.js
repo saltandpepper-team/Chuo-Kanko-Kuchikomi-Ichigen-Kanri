@@ -14,15 +14,16 @@ const TB_UI=/^(AIが作成した返信文です|返信文を確認していま�
 // 画面のボタン・リンク（[ 編集 ]、[ この口コミに返信 ] など）と、数字＋？だけの行（参考になった数などのアイコン）
 const TB_NOISE=/^([\[［]\s*[^\]］]{1,20}\s*[\]］]|\d+\s*[？?])$/;
 const TB_REPLIED=/(店舗からの返信|お店からの返信|店舗からのお礼|お店からのコメント|返信済み)/;
+/** この日付より前の口コミは取り込まない（食べログはこれより前のものはアプリ内に不要とのこと） */
+const TB_CUTOFF=new Date(2026,9,1);
 /** 「口コミ返信」ページをコピーしたテキストから口コミを読み取る */
 function parseTabelog(raw){
   const L=String(raw).replace(/\r/g,'').split('\n').map(x=>x.replace(/ /g,' ').trim()).filter(Boolean);
   const starts=[];
   for(let i=0;i<L.length;i++){
     if(!TB_DATE.test(L[i])) continue;
-    const near=L.slice(i,i+2).join(' ');
-    if(!/訪問/.test(near)) continue;
     // 日付の前後どちらかがタイトル、その次が「投稿者名（件数）」
+    // ※「訪問月」の記載が無い口コミ（投稿日＝訪問日のときなど）もあるため、訪問の文字は必須にしない
     let a=-1; for(let k=i+1;k<=i+3&&k<L.length;k++){ if(TB_AUTHOR.test(L[k]) && !TB_DATE.test(L[k])){ a=k; break; } }
     if(a<0) continue;
     const titleIdx = (a===i+1 || /訪問/.test(L[i+1]||'') && a===i+2) ? i-1 : i+1;
@@ -53,8 +54,9 @@ function parseTabelog(raw){
     const title=inline || ((L[st.t]&&st.t>=0&&!TB_DATE.test(L[st.t])&&!TB_NOISE.test(L[st.t])&&!TB_UI.test(L[st.t])&&!TB_FOOTER.test(L[st.t])&&st.t!==starts[n-1]?.a)?L[st.t]:'');
     const text=[title?`【${title}】`:'',...body].filter(Boolean).join('\n');
     if(!text) return;
+    if(new Date(2000+ +yy,+mm-1,+dd) < TB_CUTOFF) return;
     out.push({media:'tabelog', author:au[1].trim(), rating, lang:guessLang(text), text,
-      date:`${+mm}/${+dd}`, reply:reply.join('\n'), title,
+      date:`${+mm}/${+dd}`, ts:new Date(2000+ +yy,+mm-1,+dd).getTime(), reply:reply.join('\n'), title,
       extId:'tabelog:'+[au[1].trim(),`20${yy}/${mm}/${dd}`,title||body[0]||''].join('|').slice(0,200)});
   });
   return out;

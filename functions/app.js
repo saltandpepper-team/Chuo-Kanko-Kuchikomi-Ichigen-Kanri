@@ -125,7 +125,8 @@ function createApp(d) {
       });
     } else {
       url = 'https://www.facebook.com/v23.0/dialog/oauth?' + new URLSearchParams({
-        client_id: c.metaAppId, redirect_uri: redirectUri('instagram'), response_type: 'code', scope: IG_SCOPE, state
+        client_id: c.metaAppId, redirect_uri: redirectUri('instagram'), response_type: 'code', scope: IG_SCOPE, state,
+        display: 'page', extras: JSON.stringify({ setup: { channel: 'IG_API_ONBOARDING' } })
       });
     }
     res.json({ url });
@@ -211,16 +212,21 @@ function createApp(d) {
       })) });
     }
     const tk = encodeURIComponent(c.selected.pageToken), uid = encodeURIComponent(c.selected.id);
-    const media2 = await json(await d.fetch(`${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=10&access_token=${tk}`));
     const items = [];
-    for (const p of media2.data || []) {
-      const cm = await json(await d.fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
-      for (const k of cm.data || []) {
-        if (k.username === c.selected.username) continue;
-        const mine = (k.replies?.data || []).find(x => x.username === c.selected.username);
-        items.push({ media: 'instagram', extId: 'instagram:' + k.id, extName: k.id, permalink: p.permalink,
-          author: '@' + (k.username || 'instagram'), rating: null, createTime: k.timestamp, text: k.text || '', reply: mine?.text || '' });
+    // 直近◯件ではなく全投稿を辿って、未返信のコメントを漏れなく集める（念のため最大20ページ＝投稿1000件分で打ち切る）
+    let mediaUrl = `${GRAPH}/${uid}/media?fields=id,caption,permalink,timestamp&limit=50&access_token=${tk}`;
+    for (let page = 0; mediaUrl && page < 20; page++) {
+      const media2 = await json(await d.fetch(mediaUrl));
+      for (const p of media2.data || []) {
+        const cm = await json(await d.fetch(`${GRAPH}/${p.id}/comments?fields=id,text,username,timestamp,replies{username,text}&limit=50&access_token=${tk}`));
+        for (const k of cm.data || []) {
+          if (k.username === c.selected.username) continue;
+          const mine = (k.replies?.data || []).find(x => x.username === c.selected.username);
+          items.push({ media: 'instagram', extId: 'instagram:' + k.id, extName: k.id, permalink: p.permalink,
+            author: '@' + (k.username || 'instagram'), rating: null, createTime: k.timestamp, text: k.text || '', reply: mine?.text || '' });
+        }
       }
+      mediaUrl = media2.paging?.next || null;
     }
     res.json({ items });
   }));
@@ -289,19 +295,30 @@ function createApp(d) {
     const store = storeOf(req.query.store);
     const c = await requireConn(store, 'instagram');
     const tk = encodeURIComponent(c.selected.pageToken);
-    const conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&fields=participants&limit=50&access_token=${tk}`));
     const items = [];
-    for (const cvs of conv.data || []) {
-      const other = (cvs.participants?.data || []).find(p => p.id !== c.selected.id);
-      if (!other) continue;
-      const msgs = await json(await d.fetch(`${GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
-      const list = (msgs.messages?.data || []);
-      const lastFromThem = list.find(m => m.from?.id !== c.selected.id);
-      if (!lastFromThem) continue;
-      const mine = list.find(m => m.from?.id === c.selected.id && new Date(m.created_time) > new Date(lastFromThem.created_time));
-      items.push({ media: 'dm', extId: 'dm:' + cvs.id, extName: other.id, conversationId: cvs.id,
-        author: '@' + (other.username || 'instagram'), rating: null, createTime: lastFromThem.created_time, text: lastFromThem.message || '', reply: mine?.message || '' });
+    const seen = new Set();
+    const diag = { folders: {} }; // TODO: 原因が分かったら削除する
+    // 「メイン」以外に「リクエスト」フォルダにも未承認のDMが届くため、両方を確認する
+    for (const folder of ['inbox', 'pending']) {
+      let conv;
+      try { conv = await json(await d.fetch(`${GRAPH}/${c.selected.pageId}/conversations?platform=instagram&folder=${folder}&fields=participants&limit=50&access_token=${tk}`)); }
+      catch (e) { diag.folders[folder] = { error: e.message }; continue; } // このfolderが使えない場合はスキップ（他のfolderは続行）
+      diag.folders[folder] = { count: (conv.data || []).length };
+      for (const cvs of conv.data || []) {
+        if (seen.has(cvs.id)) continue;
+        seen.add(cvs.id);
+        const other = (cvs.participants?.data || []).find(p => p.id !== c.selected.id);
+        if (!other) continue;
+        const msgs = await json(await d.fetch(`${GRAPH}/${cvs.id}?fields=messages.limit(20){id,message,from,created_time}&access_token=${tk}`));
+        const list = (msgs.messages?.data || []);
+        const lastFromThem = list.find(m => m.from?.id !== c.selected.id);
+        if (!lastFromThem) continue;
+        const mine = list.find(m => m.from?.id === c.selected.id && new Date(m.created_time) > new Date(lastFromThem.created_time));
+        items.push({ media: 'dm', extId: 'dm:' + cvs.id, extName: other.id, conversationId: cvs.id,
+          author: '@' + (other.username || 'instagram'), rating: null, createTime: lastFromThem.created_time, text: lastFromThem.message || '', reply: mine?.message || '' });
+      }
     }
+    console.error('[診断用ログ] /api/dms', JSON.stringify(diag)); // TODO: 原因が分かったら削除する
     res.json({ items });
   }));
   app.post('/api/dm-reply', auth, wrap(async (req, res) => {
