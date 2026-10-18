@@ -108,6 +108,7 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .chip{border:1px solid var(--line);background:var(--surface2);color:var(--ink);border-radius:999px;padding:4px 10px;font-size:12px}
 .chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
 .list{display:flex;flex-direction:column;max-height:680px;overflow:auto}
+.group-head{position:sticky;top:0;z-index:1;padding:6px 14px;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface2);border-bottom:1px solid var(--line)}
 .item{display:grid;grid-template-columns:4px 1fr;gap:12px;padding:12px 14px 12px 0;border-bottom:1px solid var(--line);background:none;border-left:none;border-right:none;border-top:none;text-align:left;color:inherit;width:100%}
 .item:hover{background:var(--surface2)}
 .item[aria-current="true"]{background:var(--accent-soft);box-shadow:inset 3px 0 0 var(--ink)}
@@ -257,6 +258,10 @@ textarea{width:100%;min-height:200px;border:1px solid var(--line);border-radius:
   <div class="main">
     <aside class="panel">
       <div class="filters" id="filters" role="group" aria-label="絞り込み"></div>
+      <div class="filters" style="align-items:center">
+        <span class="meta" style="margin-right:2px">表示：</span>
+        <div class="filters" id="groupBy" role="group" aria-label="日付でグループ化" style="padding:0;border:none"></div>
+      </div>
       <div class="filters">
         <input type="search" id="searchBox" placeholder="投稿者名で検索" aria-label="投稿者名で検索" style="flex:1;min-width:0;font:inherit;padding:8px 12px;border:1px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink)">
       </div>
@@ -401,6 +406,28 @@ function renderFilters(){
 }
 // 口コミがあった日の新しい順に並べる（日付が分からないものは末尾へ）
 function visible(){ return reviews.filter(r=> (mf==='all'||inMediaGroup(r,mf)) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
+// 一覧を日別・月別・年別の見出しで区切って表示する機能（件数が増えても把握しやすくするため）
+const GROUPBY_KEY='rd-groupby';
+const GROUPBY_LABEL={none:'グループ化なし', day:'日別', month:'月別', year:'年別'};
+let groupBy='none';
+try{ groupBy=localStorage.getItem(GROUPBY_KEY)||'none'; }catch(e){}
+function groupKeyOf(r, mode){
+  if(mode==='none') return null;
+  if(!r.ts) return '日付不明';
+  const d=new Date(r.ts);
+  if(mode==='year') return `${d.getFullYear()}年`;
+  if(mode==='month') return `${d.getFullYear()}年${d.getMonth()+1}月`;
+  return `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+}
+function renderGroupBy(){
+  $('groupBy').innerHTML = Object.keys(GROUPBY_LABEL).map(k=>`<button class="chip" type="button" data-g="${k}" aria-pressed="${groupBy===k}">${GROUPBY_LABEL[k]}</button>`).join('');
+}
+$('groupBy').addEventListener('click', e=>{
+  const b=e.target.closest('[data-g]'); if(!b) return;
+  groupBy=b.dataset.g;
+  try{ localStorage.setItem(GROUPBY_KEY, groupBy); }catch(e){}
+  renderGroupBy(); renderList();
+});
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
@@ -425,8 +452,12 @@ function renderList(){
   const v=visible();
   $('countLabel').innerHTML = mf==='all' ? `全媒体：${v.length}件` : `${MEDIA[mf].label}：${v.length}件　<button type="button" class="clear" id="clearMf">全媒体を表示</button>`;
   $('clearMf')?.addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
-  $('list').innerHTML = v.length? v.map(r=>`
-    <button class="item" type="button" data-id="${r.id}" aria-current="${r.id===selectedId}">
+  let lastGroupKey;
+  $('list').innerHTML = v.length? v.map(r=>{
+    const key=groupKeyOf(r, groupBy);
+    const head = (groupBy!=='none' && key!==lastGroupKey) ? `<div class="group-head">${esc(key)}</div>` : '';
+    lastGroupKey=key;
+    return `${head}<button class="item" type="button" data-id="${r.id}" aria-current="${r.id===selectedId}">
       <span class="stripe" style="background:${isLow(r)&&r.status!=='sent'?'var(--warn)':'transparent'}"></span>
       <span class="body">
         <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${langBadge(r)}<span style="flex:1"></span>${statusHtml(r.status)}</span>
@@ -434,7 +465,8 @@ function renderList(){
         ${r.ja?`<span class="excerpt-ja">訳：${esc(r.ja)}</span>`:''}
         <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
       </span>
-    </button>`).join('') : (reviews.length ? '<div class="empty">該当する口コミはありません</div>'
+    </button>`;
+  }).join('') : (reviews.length ? '<div class="empty">該当する口コミはありません</div>'
       : '<div class="empty">まだ口コミがありません。<br>口コミ返信アシスタント（拡張機能）を入れたこのChromeで開くと食べログ・トリップアドバイザーの口コミが、歯車の「API接続設定」でGoogle・Instagramを連携するとその口コミが表示されます。</div>');
 }
 function renderDetail(){
@@ -492,7 +524,7 @@ function renderDetail(){
   $('cancelFilledBtn')?.addEventListener('click',()=>{ r.status='draft'; r.log.push(`${now()}　「送信待ち」を取り消し、文面を直せるようにした`); toast('取り消しました。文面を直してください'); renderAll(); });
   $('undoSentBtn')?.addEventListener('click',()=>{ r.status='filled'; r.log.push(`${now()}　「返信済み」を取り消し（${m.label}でまだ送信していない場合はご注意ください）`); toast('「送信待ち」に戻しました'); renderAll(); });
 }
-function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
+function renderAll(){ renderFilters(); renderGroupBy(); renderStats(); renderList(); renderDetail(); }
 
 /** 修正指示欄の入力値（表示中の口コミのときだけ画面から読む） */
 function readInstr(r){ const b=$('instrBox'); return (r && r.id===selectedId && b) ? b.value.trim() : (r?.instr||'').trim(); }
