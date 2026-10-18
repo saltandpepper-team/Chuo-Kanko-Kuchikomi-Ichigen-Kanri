@@ -912,7 +912,13 @@ async function fetchNew(silent){
 }
 /** APIから取得した口コミを一覧に追加（同じ口コミは二重に追加しない） */
 function addFetched(store, x){
-  if(ALL.some(a=>a.extId===x.extId)) return false;
+  const ex=ALL.find(a=>a.extId===x.extId);
+  if(ex){
+    // Google・Instagramの管理画面で直接返信された場合、アプリ側にも返信済みを反映する
+    // （反映しないと「未対応」のまま残り、「承認して送信」で既存の返信を上書き・二重投稿してしまう）
+    if(x.reply && ex.status!=='sent'){ ex.status='sent'; ex.reply=x.reply; ex.log.push(`${now()}　${MEDIA[ex.media].label}で返信済みを確認`); }
+    return false;
+  }
   const id=Math.max(0,...ALL.map(r=>r.id))+1;
   const r={...x,id,store,reply:x.reply||'',status:x.reply?'sent':'new',log:[x.logLine||`${now()}　${API_NAME[x.media]} から取得`]};
   delete r.logLine;
