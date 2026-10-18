@@ -136,15 +136,16 @@ async function checkTabelogAllPages() {
   await updateBadge();
   return { ok: true, total: total || all.length, unreplied: all.filter(r => !r.replied).length, note };
 }
-async function runCheck() {
+async function runCheck(opts = {}) {
   if (running) return { ok: false, error: '確認中です' };
   running = true;
   try {
     await closeLeftoverTabs();
     const s = await getSettings();
+    const full = !!opts.full; // true のときは「既知の口コミに追いついたら打ち切る」最適化をせず、必ず全ページ辿り直す（手動確認・誤って消えた分の復元用）
     const targets = [{ kind: 'tabelog', label: '食べログ', run: checkTabelogAllPages }];
     for (const [store, id] of Object.entries(s.taLocations)) {
-      if (String(id || '').trim()) targets.push({ kind: 'tripadvisor', store, url: TA_URL(String(id).trim()), label: `トリップアドバイザー（${store}）` });
+      if (String(id || '').trim()) targets.push({ kind: 'tripadvisor', store, url: TA_URL(String(id).trim()), label: `トリップアドバイザー（${store}）`, full });
     }
     await setStatus({ lastCheckStartedAt: Date.now() });
     const lines = [], errors = [];
@@ -289,14 +290,18 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     if (msg.type === 'pageMode') {
       if (isCheck && check.kind === 'tripadvisor') {
         // 裏での定期確認：保存済み（＝もう知っている）口コミのキーを渡し、
-        // ページ送りの打ち切り判定に使う（collectAllPages 参照）
-        const { reviews = {} } = await chrome.storage.local.get('reviews');
-        const knownKeys = Object.keys(reviews).filter(k => reviews[k].media === 'tripadvisor' && reviews[k].store === check.store);
+        // ページ送りの打ち切り判定に使う（collectAllPages 参照）。
+        // ただし手動確認（full）のときは、誤って消えた分を復元できるよう常に全ページ辿り直す
+        let knownKeys = [];
+        if (!check.full) {
+          const { reviews = {} } = await chrome.storage.local.get('reviews');
+          knownKeys = Object.keys(reviews).filter(k => reviews[k].media === 'tripadvisor' && reviews[k].store === check.store);
+        }
         return sendResponse({ mode: 'check', knownKeys });
       }
       return sendResponse({ mode: isCheck ? 'check' : 'assist' });
     }
-    if (msg.type === 'checkNow') return sendResponse(await runCheck());
+    if (msg.type === 'checkNow') return sendResponse(await runCheck({ full: true })); // 手動確認は必ず全ページ辿り直す（打ち切り最適化は裏の定期確認だけで使う）
     if (msg.type === 'appPage') {
       if (msg.frames) await setStatus({ claudeFrames: { at: Date.now(), url: String(msg.url || '').slice(0, 200), frames: msg.frames.slice(0, 20) } });
       if (msg.isApp || /kuchikomi|%E5%8F%A3%E3%82%B3%E3%83%9F|口コミ/i.test(msg.url || '')) await setStatus({ appSeenAt: Date.now(), appUrl: String(msg.url || ''), appOk: !!msg.isApp });
