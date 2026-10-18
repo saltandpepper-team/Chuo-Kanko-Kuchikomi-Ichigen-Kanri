@@ -277,7 +277,16 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
       msg.reviews.forEach(r => { if (drafts[r.key]) out[r.key] = drafts[r.key].reply; });
       return sendResponse({ drafts: out, error });
     }
-    if (msg.type === 'pageMode') return sendResponse({ mode: isCheck ? 'check' : 'assist' });
+    if (msg.type === 'pageMode') {
+      if (isCheck && check.kind === 'tripadvisor') {
+        // 裏での定期確認：保存済み（＝もう知っている）口コミのキーを渡し、
+        // ページ送りの打ち切り判定に使う（collectAllPages 参照）
+        const { reviews = {} } = await chrome.storage.local.get('reviews');
+        const knownKeys = Object.keys(reviews).filter(k => reviews[k].media === 'tripadvisor' && reviews[k].store === check.store);
+        return sendResponse({ mode: 'check', knownKeys });
+      }
+      return sendResponse({ mode: isCheck ? 'check' : 'assist' });
+    }
     if (msg.type === 'checkNow') return sendResponse(await runCheck());
     if (msg.type === 'appPage') {
       if (msg.frames) await setStatus({ claudeFrames: { at: Date.now(), url: String(msg.url || '').slice(0, 200), frames: msg.frames.slice(0, 20) } });

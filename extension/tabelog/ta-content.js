@@ -167,8 +167,12 @@
     const after = siblings.slice(siblings.indexOf(last) + 1).find(el => el.matches('button,a') && visible(el) && !/^\d+$/.test((el.innerText || '').trim()));
     return after || null;
   }
-  /** 裏での定期確認のときだけ、ページ送りしながら口コミを集める（担当者が見ている画面は邪魔しない） */
-  async function collectAllPages() {
+  /** 裏での定期確認のときだけ、ページ送りしながら口コミを集める（担当者が見ている画面は邪魔しない）
+   * knownKeys：前回までに保存済み（＝もう知っている）口コミのキー。
+   * あるページの口コミが全部「知っている口コミ」だったら、それより後ろ（古い）ページには新着が無いとみなして打ち切る
+   * （新着が一度に大量に来た場合はその分だけ自動で先まで読みに行くので取りこぼさない。保存が何もない初回は今まで通り全ページ読む） */
+  async function collectAllPages(knownKeys) {
+    const known = new Set(knownKeys || []);
     const seen = new Set(); const all = [];
     let expandBudget = 40; // 全文を開いて読みに行くのは、ページをまたいでも合計40件まで（時間がかかりすぎないように）
     let pagesWalked = 0, stopReason = 'maxPages';
@@ -186,7 +190,15 @@
         if (!expand(x.card)) continue;
         for (let k = 0; k < 10; k++) { await sleep(300); const y = read().find(i => i.review.key === key); if (y && y.card.querySelector('textarea')) { full[key] = y.review.text; break; } }
       }
-      for (const x of read()) { if (!seen.has(x.review.key)) { seen.add(x.review.key); all.push({ ...x.review, text: full[x.review.key] || x.review.text }); } }
+      let pageHasNew = false;
+      for (const x of read()) {
+        if (!seen.has(x.review.key)) {
+          seen.add(x.review.key);
+          all.push({ ...x.review, text: full[x.review.key] || x.review.text });
+          if (!known.has(x.review.key)) pageHasNew = true;
+        }
+      }
+      if (known.size && !pageHasNew) { stopReason = 'allKnown'; break; }
       const next = findNextPageButton();
       if (!next) { stopReason = 'noNextButton'; break; }
       next.click();
@@ -212,11 +224,13 @@
       send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews: [], note: '口コミが見つかりませんでした' });
       return;
     }
-    mode = (await send({ type: 'pageMode' })).mode;
+    const pm = await send({ type: 'pageMode' });
+    mode = pm.mode;
     if (mode === 'check') {
-      // 裏での定期確認：1〜6などの番号でページ送りする一覧なので、ページを進めながら全ページ分集める
+      // 裏での定期確認：1〜6などの番号でページ送りする一覧なので、ページを進めながら集める
       // （トリップアドバイザーは口コミを開くと他が閉じるため、未返信の口コミはページごとに1件ずつ開いて全文を読む）
-      const { all: reviews, pagesWalked, stopReason } = await collectAllPages();
+      // 保存済みの口コミ（knownKeys）に追いついたら打ち切るため、新着が少ない通常時はほぼ1ページ目だけで終わる
+      const { all: reviews, pagesWalked, stopReason } = await collectAllPages(pm.knownKeys);
       await send({ type: 'pageData', media: 'tripadvisor', locationId, pageUrl: location.href, reviews, diag: { ...diag(), pagesCollected: reviews.length, pagesWalked, stopReason } });
       return;
     }
