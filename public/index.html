@@ -444,9 +444,9 @@ function renderDetail(){
   const langNote = r.lang&&r.lang!=='ja' ? `<span class="pill lang-pill">${LANG[r.lang]}の口コミ → ${LANG[r.lang]}で返信</span>` : '';
   const route = m.auto ? `承認すると ${m.api} で自動送信します` : `承認するとAIが${m.label}の管理画面を操作し、返信欄に入力します。送信ボタンは担当者が押します`;
   let actions='', instr='';
-  if(r.status==='sent'){ actions='<span class="pill s-sent">返信済み</span>'; }
-  else if(r.status==='filled' && EXT_MEDIA.includes(r.media) && r.extId){ actions=`<button class="btn" type="button" id="tbCopyBtn">もう一度コピーして管理画面を開く</button><button class="btn primary" type="button" id="tbDoneBtn">${m.label}で送信した（返信済みにする）</button>`; }
-  else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button>`; }
+  if(r.status==='sent'){ actions=`<span class="pill s-sent">返信済み</span><button class="btn" type="button" id="undoSentBtn">取り消す（送信待ちに戻す）</button>`; }
+  else if(r.status==='filled' && EXT_MEDIA.includes(r.media) && r.extId){ actions=`<button class="btn" type="button" id="tbCopyBtn">もう一度コピーして管理画面を開く</button><button class="btn primary" type="button" id="tbDoneBtn">${m.label}で送信した（返信済みにする）</button><button class="btn" type="button" id="cancelFilledBtn">取り消す（文面を直す）</button>`; }
+  else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button><button class="btn" type="button" id="cancelFilledBtn">取り消す（文面を直す）</button>`; }
   else {
     instr=`<div class="instr"><label for="instrBox">修正指示・希望のニュアンス（任意）</label><input type="text" id="instrBox" value="${esc(r.instr||'')}" placeholder="例：もっと短く / 感謝を強調 / 駐車場の案内を補足" ${r.drafting?'disabled':''}></div>`;
     actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'指示を入れて書き直す':'AIで下書き'}</button>
@@ -489,6 +489,8 @@ function renderDetail(){
   $('reopenBtn')?.addEventListener('click',()=>openBrowser(r,true));
   $('tbCopyBtn')?.addEventListener('click',()=>copyAndOpenOwner(r));
   $('tbDoneBtn')?.addEventListener('click',()=>{ r.status='sent'; r.log.push(`${now()}　担当者が${m.label}で返信を送信（返信済みに変更）`); toast('返信済みにしました'); renderAll(); });
+  $('cancelFilledBtn')?.addEventListener('click',()=>{ r.status='draft'; r.log.push(`${now()}　「送信待ち」を取り消し、文面を直せるようにした`); toast('取り消しました。文面を直してください'); renderAll(); });
+  $('undoSentBtn')?.addEventListener('click',()=>{ r.status='filled'; r.log.push(`${now()}　「返信済み」を取り消し（${m.label}でまだ送信していない場合はご注意ください）`); toast('「送信待ち」に戻しました'); renderAll(); });
 }
 function renderAll(){ renderFilters(); renderStats(); renderList(); renderDetail(); }
 
