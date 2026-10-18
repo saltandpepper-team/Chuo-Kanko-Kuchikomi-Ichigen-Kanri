@@ -124,7 +124,7 @@ async function checkTabelogAllPages() {
     if (!r.ok) { note = `${page}ページ目以降を確認できませんでした（${r.error}）`; break; }
     for (const rv of r.reviews) { if (!seen.has(rv.key)) { seen.add(rv.key); all.push(rv); } }
   }
-  await rememberReviews(all, store, 'tabelog', pageUrl);
+  await rememberReviews(all, store, 'tabelog', pageUrl, !note); // 途中のページでエラーになった場合は、全部は辿れていないので削除判定はしない
   const { notified } = await getState();
   const fresh = all.filter(r => !r.replied && !notified[r.key]);
   if (fresh.length) {
@@ -178,13 +178,18 @@ function roughDateTs(dateStr, now) {
   return d.getTime();
 }
 // ---- アプリ（口コミ一元管理）に渡すため、読み取った口コミを保存 ----
-async function rememberReviews(list, store, media, pageUrl) {
+// complete：list が「新しい順に、本当に最後まで（または既存データに追いつくまで）辿り切った」結果かどうか。
+// 1ページ分だけ・ページ送りを打ち切った・途中でエラーになったなど、一部しか集められていないときは false にすること
+// （false の間違いは「削除漏れ」で済むが、true の間違いは下の削除処理で無関係な古い口コミを大量に消してしまう）
+async function rememberReviews(list, store, media, pageUrl, complete = true) {
   const { reviews = {} } = await chrome.storage.local.get('reviews');
   const t = Date.now();
   list.forEach(r => { const prev = reviews[r.key]; reviews[r.key] = { key: r.key, media, store, author: r.author, rating: r.rating, text: prev && (prev.text || '').length > (r.text || '').length ? prev.text : r.text, title: r.title || '', date: r.date || '', ts: r.ts || prev?.ts || null, replied: !!r.replied, reply: r.reply || '', replyEntryId: r.replyEntryId || prev?.replyEntryId || null, pageUrl: pageUrl || '', seenAt: t, firstSeenAt: reviews[r.key]?.firstSeenAt || t }; });
   // この媒体・店舗の今回の一覧にない口コミのうち、一覧の中で一番古い口コミより新しいもの（＝本来なら表示されているはず）は、
   // 食べログ・トリップアドバイザー側で削除されたとみなしてアプリ側からも消す（ページをまたいで見えないだけの古い口コミは残す）
-  if (list.length) {
+  // ※ complete（辿り切った）ときだけ行う。一部のページしか見ていないときにやると、単に今回取得しなかっただけの
+  // 口コミまで「削除された」と誤判定して消してしまう
+  if (list.length && complete) {
     const tsList = list.map(r => roughDateTs(r.date, new Date())).filter(x => x !== null);
     if (tsList.length) {
       const oldestTs = Math.min(...tsList);
@@ -251,7 +256,11 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
         check.done({ ok: true, store, pageUrl: msg.pageUrl, total: msg.total, pageSize: msg.pageSize, reviews: msg.reviews });
         return;
       }
-      await rememberReviews(msg.reviews, store, media, msg.pageUrl);
+      // トリップアドバイザーの裏確認で「既知の口コミに追いついた／最後のページまで辿り切った」場合だけ、
+      // 本当に新しい順に最後まで見たと言えるので削除判定をしてよい。担当者が見ている1ページだけの一覧（assist）や、
+      // ページ数の上限で打ち切った場合は一部しか見ていないので、削除判定はしない（取りこぼしを「削除された」と誤判定するため）
+      const complete = isCheck && media === 'tripadvisor' && ['noNextButton', 'pageDidNotChange'].includes(msg.diag?.stopReason);
+      await rememberReviews(msg.reviews, store, media, msg.pageUrl, complete);
       if (isCheck) {
         const { notified } = await getState();
         const fresh = msg.reviews.filter(r => !r.replied && !notified[r.key]);
