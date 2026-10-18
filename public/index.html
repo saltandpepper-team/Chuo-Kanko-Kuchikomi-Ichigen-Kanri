@@ -458,7 +458,7 @@ function renderDetail(){
       <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
       <p>${esc(r.text)}</p>
       ${r.ja?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${esc(r.ja)}</div>`
-        :(r.lang&&r.lang!=='ja'?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${aiGaveUp||aiFailed?'AIが使えないため翻訳できませんでした':'翻訳しています…'}</div>`:'')}
+        :(r.lang&&r.lang!=='ja'&&r.status!=='sent'?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${aiGaveUp||aiFailed?'AIが使えないため翻訳できませんでした':'翻訳しています…'}</div>`:'')}
     </div>
     <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
     <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
@@ -1042,7 +1042,7 @@ function restoreAI(r){
 const aiQueue=[]; let aiRunning=false, aiGaveUp=false, aiFailed=false;
 const isFallback = r => r.status==='draft' && !!r.fallback && r.reply===r.fallback;
 const needsDraft = r => (r.status==='new' && !r.reply.trim()) || isFallback(r);
-const needsAI = r => needsDraft(r) || (r.lang!=='ja' && !r.ja);
+const needsAI = r => needsDraft(r) || (r.status!=='sent' && r.lang!=='ja' && !r.ja);
 function kickAI(){
   if(!sample) return;
   ALL.forEach(r=>{ if(needsAI(r) && !aiQueue.includes(r)) aiQueue.push(r); });
