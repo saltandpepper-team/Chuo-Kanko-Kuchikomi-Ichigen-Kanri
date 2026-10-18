@@ -924,6 +924,9 @@ function addFetched(store, x){
   const id=Math.max(0,...ALL.map(r=>r.id))+1;
   const r={...x,id,store,reply:x.reply||'',status:x.reply?'sent':'new',log:[x.logLine||`${now()}　${API_NAME[x.media]} から取得`]};
   delete r.logLine;
+  // コメント本文が無い（星評価のみ・スタンプ/画像だけのDMなど）ものは、AIが見当違いの長文を作ってしまうため
+  // 自動で対応済みにし、AIの下書き作成の対象にしない
+  if(x.noText && r.status==='new'){ r.status='sent'; r.log.push(`${now()}　コメントが無いため自動で対応済みにしました`); }
   restoreAI(r);
   ALL.unshift(r);
   if(r.status==='new' && store===currentStore) notify(r);
@@ -1283,7 +1286,7 @@ async function call(path, body){
 }
 async function refreshStatus(){ beStatus=(await call('/api/status')).stores||{}; }
 if(BACKEND){
-  const map=x=>({...x, date:fmtDate(x.createTime), ts:x.createTime?+new Date(x.createTime):null, lang:guessLang(x.text), text:x.text||'（コメントなし・評価のみ）'});
+  const map=x=>({...x, date:fmtDate(x.createTime), ts:x.createTime?+new Date(x.createTime):null, lang:guessLang(x.text), noText:!x.text, text:x.text||(x.media==='google'?'（コメントなし・評価のみ）':'（コメントなし）')});
   const q=(m,st)=>`/api/reviews?media=${m}&store=${encodeURIComponent(st)}`;
   API.fetchGoogle=async store=>(await call(q('google',store))).items.map(map);
   API.fetchInstagram=async store=>(await call(q('instagram',store))).items.map(map);
