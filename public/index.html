@@ -1305,6 +1305,9 @@ if(BACKEND){
     }catch(e){}
   }
   setInterval(pollInbox, 20000);
+  // GoogleビジネスプロフィールにはWebhookが無く、新着を知らせてくれないため、
+  // 数分おきに直接確認しに行く（APIの呼び出し回数を抑えるため、Instagramより間隔を空ける）
+  setInterval(()=>{ if(beLoggedIn && currentStore && apiReady(currentStore,'google')) fetchNew(true); }, 180000);
 }
 const BE_LABEL={google:'Googleビジネスプロフィール', instagram:'Instagram（Facebookページ経由）'};
 function renderApiModalBackend(){
