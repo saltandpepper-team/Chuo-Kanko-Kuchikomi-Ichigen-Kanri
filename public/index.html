@@ -450,6 +450,8 @@ function renderStats(){
 }
 function renderList(){
   const v=visible();
+  // 絞り込みを切り替えて、選択中の口コミが一覧から外れたら選び直す（右の詳細が一覧に無い口コミのままにならないように）
+  if(!v.some(r=>r.id===selectedId)){ selectedId=v[0]?.id ?? null; renderDetail(); autoDraft(); }
   $('countLabel').innerHTML = mf==='all' ? `全媒体：${v.length}件` : `${MEDIA[mf].label}：${v.length}件　<button type="button" class="clear" id="clearMf">全媒体を表示</button>`;
   $('clearMf')?.addEventListener('click',()=>{ mf='all'; sf='all'; renderFilters(); renderStats(); renderList(); });
   let lastGroupKey;
