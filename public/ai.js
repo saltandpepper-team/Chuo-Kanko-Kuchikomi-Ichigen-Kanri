@@ -32,7 +32,7 @@ const busy = (e) => /high demand|overloaded|UNAVAILABLE|\b50[03]\b|try again lat
 async function generate(prompt, opts = {}) {
   let lastError;
   for (let i = modelIndex; i < MODELS.length; i++) {
-    const model = getGenerativeModel(ai, { model: MODELS[i], generationConfig: { temperature: 0.7 } });
+    const model = getGenerativeModel(ai, { model: MODELS[i], generationConfig: { temperature: 0.7, maxOutputTokens: 2048 } });
     try {
       const result = await model.generateContentStream(prompt);
       let text = "";
