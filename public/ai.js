@@ -23,8 +23,9 @@ const app = initializeApp(firebaseConfig, "ai");
 if (RECAPTCHA_SITE_KEY) initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 
-// 先頭から順に試す。提供終了などで使えないモデルは以後使わず、混雑で失敗したときはその回だけ次のモデルで試す
-const MODELS = ["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash"];
+// 先頭から順に試す。費用を抑えるため、一番安いFlash-Liteを最初に試し、使えない（提供終了・未提供）場合は
+// 通常のFlashにフォールバックする。混雑で失敗したときはその回だけ次のモデルで試す
+const MODELS = ["gemini-3.1-flash-lite", "gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.8-flash"];
 let modelIndex = 0;
 const unavailable = (e) => /not found|404|not supported|is not available|no longer available|unknown model/i.test(String(e?.message || e));
 const busy = (e) => /high demand|overloaded|UNAVAILABLE|\b50[03]\b|try again later/i.test(String(e?.message || e));
