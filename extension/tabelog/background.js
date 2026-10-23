@@ -8,6 +8,8 @@ const TB_REPLY_URL = 'https://owner.tabelog.com/owner_rst/reply_top';
 const tbUrl = page => `${TB_REPLY_URL}/?srt=update&sby=desc&PG=${page}&smp=&lc=2`;
 /** 食べログはこれより前の口コミをアプリ内に不要とのことなので、保存済みの分も含めて消す（parser.js の TB_CUTOFF と合わせる） */
 const TB_CUTOFF_TS = new Date(2026, 9, 1).getTime();
+/** トリップアドバイザーは2026年以降の口コミだけ扱う（ta-content.js の TA_CUTOFF と合わせる） */
+const TA_CUTOFF_TS = new Date(2026, 0, 1).getTime();
 const TA_URL = id => `https://www.tripadvisor.jp/reviews?locationId=${encodeURIComponent(id)}&screen=allreviews`;
 const MEDIA_LABEL = { tabelog: '食べログ', tripadvisor: 'トリップアドバイザー' };
 const APP_URL = 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/';
@@ -216,6 +218,15 @@ async function rememberReviews(list, store, media, pageUrl, complete = true) {
       if (rv.media !== 'tabelog') return;
       const ts = rv.ts || roughDateTs(rv.date, new Date());
       if (ts !== null && ts < TB_CUTOFF_TS) delete reviews[k];
+    });
+  }
+  // トリップアドバイザー：2026年より前の口コミは（足切り導入前に保存済みの分も含めて）アプリ内に表示しない
+  if (media === 'tripadvisor') {
+    Object.keys(reviews).forEach(k => {
+      const rv = reviews[k];
+      if (rv.media !== 'tripadvisor') return;
+      const ts = rv.ts || roughDateTs(rv.date, new Date());
+      if (ts !== null && ts < TA_CUTOFF_TS) delete reviews[k];
     });
   }
   // 古いものから削除して最大400件に保つ
