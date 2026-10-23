@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "口コミ返信アシスタント（食べログ・トリップアドバイザー）",
-  "version": "1.4.0",
+  "version": "1.4.1",
   "description": "食べログ・トリップアドバイザーの新着口コミを確認して口コミ一元管理アプリに表示し、アプリのAIが作った返信文を返信欄に入力します。送信ボタンは担当者が押します。",
   "permissions": [
     "storage",
@@ -13,10 +13,7 @@
     "https://www.tripadvisor.jp/*",
     "https://www.tripadvisor.com/*",
     "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
-    "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
-    "https://claude.ai/*",
-    "https://*.claudeusercontent.com/*",
-    "file:///*"
+    "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -45,20 +42,7 @@
     {
       "matches": [
         "https://chuo-kanko-kuchikomi-ichigen-kanri.web.app/*",
-        "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*",
-        "https://claude.ai/*",
-        "https://*.claudeusercontent.com/*"
-      ],
-      "js": [
-        "app-bridge.js"
-      ],
-      "run_at": "document_idle",
-      "all_frames": true,
-      "match_origin_as_fallback": true
-    },
-    {
-      "matches": [
-        "file:///*"
+        "https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/*"
       ],
       "js": [
         "app-bridge.js"
