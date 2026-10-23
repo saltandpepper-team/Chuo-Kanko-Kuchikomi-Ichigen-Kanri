@@ -11,6 +11,7 @@ const TB_CUTOFF_TS = new Date(2026, 9, 1).getTime();
 const TA_URL = id => `https://www.tripadvisor.jp/reviews?locationId=${encodeURIComponent(id)}&screen=allreviews`;
 const MEDIA_LABEL = { tabelog: '食べログ', tripadvisor: 'トリップアドバイザー' };
 const APP_URL = 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/';
+const APP_ORIGINS = ['https://chuo-kanko-kuchikomi-ichigen-kanri.web.app', 'https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com'];
 const NO_DRAFT = '返信文がまだありません。アプリ（口コミ一元管理）を開くと、AIが返信文を作成します';
 const DEFAULTS = {
   tbId: '', tbPw: '', interval: 30,
@@ -307,11 +308,12 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
     }
     if (msg.type === 'checkNow') return sendResponse(await runCheck({ full: true })); // 手動確認は必ず全ページ辿り直す（打ち切り最適化は裏の定期確認だけで使う）
     if (msg.type === 'appPage') {
-      if (msg.frames) await setStatus({ claudeFrames: { at: Date.now(), url: String(msg.url || '').slice(0, 200), frames: msg.frames.slice(0, 20) } });
+      if (!APP_ORIGINS.includes(sender.origin)) return sendResponse({ ok: false });
       if (msg.isApp || /kuchikomi|%E5%8F%A3%E3%82%B3%E3%83%9F|口コミ/i.test(msg.url || '')) await setStatus({ appSeenAt: Date.now(), appUrl: String(msg.url || ''), appOk: !!msg.isApp });
       return sendResponse({ ok: true });
     }
     if (msg.type === 'appSetDraft') {
+      if (!APP_ORIGINS.includes(sender.origin)) return sendResponse({ ok: false });
       // アプリで承認（編集）した返信文を、各媒体の返信欄に入れる文として保存
       const { drafts = {} } = await chrome.storage.local.get('drafts');
       const reply = String(msg.reply || '').slice(0, 4000);
