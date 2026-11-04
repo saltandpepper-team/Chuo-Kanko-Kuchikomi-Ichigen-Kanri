@@ -7,7 +7,7 @@ import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com
 
 // Firebase App Check（第三者にAIを使われないための仕組み）で使う reCAPTCHA v3 のサイトキー。
 // Firebase コンソールの App Check でこのアプリを登録したときのサイトキーを入れる（空なら App Check を使わない）
-const RECAPTCHA_SITE_KEY = "";
+const RECAPTCHA_SITE_KEY = "6LeLbA8uAAAAAB_eobnq56MCkQ2YfxogMsiGCS3d";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_MPoBkHVdPDD2jz67iK-BGGsY93g4YuI",
