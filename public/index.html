@@ -989,6 +989,9 @@ function tabelogHello(){ window.postMessage({source:'kuchikomi-app', type:'hello
 function useRealData(){
   if(tbBridge) return;
   tbBridge=true;
+  // アプリを開いて拡張機能との接続が確認できたタイミングで、食べログ・トリップアドバイザーを一度だけ確認する
+  // （以降は拡張機能自身の定期確認の間隔に任せる）
+  window.postMessage({source:'kuchikomi-app', type:'checkNow'}, '*');
   $('tbLink').textContent='口コミ返信アシスタント（拡張機能）：接続済み';
   if(BACKEND) return;
   for(let i=ALL.length-1;i>=0;i--) if(!ALL[i].extId) ALL.splice(i,1);
