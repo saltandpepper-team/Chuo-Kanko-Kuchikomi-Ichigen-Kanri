@@ -931,8 +931,10 @@ $('fetchBtn').addEventListener('click',()=>fetchNew());
 const API_KINDS=['google','instagram','dm'];
 const FETCH_FN={google:'fetchGoogle', instagram:'fetchInstagram', dm:'fetchDm'};
 async function fetchNew(silent){
+  // 拡張機能が繋がっていれば、食べログ・トリップアドバイザーの確認も今すぐ行う（結果は届き次第自動で反映される）
+  if(tbBridge) window.postMessage({source:'kuchikomi-app', type:'checkNow'}, '*');
   const store=currentStore, kinds=API_KINDS.filter(m=>apiReady(store,m));
-  if(!kinds.length){ if(!silent) toast(NO_KEY_MSG); return; }
+  if(!kinds.length){ if(!silent && !tbBridge) toast(NO_KEY_MSG); return; }
   const btn=$('fetchBtn'); btn.disabled=true; btn.textContent='取得中…';
   let added=0; const fails=[];
   for(const m of kinds){
