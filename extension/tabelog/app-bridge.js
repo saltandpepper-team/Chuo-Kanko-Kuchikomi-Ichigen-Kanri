@@ -23,6 +23,10 @@
       if (e.data.type === 'setDraft' && e.data.key) {
         try { chrome.runtime.sendMessage({ type: 'appSetDraft', key: String(e.data.key), reply: String(e.data.reply || ''), focus: !!e.data.focus }); } catch (err) {}
       }
+      // アプリの「新着を取得」を押したときに、食べログ・トリップアドバイザーの確認も今すぐ行う
+      if (e.data.type === 'checkNow') {
+        try { chrome.runtime.sendMessage({ type: 'checkNow' }); } catch (err) {}
+      }
     });
     chrome.storage.onChanged.addListener((c, area) => { if (area === 'local' && (c.reviews || c.drafts)) push(); });
     window.postMessage({ source: 'tabelog-assistant', type: 'ready' }, '*');

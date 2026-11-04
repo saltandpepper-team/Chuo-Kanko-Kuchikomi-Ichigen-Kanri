@@ -14,6 +14,7 @@
   --ta:#00A876; --ta-bg:#34E0A1; --ta-ink:#000000;
   --warn:#C5221F; --warn-soft:#FCE8E6; --ok:#137333; --ok-soft:#E6F4EA; --wait:#8C5A00; --wait-soft:#FEF3D6;
   --draft:#5A4A42; --draft-soft:#F1ECE7;
+  --skip:#6F635C; --skip-soft:#EFEBE7;
   --shadow:0 1px 3px rgba(55,40,34,.12),0 8px 24px rgba(55,40,34,.14);
   font-family:'Noto Sans JP','Hiragino Sans','Yu Gothic',sans-serif;
 }
@@ -127,6 +128,7 @@ button:focus-visible,textarea:focus-visible,select:focus-visible{outline:2px sol
 .s-draft{background:var(--draft-soft);color:var(--draft)}
 .s-filled{background:var(--wait-soft);color:var(--wait)}
 .s-sent{background:var(--ok-soft);color:var(--ok)}
+.s-skip{background:var(--skip-soft);color:var(--skip)}
 .detail{padding:20px;display:flex;flex-direction:column;gap:16px}
 .review-card{background:var(--surface2);border:1px solid var(--line);border-radius:10px;padding:16px;display:flex;flex-direction:column;gap:8px}
 .review-card p{margin:0;max-width:68ch;white-space:pre-wrap}
@@ -334,7 +336,9 @@ const MEDIA = {
   tabelog:{label:'食べログ', auto:false, host:'食べログ 店舗管理画面'},
   tripadvisor:{label:'トリップアドバイザー', auto:false, host:'トリップアドバイザー 管理センター'}
 };
-const STATUS = {new:['未対応','s-new'], draft:['承認待ち','s-draft'], filled:['送信待ち','s-filled'], sent:['返信済み','s-sent']};
+const STATUS = {new:['未対応','s-new'], draft:['承認待ち','s-draft'], filled:['送信待ち','s-filled'], sent:['返信済み','s-sent'], skip:['対応不要','s-skip']};
+/** 返信済み・対応不要はどちらも「もう対応しなくていい」口コミとして扱う */
+const isDone = r => r.status==='sent' || r.status==='skip';
 
 // 口コミは連携（拡張機能：食べログ・トリップアドバイザー／API：Google・Instagram）から届いたものだけを表示する
 const ALL = [];
@@ -401,11 +405,11 @@ function toast(msg){ const t=$('toast'); t.textContent=msg; t.hidden=false; clea
 function inMediaGroup(r,m){ return m==='instagram' ? (r.media==='instagram'||r.media==='dm') : r.media===m; }
 function renderFilters(){
   const base=reviews.filter(r=>mf==='all'||inMediaGroup(r,mf));
-  const opts=[['all','すべて',base.filter(r=>r.status!=='sent').length],...['new','draft','filled','sent'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja'&&r.status!=='sent').length]];
+  const opts=[['all','すべて',base.filter(r=>!isDone(r)).length],...['new','draft','filled','sent','skip'].map(s=>[s,STATUS[s][0],base.filter(r=>r.status===s).length]),['foreign','外国語',base.filter(r=>r.lang&&r.lang!=='ja'&&!isDone(r)).length]];
   $('filters').innerHTML = opts.map(([k,l,n])=>`<button class="chip" type="button" data-f="${k}" aria-pressed="${sf===k}">${l} ${n}</button>`).join('');
 }
 // 口コミがあった日の新しい順に並べる（日付が分からないものは末尾へ）
-function visible(){ return reviews.filter(r=> (mf==='all'||inMediaGroup(r,mf)) && (sf==='all'?r.status!=='sent':(sf==='foreign'?(r.lang&&r.lang!=='ja'&&r.status!=='sent'):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
+function visible(){ return reviews.filter(r=> (mf==='all'||inMediaGroup(r,mf)) && (sf==='all'?!isDone(r):(sf==='foreign'?(r.lang&&r.lang!=='ja'&&!isDone(r)):r.status===sf)) && (!q||(r.author||'').toLowerCase().includes(q))).sort((a,b)=>(b.ts||0)-(a.ts||0)); }
 // 一覧を日別・月別・年別の見出しで区切って表示する機能（件数が増えても把握しやすくするため）
 const GROUPBY_KEY='rd-groupby';
 const GROUPBY_LABEL={none:'グループ化なし', day:'日別', month:'月別', year:'年別'};
@@ -431,16 +435,16 @@ $('groupBy').addEventListener('click', e=>{
 const MCOLOR={google:'var(--g)',instagram:'var(--ig)',dm:'var(--dm)',tabelog:'var(--tb)',tripadvisor:'var(--ta)'};
 const MBG={google:'var(--g-bg)',instagram:'var(--ig-bg)',dm:'var(--dm-bg)',tabelog:'var(--tb-bg)',tripadvisor:'var(--ta-bg)'};
 function renderStats(){
-  const todo=reviews.filter(r=>r.status!=='sent').length;
+  const todo=reviews.filter(r=>!isDone(r)).length;
   const tc=$('totalCard'); tc.setAttribute('aria-pressed', String(mf==='all'));
-  tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${todo}<small>件</small></span><span class="todo">対応が必要（返信済み${reviews.length-todo}件を除く）</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
+  tc.innerHTML=`<span class="lab">${currentStore}の口コミ（全媒体）</span><span class="big">${todo}<small>件</small></span><span class="todo">対応が必要（返信済み・対応不要${reviews.length-todo}件を除く）</span>${mf==='all'?'':'<span class="hint2">押すと全媒体に戻ります</span>'}`;
   // InstagramのコメントとDMは1つの「Instagram」としてまとめて表示する（DM単独のカードは出さない）
   $('mediaCards').innerHTML=Object.keys(MEDIA).filter(m=>m!=='dm').map(m=>{
     const list=reviews.filter(r=>inMediaGroup(r,m));
-    const mTodo=list.filter(r=>r.status!=='sent').length;
+    const mTodo=list.filter(r=>!isDone(r)).length;
     const rated=list.filter(r=>r.rating!=null);
     const avg=rated.length?(rated.reduce((a,r)=>a+r.rating,0)/rated.length).toFixed(1):null;
-    const bd=['new','draft','filled','sent'].map(s=>{const n=list.filter(r=>r.status===s).length;const [t,c]=STATUS[s];return `<span class="pill ${c}${n?'':' zero'}">${t}<b>${n}</b></span>`;}).join('');
+    const bd=['new','draft','filled','sent','skip'].map(s=>{const n=list.filter(r=>r.status===s).length;const [t,c]=STATUS[s];return `<span class="pill ${c}${n?'':' zero'}">${t}<b>${n}</b></span>`;}).join('');
     return `<button type="button" class="mcard" data-f="${m}" aria-pressed="${mf===m}" style="--c:${MCOLOR[m]};--cbg:${MBG[m]}">
       <span class="name">${MEDIA[m].label}</span>
       <span class="count">${mTodo}<small>件</small></span>
@@ -460,7 +464,7 @@ function renderList(){
     const head = (groupBy!=='none' && key!==lastGroupKey) ? `<div class="group-head">${esc(key)}</div>` : '';
     lastGroupKey=key;
     return `${head}<button class="item" type="button" data-id="${r.id}" aria-current="${r.id===selectedId}">
-      <span class="stripe" style="background:${isLow(r)&&r.status!=='sent'?'var(--warn)':'transparent'}"></span>
+      <span class="stripe" style="background:${isLow(r)&&!isDone(r)?'var(--warn)':'transparent'}"></span>
       <span class="body">
         <span class="row">${mediaHtml(r.media)}${starsHtml(r.rating)}${langBadge(r)}<span style="flex:1"></span>${statusHtml(r.status)}</span>
         <span class="excerpt">${esc(r.text)}</span>
@@ -479,12 +483,14 @@ function renderDetail(){
   const route = m.auto ? `承認すると ${m.api} で自動送信します` : `承認するとAIが${m.label}の管理画面を操作し、返信欄に入力します。送信ボタンは担当者が押します`;
   let actions='', instr='';
   if(r.status==='sent'){ actions=`<span class="pill s-sent">返信済み</span><button class="btn" type="button" id="undoSentBtn">取り消す（送信待ちに戻す）</button>`; }
+  else if(r.status==='skip'){ actions=`<span class="pill s-skip">対応不要</span><button class="btn" type="button" id="undoSkipBtn">取り消す（未対応に戻す）</button>`; }
   else if(r.status==='filled' && EXT_MEDIA.includes(r.media) && r.extId){ actions=`<button class="btn" type="button" id="tbCopyBtn">もう一度コピーして管理画面を開く</button><button class="btn primary" type="button" id="tbDoneBtn">${m.label}で送信した（返信済みにする）</button><button class="btn" type="button" id="cancelFilledBtn">取り消す（文面を直す）</button>`; }
   else if(r.status==='filled'){ actions=`<button class="btn primary" type="button" id="reopenBtn">管理画面を開いて送信する</button><button class="btn" type="button" id="cancelFilledBtn">取り消す（文面を直す）</button>`; }
   else {
     instr=`<div class="instr"><label for="instrBox">修正指示・希望のニュアンス（任意）</label><input type="text" id="instrBox" value="${esc(r.instr||'')}" placeholder="例：もっと短く / 感謝を強調 / 駐車場の案内を補足" ${r.drafting?'disabled':''}></div>`;
     actions=`<button class="btn" type="button" id="draftBtn" ${r.drafting?'disabled':''}>${r.reply?'指示を入れて書き直す':'AIで下書き'}</button>
-      <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>`;
+      <button class="btn primary" type="button" id="approveBtn" ${r.reply.trim()&&!r.drafting?'':'disabled'}>${m.auto?'承認して送信':'承認して自動入力'}</button>
+      <button class="btn" type="button" id="skipBtn" ${r.drafting?'disabled':''}>返信不要にする</button>`;
   }
   $('detail').innerHTML = `
     <div class="row" id="detailStatusRow">${mediaHtml(r.media)}${starsHtml(r.rating)}${statusHtml(r.status)}${langNote}</div>
@@ -492,14 +498,14 @@ function renderDetail(){
       <span class="meta">${esc(r.author)}・${r.store}・${r.date}</span>
       <p>${esc(r.text)}</p>
       ${r.ja?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${esc(r.ja)}</div>`
-        :(r.lang&&r.lang!=='ja'&&r.status!=='sent'?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${aiGaveUp||aiFailed?'AIが使えないため翻訳できませんでした':'翻訳しています…'}</div>`:'')}
+        :(r.lang&&r.lang!=='ja'&&!isDone(r)?`<div class="ja-trans"><span class="ja-label">日本語訳（AI）</span>${aiGaveUp||aiFailed?'AIが使えないため翻訳できませんでした':'翻訳しています…'}</div>`:'')}
     </div>
     <div class="editor-head"><h3>返信文</h3><span class="route ai-state" id="aiState">${r.drafting?'AIが返信文を作成中…':(r.reply&&r.status==='draft'?'AIの下書きです。必要なら直してから承認してください':'')}</span></div>
-    <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
+    <textarea id="replyBox" ${r.status==='sent'||r.status==='filled'||r.status==='skip'||r.drafting?'readonly':''} placeholder="${r.drafting?'作成中…':'口コミを開くと、AIが過去の返信の文体に合わせて返信文を自動で作成します。直接書くこともできます。'}">${esc(r.drafting?r.partial:r.reply)}</textarea>
     ${r.replyJa&&!r.drafting?`<div class="ja-trans"><span class="ja-label">返信の日本語訳（確認用・送信されません）</span>${esc(r.replyJa)}</div>`:''}
     ${instr}
     <div class="actions">${actions}</div>
-    <p class="route" style="margin:0">${r.status==='sent'?'':route}</p>
+    <p class="route" style="margin:0">${isDone(r)?'':route}</p>
     <div class="log">${r.log.length? r.log.map(l=>`<div>${esc(l)}</div>`).join('') : '<div>まだ操作履歴はありません</div>'}</div>`;
   const box=$('replyBox');
   box.addEventListener('input',()=>{
@@ -525,6 +531,8 @@ function renderDetail(){
   $('tbDoneBtn')?.addEventListener('click',()=>{ r.status='sent'; r.log.push(`${now()}　担当者が${m.label}で返信を送信（返信済みに変更）`); toast('返信済みにしました'); renderAll(); });
   $('cancelFilledBtn')?.addEventListener('click',()=>{ r.status='draft'; r.log.push(`${now()}　「送信待ち」を取り消し、文面を直せるようにした`); toast('取り消しました。文面を直してください'); renderAll(); });
   $('undoSentBtn')?.addEventListener('click',()=>{ r.status='filled'; r.log.push(`${now()}　「返信済み」を取り消し（${m.label}でまだ送信していない場合はご注意ください）`); toast('「送信待ち」に戻しました'); renderAll(); });
+  $('skipBtn')?.addEventListener('click',()=>{ r.status='skip'; r.log.push(`${now()}　担当者が「対応不要」として処理`); toast('対応不要にしました'); renderAll(); });
+  $('undoSkipBtn')?.addEventListener('click',()=>{ r.status=r.reply.trim()?'draft':'new'; r.log.push(`${now()}　「対応不要」を取り消し`); toast('取り消しました'); renderAll(); });
 }
 function renderAll(){ renderFilters(); renderGroupBy(); renderStats(); renderList(); renderDetail(); }
 
@@ -931,8 +939,10 @@ $('fetchBtn').addEventListener('click',()=>fetchNew());
 const API_KINDS=['google','instagram','dm'];
 const FETCH_FN={google:'fetchGoogle', instagram:'fetchInstagram', dm:'fetchDm'};
 async function fetchNew(silent){
+  // 拡張機能が繋がっていれば、食べログ・トリップアドバイザーの確認も今すぐ行う（結果は届き次第自動で反映される）
+  if(tbBridge) window.postMessage({source:'kuchikomi-app', type:'checkNow'}, '*');
   const store=currentStore, kinds=API_KINDS.filter(m=>apiReady(store,m));
-  if(!kinds.length){ if(!silent) toast(NO_KEY_MSG); return; }
+  if(!kinds.length){ if(!silent && !tbBridge) toast(NO_KEY_MSG); return; }
   const btn=$('fetchBtn'); btn.disabled=true; btn.textContent='取得中…';
   let added=0; const fails=[];
   for(const m of kinds){
@@ -1076,7 +1086,7 @@ function restoreAI(r){
 const aiQueue=[]; let aiRunning=false, aiGaveUp=false, aiFailed=false;
 const isFallback = r => r.status==='draft' && !!r.fallback && r.reply===r.fallback;
 const needsDraft = r => (r.status==='new' && !r.reply.trim()) || isFallback(r);
-const needsAI = r => needsDraft(r) || (r.status!=='sent' && r.lang!=='ja' && !r.ja);
+const needsAI = r => needsDraft(r) || (!isDone(r) && r.lang!=='ja' && !r.ja);
 function kickAI(){
   if(!sample) return;
   ALL.forEach(r=>{ if(needsAI(r) && !aiQueue.includes(r)) aiQueue.push(r); });
