@@ -3,11 +3,11 @@
 // index.html からは window.appAI.generate(prompt, {onText}) で使う。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
 import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
-import { initializeAppCheck, ReCaptchaV3Provider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
+import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 
-// Firebase App Check（第三者にAIを使われないための仕組み）で使う reCAPTCHA v3 のサイトキー。
+// Firebase App Check（第三者にAIを使われないための仕組み）で使う reCAPTCHA Enterprise（Fraud Defense）のキーID。
 // Firebase コンソールの App Check でこのアプリを登録したときのサイトキーを入れる（空なら App Check を使わない）
-const RECAPTCHA_SITE_KEY = "6LeLbA8uAAAAAB_eobnq56MCkQ2YfxogMsiGCS3d";
+const RECAPTCHA_SITE_KEY = "6LeqTA8uAAAAAOGZtGHHUJXeQKyTBw0wRUeiprJO";
 
 const firebaseConfig = {
   apiKey: "AIzaSyD_MPoBkHVdPDD2jz67iK-BGGsY93g4YuI",
@@ -20,7 +20,7 @@ const firebaseConfig = {
 
 // firebase-init.js（別バージョンのSDK）と干渉しないよう、名前付きの別アプリとして初期化する
 const app = initializeApp(firebaseConfig, "ai");
-if (RECAPTCHA_SITE_KEY) initializeAppCheck(app, { provider: new ReCaptchaV3Provider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
+if (RECAPTCHA_SITE_KEY) initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
 const ai = getAI(app, { backend: new GoogleAIBackend() });
 
 // 先頭から順に試す。費用を抑えるため、一番安いFlash-Liteを最初に試し、使えない（提供終了・未提供）場合は
