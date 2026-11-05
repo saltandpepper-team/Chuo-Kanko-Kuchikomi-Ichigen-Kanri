@@ -531,8 +531,8 @@ function renderDetail(){
   $('tbDoneBtn')?.addEventListener('click',()=>{ r.status='sent'; r.log.push(`${now()}　担当者が${m.label}で返信を送信（返信済みに変更）`); toast('返信済みにしました'); renderAll(); });
   $('cancelFilledBtn')?.addEventListener('click',()=>{ r.status='draft'; r.log.push(`${now()}　「送信待ち」を取り消し、文面を直せるようにした`); toast('取り消しました。文面を直してください'); renderAll(); });
   $('undoSentBtn')?.addEventListener('click',()=>{ r.status='filled'; r.log.push(`${now()}　「返信済み」を取り消し（${m.label}でまだ送信していない場合はご注意ください）`); toast('「送信待ち」に戻しました'); renderAll(); });
-  $('skipBtn')?.addEventListener('click',()=>{ r.status='skip'; r.log.push(`${now()}　担当者が「対応不要」として処理`); toast('対応不要にしました'); renderAll(); });
-  $('undoSkipBtn')?.addEventListener('click',()=>{ r.status=r.reply.trim()?'draft':'new'; r.log.push(`${now()}　「対応不要」を取り消し`); toast('取り消しました'); renderAll(); });
+  $('skipBtn')?.addEventListener('click',()=>{ r.status='skip'; r.log.push(`${now()}　担当者が「対応不要」として処理`); markSkipped(r.extId); toast('対応不要にしました'); renderAll(); });
+  $('undoSkipBtn')?.addEventListener('click',()=>{ r.status=r.reply.trim()?'draft':'new'; r.log.push(`${now()}　「対応不要」を取り消し`); unmarkSkipped(r.extId); toast('取り消しました'); renderAll(); });
 }
 function renderAll(){ renderFilters(); renderGroupBy(); renderStats(); renderList(); renderDetail(); }
 
@@ -971,6 +971,7 @@ function addFetched(store, x){
   // コメント本文が無い（星評価のみ・スタンプ/画像だけのDMなど）ものは、AIが見当違いの長文を作ってしまうため
   // 自動で対応済みにし、AIの下書き作成の対象にしない
   if(x.noText && r.status==='new'){ r.status='sent'; r.log.push(`${now()}　コメントが無いため自動で対応済みにしました`); }
+  restoreSkip(r);
   restoreAI(r);
   ALL.unshift(r);
   if(r.status==='new' && store===currentStore) notify(r);
@@ -1073,6 +1074,19 @@ const AI_CACHE_KEY='rd-ai-cache-v1';
 let aiCache={};
 try{ aiCache=JSON.parse(localStorage.getItem(AI_CACHE_KEY)||'{}')||{}; }catch(e){ aiCache={}; }
 function saveAiCache(){ try{ localStorage.setItem(AI_CACHE_KEY, JSON.stringify(aiCache)); }catch(e){} }
+// 「対応不要」はこのブラウザに保存する（ログアウト・再読み込みで取得し直しても元に戻ってしまわないように）
+const SKIP_KEY='rd-skip-v1';
+let skipSet=new Set();
+try{ skipSet=new Set(JSON.parse(localStorage.getItem(SKIP_KEY)||'[]')); }catch(e){}
+function saveSkipSet(){ try{ localStorage.setItem(SKIP_KEY, JSON.stringify([...skipSet])); }catch(e){} }
+function markSkipped(extId){ if(!extId) return; skipSet.add(extId); saveSkipSet(); }
+function unmarkSkipped(extId){ if(!extId) return; skipSet.delete(extId); saveSkipSet(); }
+/** 以前「対応不要」にした口コミなら復元する（実際に返信済みになっている場合はそちらを優先） */
+function restoreSkip(r){
+  if(r.status==='sent' || !r.extId || !skipSet.has(r.extId)) return;
+  r.status='skip';
+  r.log.push(`${now()}　以前「対応不要」にした口コミとして復元`);
+}
 function setAiLink(t, bad){ const el=$('aiLink'); if(el){ el.textContent=t; el.style.color=bad?'var(--warn, #C5221F)':''; } }
 /** AIが作った返信文を保存し、拡張機能（食べログ・トリップアドバイザー）にも渡す */
 function rememberAI(r){
