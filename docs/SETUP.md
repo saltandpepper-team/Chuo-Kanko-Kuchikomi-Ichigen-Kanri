@@ -21,14 +21,14 @@
   - 必要な権限（instagram_basic・instagram_manage_comments・instagram_manage_messages・pages_show_list・pages_read_engagement・business_management）はすべてテスト準備完了
   - 根角裕基様が管理者として登録済み
   - 山麓園のFacebookページ・Instagram（`sanrokuen_robata`）との連携は完了。浅間茶屋はまだ
-- **Google ビジネスプロフィール API**：🚧 **利用申請済み・審査待ち**（[GBP APIお問い合わせフォーム](https://support.google.com/business/contact/api_default?hl=ja)から「基本のAPIアクセスの申請」で申請。申請は`sanrokuen1000@gmail.com`＝山麓園のビジネスプロフィール管理アカウントでログインして行う必要がある）
+- **Google ビジネスプロフィール API**：✅ **利用申請は承認済み**。Google Cloud コンソール「APIとサービス」→「ライブラリ」で My Business Business Information API が「APIが有効です」になっているのを確認済み（2026/11）。My Business Account Management API／Google My Business API も同様に有効化しておく
   - 会社名義：中央観光株式会社
   - プロジェクトID：`chuo-kanko`
   - 浅間茶屋は管理アカウント未確認のため後回し
-  - **審査結果を待っている間に、並行して次の2つを進められる（次回はここから再開）：**
-    1. **OAuth同意画面の設定**：Google Cloud コンソール（S&P STAFFアカウント）→「APIとサービス」→「OAuth同意画面」。User Type＝外部、スコープに`https://www.googleapis.com/auth/business.manage`を追加、テストユーザーに`sanrokuen1000@gmail.com`を追加。**公開ステータスを「本番環境」にするのを忘れない**（「テスト」のままだと7日で連携が切れる）
-    2. **OAuthクライアントIDの作成**：「APIとサービス」→「認証情報」→「認証情報を作成」→「OAuthクライアントID」（種類：ウェブアプリケーション）。承認済みのリダイレクトURI：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/google/callback`。作成後の「クライアントID」と「クライアントシークレット」を控える
-  - API有効化の承認が下りたら、Google Cloud コンソール「APIとサービス」→「ライブラリ」で以下3つを有効化：My Business Account Management API／My Business Business Information API／Google My Business API
+  - 注意：有効化後に実際へ呼び出してクォータ0・権限エラーが出た場合は、[GBP APIアクセス申請ページ](https://developers.google.com/my-business/content/prereqs#request-access)から追加申請が必要になることがある
+  - **OAuth同意画面**：Google Cloud コンソール（S&P STAFFアカウント）→「APIとサービス」→「OAuth同意画面」（新UIでは「Google Auth Platform」）。User Type＝外部、スコープに`https://www.googleapis.com/auth/business.manage`を追加、テストユーザーに`sanrokuen1000@gmail.com`を追加、**公開ステータスは「本番環境」に変更済み**（2026/11）。ブランディング（アプリ名・サポートメール・ホームページ・プライバシーポリシー`/privacy.html`・承認済みドメイン2件）も設定済み
+  - **OAuthクライアントID**：「クライアント」ページに「本番用」が作成済み（リダイレクトURI：`https://chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com/api/google/callback`）。**クライアントシークレットは作成時に一度しか表示されない仕様のため、控えていなければ「Add secret」で再発行が必要（次回はここから再開）**
+  - 残作業：クライアントシークレットを確定 → `functions/.env`の`GOOGLE_CLIENT_ID`を本物の値に更新 → `firebase functions:secrets:set GOOGLE_CLIENT_SECRET`で設定 → デプロイ → アプリの「Google↗」からログインして許可
 - **Blazeプランへのアップグレード**：✅ 完了（2026/10/12）
 - **Firebase Authentication**：✅ 完了（2026/10/12）。メール/パスワードを有効化、萱沼様のアカウント（`kayanuma.h@kaneyamaen.co.jp`）を作成済み
 - **Firestore Database**：✅ 完了（2026/10/12）。ロケーション`asia-northeast1`、本番環境モードで作成済み
