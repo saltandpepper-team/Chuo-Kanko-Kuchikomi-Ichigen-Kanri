@@ -1,8 +1,10 @@
 // アプリ内のAI（Firebase AI Logic → Gemini）。OpenAIは使わず、APIキーの入力も不要。
-// Firebase コンソールの「AI Logic」で Gemini Developer API を有効にしておく必要がある。
+// Agent Platform Gemini API（旧Vertex AI）経由で呼び出す。利用料は他のFirebase/Cloudの請求に統合される
+// （Gemini Developer API・AI Studio側の前払いクレジットとは別会計のため、そちらが切れても影響しない）。
+// Google Cloud コンソールで「Vertex AI API」を有効にしておく必要がある。
 // index.html からは window.appAI.generate(prompt, {onText}) で使う。
 import { initializeApp } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app.js";
-import { getAI, getGenerativeModel, GoogleAIBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
+import { getAI, getGenerativeModel, AgentPlatformBackend } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-ai.js";
 import { initializeAppCheck, ReCaptchaEnterpriseProvider } from "https://www.gstatic.com/firebasejs/12.19.0/firebase-app-check.js";
 
 // Firebase App Check（第三者にAIを使われないための仕組み）で使う reCAPTCHA Enterprise（Fraud Defense）のキーID。
@@ -21,7 +23,7 @@ const firebaseConfig = {
 // firebase-init.js（別バージョンのSDK）と干渉しないよう、名前付きの別アプリとして初期化する
 const app = initializeApp(firebaseConfig, "ai");
 if (RECAPTCHA_SITE_KEY) initializeAppCheck(app, { provider: new ReCaptchaEnterpriseProvider(RECAPTCHA_SITE_KEY), isTokenAutoRefreshEnabled: true });
-const ai = getAI(app, { backend: new GoogleAIBackend() });
+const ai = getAI(app, { backend: new AgentPlatformBackend() });
 
 // 先頭から順に試す。費用を抑えるため、一番安いFlash-Liteを最初に試し、使えない（提供終了・未提供）場合は
 // 通常のFlashにフォールバックする。混雑で失敗したときはその回だけ次のモデルで試す

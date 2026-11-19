@@ -87,7 +87,9 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
 返信文の作成と口コミの翻訳に使います。**本番で使う前に、次の設定が必要です（Google・Instagram の連携とは関係なく、今すぐ必要です）。**
 
 1. Firebase コンソール（プロジェクト `chuo-kanko`）→ 左メニュー「AI Logic」→「始める」を押します。
-2. API の提供元は **「Gemini Developer API」** を選びます（無料枠あり。Spark プランのままでも使えます）。
+2. API の提供元は **「Vertex AI API（Agent Platform Gemini API）」** を使います（`public/ai.js` は `AgentPlatformBackend` を指定済み）。利用料は他のFirebase/Cloudの請求（Blazeプラン）に統合され、Gemini Developer API・AI Studio側の前払いクレジットとは別会計のため、そちらの残高に影響されません。
+   - Blaze プラン（従量課金）が必要です。
+   - Google Cloud コンソール「APIとサービス」→「ライブラリ」で「Vertex AI API」を有効化しておきます。
 3. 画面の案内どおりに進めると、必要な API が有効になります。アプリ側のコードの変更は不要です。
 4. **App Check を設定します（2026年11月2日から必須）。** AI Logic を有効にすると App Check が自動で「適用」になり、未登録のアプリからの呼び出しは拒否されます（`Firebase App Check token is invalid`）。11月1日までは App Check の「API」タブで AI Logic を「モニタリング」に戻せますが、11月2日以降は戻せません。
    1. https://www.google.com/recaptcha/admin/create で reCAPTCHA v3（スコアベース）のキーを作ります。ドメインは `chuo-kanko-kuchikomi-ichigen-kanri.firebaseapp.com` と `chuo-kanko-kuchikomi-ichigen-kanri.web.app`。
@@ -96,7 +98,7 @@ Google Cloud コンソール（プロジェクト `chuo-kanko`）で行います
    4. 動作を確認したら、App Check の「API」タブで AI Logic を「適用」に戻します。
 
 - 使うモデルは `public/ai.js` の `MODELS` です（先頭から順に試し、提供終了などで使えないモデルは飛ばします）。
-- 無料枠の上限を超えると、作成が一時的に止まります（アプリは1分待って再試行します）。件数が多い場合は、AI Logic の設定で従量課金（Blaze）にします。
+- Vertex AI経由のため無料枠は無く、使った分だけBlazeプランの請求に加算されます（前払いクレジットが切れて止まる、ということは起きません）。混雑時は少し待って自動的に再試行します。
 - 無料枠では、送った内容（公開済みの口コミ本文）が Google のサービス改善に使われる場合があります。気になる場合は従量課金にしてください。
 
 ## 5. 設定値の登録とデプロイ
